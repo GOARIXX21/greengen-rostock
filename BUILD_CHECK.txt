@@ -1,0 +1,18 @@
+GREEN GENERATION ROSTOCK – V27 + D1 (WriteGuard + Migration Timestamp)
+
+CRITICAL:
+- Keine Änderung an Zugangsdaten, Admin, Master, UI, Verschlüsselung, Business-Logik
+- Local Storage bleibt Fallback, wird nie gelöscht
+- Kein localStorage.clear(), kein Reset, keine Beispieldaten
+
+SERVER:
+- POST /api/migrate: vorhandene Keys NIEMALS überschreiben
+  bei erstem Insert: clientUpdatedAt (gg_meta) wenn gültig, sonst Serverzeit
+- PUT /api/state/:key: Update nur wenn clientUpdatedAt >= D1.updated_at
+
+CLIENT:
+- Migration sendet { value, clientUpdatedAt? } ohne Blob neu zu verschlüsseln
+- Lokaler Timestamp wird beim bloßen Lesen nicht geändert
+
+JavaScript-Syntax: OK
+D1 database_id in wrangler.toml eintragen vor Deploy

@@ -1,0 +1,15 @@
+# GreenGenRostock V27 – Cloudflare Worker + D1
+# database_id nach dem Anlegen der D1-Datenbank eintragen.
+
+name = "greengen-rostock"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "greengen-rostock-db"
+database_id = "0acfde9b-0614-4651-9d3a-65773a9a10ff"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
