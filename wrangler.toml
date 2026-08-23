@@ -1,4 +1,5 @@
 # GreenGenRostock V27 – Cloudflare Worker + D1
+# Deploy-Trigger V27
 # database_id nach dem Anlegen der D1-Datenbank eintragen.
 
 name = "greengen-rostock"
