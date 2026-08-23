@@ -12,5 +12,5 @@ database_name = "greengen-rostock-db"
 database_id = "0acfde9b-0614-4651-9d3a-65773a9a10ff"
 
 [assets]
-directory = "./Öffentlich"
+directory = "./public"
 binding = "ASSETS"
