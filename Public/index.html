@@ -3999,37 +3999,78 @@ select,input,textarea,button{touch-action:manipulation}
             if (!istVorstandEingeloggt) return;
             const s = Array.isArray(vereinSorten) ? vereinSorten[index] : null;
             if (!s) return;
-            const payload = 'GREEN-GEN-SORTE:' + String(ggSortenStableId(s));
             const sorteName = String(s.name || 'Sorte').trim() || 'Sorte';
 
-            if (typeof window.qrcode !== 'function') {
-                alert('QR-Bibliothek nicht geladen. Bitte Seite neu laden und erneut versuchen.');
+            const box = document.getElementById('admin-sorte-qr-' + index);
+            if (!box) {
+                alert('Angezeigter Sorten-QR wurde nicht gefunden. Bitte Sortenliste neu laden.');
                 return;
             }
 
-            let modules, isDark;
-            try {
-                const qr = window.qrcode(0, 'M');
-                qr.addData(payload);
-                qr.make();
-                modules = qr.getModuleCount();
-                isDark = function (r, c) { return qr.isDark(r, c); };
-            } catch (e) {
-                console.warn('QR-Druck fehlgeschlagen', e);
-                alert('QR-Code konnte lokal nicht erzeugt werden.');
+            // 1:1-Quelle: bereits angezeigter QR (Canvas / IMG / Table) – kein Neu-Rendering
+            let sourceCanvas = null;
+            const existingCanvas = box.querySelector('canvas');
+            const existingImg = box.querySelector('img');
+            const existingTable = box.querySelector('table');
+
+            if (existingCanvas) {
+                sourceCanvas = existingCanvas;
+            } else if (existingImg && existingImg.src) {
+                sourceCanvas = existingImg;
+            } else if (existingTable && existingTable.rows && existingTable.rows.length) {
+                const n = existingTable.rows.length;
+                const cellPx = 4;
+                const c = document.createElement('canvas');
+                c.width = n * cellPx;
+                c.height = n * cellPx;
+                const tctx = c.getContext('2d');
+                tctx.fillStyle = '#ffffff';
+                tctx.fillRect(0, 0, c.width, c.height);
+                for (let r = 0; r < n; r++) {
+                    const cells = existingTable.rows[r].cells;
+                    for (let col = 0; col < cells.length; col++) {
+                        const td = cells[col];
+                        const bg = String(
+                            td.style.backgroundColor ||
+                            td.getAttribute('bgcolor') ||
+                            ''
+                        ).toLowerCase().replace(/\s/g, '');
+                        const isDark = bg &&
+                            bg !== '#fff' &&
+                            bg !== '#ffffff' &&
+                            bg !== 'rgb(255,255,255)' &&
+                            bg !== 'rgba(255,255,255,1)' &&
+                            bg !== 'white' &&
+                            bg !== 'transparent';
+                        if (isDark) {
+                            tctx.fillStyle = '#000000';
+                            tctx.fillRect(col * cellPx, r * cellPx, cellPx, cellPx);
+                        }
+                    }
+                }
+                sourceCanvas = c;
+            }
+
+            if (!sourceCanvas) {
+                alert('QR-Code ist noch nicht geladen. Bitte kurz warten und erneut versuchen.');
+                return;
+            }
+
+            const srcW = sourceCanvas.width || sourceCanvas.naturalWidth || sourceCanvas.offsetWidth || 0;
+            const srcH = sourceCanvas.height || sourceCanvas.naturalHeight || sourceCanvas.offsetHeight || 0;
+            if (!srcW || !srcH) {
+                alert('Angezeigter QR-Code hat keine gültige Größe.');
                 return;
             }
 
             const canvasW = 1024;
             const canvasH = 1280;
             const margin = 80;
-            const labelH = 200;
-            const qrArea = canvasW - margin * 2;
-            const cell = Math.max(1, Math.floor(qrArea / (modules + 8)));
-            const quiet = 4;
-            const qrDraw = cell * modules;
-            const qrTotal = cell * (modules + quiet * 2);
-            const qrLeft = Math.floor((canvasW - qrTotal) / 2);
+            const maxQr = 860;
+            const factor = Math.max(1, Math.floor(maxQr / Math.max(srcW, srcH)));
+            const drawW = srcW * factor;
+            const drawH = srcH * factor;
+            const qrLeft = Math.floor((canvasW - drawW) / 2);
             const qrTop = margin;
 
             const out = document.createElement('canvas');
@@ -4038,22 +4079,17 @@ select,input,textarea,button{touch-action:manipulation}
             const ctx = out.getContext('2d');
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, canvasW, canvasH);
-            ctx.fillStyle = '#000000';
-            for (let r = 0; r < modules; r++) {
-                for (let c = 0; c < modules; c++) {
-                    if (isDark(r, c)) {
-                        ctx.fillRect(
-                            qrLeft + (quiet + c) * cell,
-                            qrTop + (quiet + r) * cell,
-                            cell,
-                            cell
-                        );
-                    }
-                }
+            ctx.imageSmoothingEnabled = false;
+            try {
+                ctx.drawImage(sourceCanvas, qrLeft, qrTop, drawW, drawH);
+            } catch (e) {
+                console.warn('QR-Übernahme fehlgeschlagen', e);
+                alert('Angezeigter QR-Code konnte nicht übernommen werden.');
+                return;
             }
 
             const textMaxW = canvasW - margin * 2;
-            let textY = qrTop + qrTotal + 36;
+            let textY = qrTop + drawH + 40;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
 
