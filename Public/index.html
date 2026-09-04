@@ -3521,7 +3521,10 @@ select,input,textarea,button{touch-action:manipulation}
                             <p class="text-[10px] text-[#22ffaa]">${strain.price.toFixed(2)} €/g • interner Bestand: ${strain.stock}</p><p class="text-[9px] text-white/45">Ernte: ${strain.harvestDate||'—'} • MHD: ${strain.bestBefore||'—'} • CBD: ${strain.cbd||'—'} • QS: ${strain.qaStatus||'offen'}</p><select onchange="setzeSortenStatus(${idx},this.value)" class="mt-1 bg-zinc-800 border border-white/10 rounded px-2 py-1 text-[9px] text-white"><option value="verfügbar" ${strain.status==='verfügbar'?'selected':''}>Verfügbar</option><option value="kommt_bald" ${strain.status==='kommt_bald'?'selected':''}>Kommt bald</option><option value="nicht_verfügbar" ${strain.status==='nicht_verfügbar'?'selected':''}>Nicht verfügbar</option></select>
                             </div>
                         </div>
-                        <button onclick="löscheSortenEintrag(${idx})" class="text-red-400 hover:text-red-300 p-1"><i class="fa-solid fa-trash-can"></i></button>
+                        <div class="flex items-center gap-1 shrink-0">
+                            <button type="button" onclick="ladeSorteQRHerunter(${idx})" class="text-[9px] font-bold text-[#22ffaa] border border-[#22ffaa]/30 bg-[#22ffaa]/10 hover:bg-[#22ffaa]/20 px-2 py-1.5 rounded-lg whitespace-nowrap" title="QR-Code als PNG herunterladen">QR-Code herunterladen</button>
+                            <button type="button" onclick="löscheSortenEintrag(${idx})" class="text-red-400 hover:text-red-300 p-1" title="Sorte löschen"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
                     `;
                     adminList.appendChild(row);
                 }
@@ -3990,6 +3993,58 @@ select,input,textarea,button{touch-action:manipulation}
             const s = vereinSorten[index];
             if (!s) return;
             oeffneGroßenQR('sorte', index);
+        }
+
+        async function ladeSorteQRHerunter(index) {
+            if (!istVorstandEingeloggt) return;
+            const s = Array.isArray(vereinSorten) ? vereinSorten[index] : null;
+            if (!s) return;
+            const payload = `GREEN-GEN-SORTE:${ggSortenStableId(s)}`;
+            const size = 512;
+            let dataUrl = null;
+            try {
+                if (await ggLoadQRFallback() && window.qrcode) {
+                    const qr = window.qrcode(0, 'M');
+                    qr.addData(String(payload));
+                    qr.make();
+                    const cell = Math.max(4, Math.floor(size / qr.getModuleCount()));
+                    dataUrl = qr.createDataURL(cell, 2);
+                }
+            } catch (e) {
+                console.warn('QR-PNG (generator) fehlgeschlagen', e);
+            }
+            if (!dataUrl) {
+                const tmp = document.createElement('div');
+                tmp.style.cssText = 'position:fixed;left:-9999px;top:0;width:' + size + 'px;height:' + size + 'px;';
+                document.body.appendChild(tmp);
+                try {
+                    await ggRenderQR(tmp, payload, size);
+                    const canvas = tmp.querySelector('canvas');
+                    const img = tmp.querySelector('img');
+                    if (canvas && canvas.toDataURL) {
+                        dataUrl = canvas.toDataURL('image/png');
+                    } else if (img && img.src && String(img.src).startsWith('data:')) {
+                        dataUrl = img.src;
+                    }
+                } catch (e) {
+                    console.warn('QR-PNG (render) fehlgeschlagen', e);
+                }
+                tmp.remove();
+            }
+            if (!dataUrl) {
+                alert('QR-Code konnte nicht als PNG erzeugt werden.');
+                return;
+            }
+            const safe = String(s.name || 'Sorte')
+                .replace(/[^\w\-äöüÄÖÜß]+/gi, '-')
+                .replace(/^-+|-+$/g, '')
+                .slice(0, 80) || 'Sorte';
+            const a = document.createElement('a');
+            a.href = dataUrl;
+            a.download = 'Green-Generation-' + safe + '-QR.png';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
         }
 
         function escapeHtml(value) {
