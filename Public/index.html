@@ -1522,13 +1522,13 @@ select,input,textarea,button{touch-action:manipulation}
         <div class="glass-card border border-[#22ffaa]/50 rounded-3xl p-4 w-full max-w-md text-center green-glow relative">
             <div class="flex justify-between items-center mb-3">
                 <h3 class="font-bold text-xs text-white flex items-center gap-x-2">
-                    <i class="fa-solid fa-camera text-[#22ffaa]"></i> Barcode / QR-Code Kamera-Scanner
+                    <i class="fa-solid fa-camera text-[#22ffaa]"></i> <span id="scan-phase-title">Mitglied scannen</span>
                 </h3>
                 <button onclick="schliesseKameraScanner()" class="w-7 h-7 rounded-full bg-white/10 text-white flex items-center justify-center text-xs">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
-            <p class="text-[10px] text-white/50 mb-3">Halten Sie den Ausweis- oder Sorten-Code vor die Kamera.</p>
+            <p id="scan-phase-hint" class="text-[10px] text-white/50 mb-3">Bitte zuerst den GreenGen-Mitglieder-QR scannen.</p>
             <div id="reader" class="w-full rounded-2xl overflow-hidden bg-zinc-950 border border-white/10 mb-3"></div>
             <div id="scan-result-feedback" class="text-xs text-[#22ffaa] font-bold py-1 mb-2">Bereit zum Scannen...</div>
             <button onclick="schliesseKameraScanner()" class="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-2.5 rounded-xl text-xs">
@@ -1850,6 +1850,13 @@ select,input,textarea,button{touch-action:manipulation}
         // App Status
         let istVorstandEingeloggt = false;
         let html5QrCode = null;
+        let html5QrCodeRunning = false;
+        let ggScanPhase = 'mitglied';
+        let ggScanMitgliedId = null;
+        let ggScanBusy = false;
+        let ggAutoRefreshTimer = null;
+        let ggAutoRefreshInFlight = false;
+        const GG_AUTO_REFRESH_MS = 25000;
         let mapInitialized = false;
         let mapInstance = null;
         let mapMarker = null;
@@ -1936,6 +1943,8 @@ select,input,textarea,button{touch-action:manipulation}
             if (ggIdleTimer) clearInterval(ggIdleTimer);
             if (ggIdleCountdownTimer) clearInterval(ggIdleCountdownTimer);
             ggIdleTimer = ggIdleCountdownTimer = null;
+            stoppeAutoRefreshTimer();
+            if (ggScannerIstOffen()) schliesseKameraScanner();
             ggIdleWarningOpen = false;
             document.getElementById('idle-session-modal')?.classList.add('hidden');
 
@@ -1986,16 +1995,30 @@ select,input,textarea,button{touch-action:manipulation}
                 document.addEventListener(eventName, ggMarkiereAktivitaet, {passive:true, capture:true});
             });
             document.addEventListener('visibilitychange', () => {
-                if (!document.hidden) {
+                if (document.hidden) {
+                    stoppeAutoRefreshTimer();
+                } else {
                     ggPruefeInaktivitaet();
-                    if (ggIstGeschuetzterBereichAktiv()) ggRefreshAlleQRs();
+                    if (ggIstGeschuetzterBereichAktiv()) {
+                        ggRefreshAlleQRs();
+                        ggAutoRefreshJetzt();
+                        starteAutoRefreshTimer();
+                    }
                 }
             });
             window.addEventListener('pageshow', () => {
                 ggPruefeInaktivitaet();
-                if (ggIstGeschuetzterBereichAktiv()) ggRefreshAlleQRs();
+                if (ggIstGeschuetzterBereichAktiv()) {
+                    ggRefreshAlleQRs();
+                    ggAutoRefreshJetzt();
+                    starteAutoRefreshTimer();
+                }
+            });
+            window.addEventListener('focus', () => {
+                if (ggIstGeschuetzterBereichAktiv()) ggAutoRefreshJetzt();
             });
             ggIdleTimer = setInterval(ggPruefeInaktivitaet, 1000);
+            starteAutoRefreshTimer();
         }
 
         function ggRefreshAlleQRs() {
@@ -2013,9 +2036,128 @@ select,input,textarea,button{touch-action:manipulation}
                     const m = vereinMitglieder[index];
                     if (m) ggRenderQR(box, `GREEN-GEN-ROSTOCK:${m.id}:${m.name}`, 68);
                 });
+                document.querySelectorAll('[data-sorte-id]').forEach((box) => {
+                    const sid = box.getAttribute('data-sorte-id');
+                    const s = vereinSorten.find(x => String(ggSortenStableId(x)) === String(sid));
+                    if (s) ggRenderQR(box, `GREEN-GEN-SORTE:${ggSortenStableId(s)}`, 52);
+                });
                 normalisiereQRDarstellung(document);
             } catch (e) {
                 console.warn('QR-Wiederherstellung fehlgeschlagen', e);
+            }
+        }
+
+        function ggSortenStableId(s) {
+            if (!s) return '';
+            if (s.id !== undefined && s.id !== null && String(s.id).trim() !== '') return String(s.id);
+            return '';
+        }
+
+        function ggEnsureSortenStableIds() {
+            let changed = false;
+            if (!Array.isArray(vereinSorten)) return false;
+            vereinSorten.forEach(s => {
+                if (!s) return;
+                if (s.id === undefined || s.id === null || String(s.id).trim() === '') {
+                    const bytes = new Uint8Array(8);
+                    crypto.getRandomValues(bytes);
+                    const rnd = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+                    s.id = 'GG-SR-' + rnd;
+                    changed = true;
+                }
+            });
+            return changed;
+        }
+
+        function ggScannerIstOffen() {
+            const modal = document.getElementById('camera-scanner-modal');
+            return !!(modal && !modal.classList.contains('hidden'));
+        }
+
+        function ggNutzerBearbeitetEingabe() {
+            const el = document.activeElement;
+            if (!el) return false;
+            const tag = (el.tagName || '').toLowerCase();
+            return tag === 'input' || tag === 'textarea' || tag === 'select' || el.isContentEditable;
+        }
+
+        function stoppeAutoRefreshTimer() {
+            if (ggAutoRefreshTimer) {
+                clearInterval(ggAutoRefreshTimer);
+                ggAutoRefreshTimer = null;
+            }
+        }
+
+        function starteAutoRefreshTimer() {
+            stoppeAutoRefreshTimer();
+            if (!ggIstGeschuetzterBereichAktiv()) return;
+            if (document.hidden) return;
+            ggAutoRefreshTimer = setInterval(() => {
+                if (document.hidden) return;
+                if (!ggIstGeschuetzterBereichAktiv()) {
+                    stoppeAutoRefreshTimer();
+                    return;
+                }
+                ggAutoRefreshJetzt();
+            }, GG_AUTO_REFRESH_MS);
+        }
+
+        async function ggAutoRefreshJetzt() {
+            if (ggAutoRefreshInFlight) return;
+            if (!ggIstGeschuetzterBereichAktiv()) return;
+            if (ggScannerIstOffen()) return;
+            ggAutoRefreshInFlight = true;
+            try {
+                const keys = [
+                    ['vereinMitglieder', []],
+                    ['vereinSorten', []],
+                    ['vereinNews', vereinNews],
+                    ['vereinProtokolle', []],
+                    ['vereinKassenbons', []],
+                    ['vereinReservierungen', []],
+                    ['vereinAbholzeitfenster', vereinAbholzeitfenster],
+                    ['vereinUmsatz', vereinUmsatz],
+                    ['vereinWissen', vereinWissen],
+                    ['vereinInfoArtikel', vereinInfoArtikel],
+                    ['vereinQualitaetspruefungen', vereinQualitaetspruefungen],
+                    ['vereinRueckrufe', vereinRueckrufe],
+                    ['vereinAudit', vereinAudit],
+                    ['vereinGuthabenHistorie', vereinGuthabenHistorie]
+                ];
+                const geladen = {};
+                for (const [key, fallback] of keys) {
+                    geladen[key] = await ladeVerschlüsseltenState(key, fallback);
+                }
+                if (Array.isArray(geladen.vereinMitglieder)) vereinMitglieder = geladen.vereinMitglieder;
+                if (Array.isArray(geladen.vereinSorten)) vereinSorten = geladen.vereinSorten;
+                if (Array.isArray(geladen.vereinNews)) vereinNews = geladen.vereinNews;
+                if (Array.isArray(geladen.vereinProtokolle)) vereinProtokolle = geladen.vereinProtokolle;
+                if (Array.isArray(geladen.vereinKassenbons)) vereinKassenbons = geladen.vereinKassenbons;
+                if (Array.isArray(geladen.vereinReservierungen)) vereinReservierungen = geladen.vereinReservierungen;
+                if (Array.isArray(geladen.vereinAbholzeitfenster)) vereinAbholzeitfenster = geladen.vereinAbholzeitfenster;
+                if (geladen.vereinUmsatz !== undefined && geladen.vereinUmsatz !== null) vereinUmsatz = geladen.vereinUmsatz;
+                if (Array.isArray(geladen.vereinWissen)) vereinWissen = geladen.vereinWissen;
+                if (Array.isArray(geladen.vereinInfoArtikel)) vereinInfoArtikel = geladen.vereinInfoArtikel;
+                if (Array.isArray(geladen.vereinQualitaetspruefungen)) vereinQualitaetspruefungen = geladen.vereinQualitaetspruefungen;
+                if (Array.isArray(geladen.vereinRueckrufe)) vereinRueckrufe = geladen.vereinRueckrufe;
+                if (Array.isArray(geladen.vereinAudit)) vereinAudit = geladen.vereinAudit;
+                if (Array.isArray(geladen.vereinGuthabenHistorie)) vereinGuthabenHistorie = geladen.vereinGuthabenHistorie;
+                const idsNeu = ggEnsureSortenStableIds();
+                if (idsNeu) await speichereVerschlüsseltenState('vereinSorten', vereinSorten);
+                if (!ggScannerIstOffen() && !ggNutzerBearbeitetEingabe()) {
+                    const posMember = document.getElementById('pos-member-select')?.value;
+                    const posStrain = document.getElementById('pos-strain-select')?.value;
+                    rendereAlles();
+                    const memberSel = document.getElementById('pos-member-select');
+                    const strainSel = document.getElementById('pos-strain-select');
+                    if (memberSel && posMember) memberSel.value = posMember;
+                    if (strainSel && posStrain) strainSel.value = posStrain;
+                    ggRefreshAlleQRs();
+                }
+            } catch (e) {
+                console.warn('Auto-Refresh fehlgeschlagen', e);
+            } finally {
+                ggAutoRefreshInFlight = false;
             }
         }
 
@@ -2214,6 +2356,9 @@ select,input,textarea,button{touch-action:manipulation}
 
             // Legacy-Daten sicher ergänzen, ohne bestehende Daten zu überschreiben
             vereinSorten = vereinSorten.map(s => ({...s, status: s.status || (String(s.stock||'').match(/[1-9]/) ? 'verfügbar' : 'nicht_verfügbar'), statusLabel: s.statusLabel || (String(s.stock||'').match(/[1-9]/) ? 'Verfügbar' : 'Nicht verfügbar'), harvestDate:s.harvestDate||'', bestBefore:s.bestBefore||'', cbd:s.cbd||'', qaStatus:s.qaStatus||'offen', recalled:!!s.recalled}));
+            if (ggEnsureSortenStableIds()) {
+                await speichereVerschlüsseltenState('vereinSorten', vereinSorten);
+            }
             vereinMitglieder = vereinMitglieder.map(m => {
                 const geburtsjahr = parseInt(m.birthYear, 10);
                 const alter = Number.isFinite(geburtsjahr) ? new Date().getFullYear() - geburtsjahr : 21;
@@ -2855,6 +3000,8 @@ select,input,textarea,button{touch-action:manipulation}
         }
 
         function beendeVorstandsbereich() {
+            stoppeAutoRefreshTimer();
+            if (ggScannerIstOffen()) schliesseKameraScanner();
             istVorstandEingeloggt = false;
             aktiveVorstandsrolle = null;
             document.body.classList.remove('gg-vorstand-mode');
@@ -2914,6 +3061,8 @@ select,input,textarea,button{touch-action:manipulation}
         }
 
         function beendeMitgliederbereich() {
+            stoppeAutoRefreshTimer();
+            if (ggScannerIstOffen()) schliesseKameraScanner();
             protokolliereAudit('member_logout', mitgliedSession ? mitgliedSession.id : '');
             zeigeStartGate();
         }
@@ -3309,7 +3458,12 @@ select,input,textarea,button{touch-action:manipulation}
                             <h3 class="font-bold text-sm text-white">${strain.name}</h3>
                             <p class="text-[10px] text-[#22ffaa] font-mono mt-0.5">${strain.batch}</p>
                         </div>
-                        <span class="bg-white/10 text-white font-bold text-xs px-2.5 py-1 rounded-xl border border-white/10">${strain.price.toFixed(2).replace('.', ',')} €/g</span>
+                        <div class="flex items-start gap-2">
+                            <div class="w-14 h-14 bg-white rounded-xl p-1 shrink-0 flex items-center justify-center cursor-pointer" onclick="zeigeSorteQR(${idx})" title="Sorten-QR">
+                                <div id="sorte-qr-${idx}" data-sorte-id="${ggSortenStableId(strain)}" class="w-full h-full flex items-center justify-center"></div>
+                            </div>
+                            <span class="bg-white/10 text-white font-bold text-xs px-2.5 py-1 rounded-xl border border-white/10">${strain.price.toFixed(2).replace('.', ',')} €/g</span>
+                        </div>
                     </div>
                     <p class="text-xs text-white/70 mb-3 leading-relaxed">${strain.desc}</p>
                     <div class="flex items-center justify-between text-[11px] pt-2 border-t border-white/10 mb-3">
@@ -3359,9 +3513,14 @@ select,input,textarea,button{touch-action:manipulation}
                     const row = document.createElement('div');
                     row.className = "bg-zinc-900/90 p-2 rounded-xl border border-white/5 flex justify-between items-center";
                     row.innerHTML = `
-                        <div>
+                        <div class="flex items-center gap-2 min-w-0">
+                            <div class="w-12 h-12 bg-white rounded-lg p-0.5 shrink-0 cursor-pointer" onclick="zeigeSorteQR(${idx})" title="Sorten-QR">
+                                <div id="admin-sorte-qr-${idx}" data-sorte-id="${ggSortenStableId(strain)}" class="w-full h-full flex items-center justify-center"></div>
+                            </div>
+                            <div>
                             <p class="font-bold text-xs text-white">${strain.name} <span class="text-[10px] text-white/40">(${strain.batch})</span></p>
                             <p class="text-[10px] text-[#22ffaa]">${strain.price.toFixed(2)} €/g • interner Bestand: ${strain.stock}</p><p class="text-[9px] text-white/45">Ernte: ${strain.harvestDate||'—'} • MHD: ${strain.bestBefore||'—'} • CBD: ${strain.cbd||'—'} • QS: ${strain.qaStatus||'offen'}</p><select onchange="setzeSortenStatus(${idx},this.value)" class="mt-1 bg-zinc-800 border border-white/10 rounded px-2 py-1 text-[9px] text-white"><option value="verfügbar" ${strain.status==='verfügbar'?'selected':''}>Verfügbar</option><option value="kommt_bald" ${strain.status==='kommt_bald'?'selected':''}>Kommt bald</option><option value="nicht_verfügbar" ${strain.status==='nicht_verfügbar'?'selected':''}>Nicht verfügbar</option></select>
+                            </div>
                         </div>
                         <button onclick="löscheSortenEintrag(${idx})" class="text-red-400 hover:text-red-300 p-1"><i class="fa-solid fa-trash-can"></i></button>
                     `;
@@ -3369,6 +3528,13 @@ select,input,textarea,button{touch-action:manipulation}
                 }
             });
             aktualisiereReservierungsKontrollen();
+            vereinSorten.forEach((strain, idx) => {
+                const payload = `GREEN-GEN-SORTE:${ggSortenStableId(strain)}`;
+                const box = document.getElementById(`sorte-qr-${idx}`);
+                const adminBox = document.getElementById(`admin-sorte-qr-${idx}`);
+                if (box) ggRenderQR(box, payload, 52);
+                if (adminBox) ggRenderQR(adminBox, payload, 44);
+            });
         }
 
         async function setzeSortenStatus(index,status){
@@ -3819,6 +3985,12 @@ select,input,textarea,button{touch-action:manipulation}
             const m = vereinMitglieder[index];
             if (!m) return;
             oeffneGroßenQR('ausweis', index);
+        }
+
+        function zeigeSorteQR(index) {
+            const s = vereinSorten[index];
+            if (!s) return;
+            oeffneGroßenQR('sorte', index);
         }
 
         function escapeHtml(value) {
@@ -4669,6 +4841,13 @@ select,input,textarea,button{touch-action:manipulation}
                 title.textContent = "Mitgliedsausweis QR";
                 subtitle.textContent = `ID: ${m.id}`;
                 await ggRenderQR(container, `GREEN-GEN-ROSTOCK:${m.id}:${m.name}`, 240);
+            } else if (typ === 'sorte') {
+                const s = (memberIndex !== null && vereinSorten[memberIndex]) ? vereinSorten[memberIndex] : null;
+                if (!s) return;
+                const sid = ggSortenStableId(s);
+                title.textContent = "Sorten-QR";
+                subtitle.textContent = `${s.name} • ID: ${sid}`;
+                await ggRenderQR(container, `GREEN-GEN-SORTE:${sid}`, 240);
             } else {
                 title.textContent = "Abgabe-Barcode";
                 subtitle.textContent = `TSE-ABGABE:${m.id}`;
@@ -4683,32 +4862,139 @@ select,input,textarea,button{touch-action:manipulation}
         }
 
         /* Kamera Scanner */
+        function ggSetzeScanFeedback(text, ok) {
+            const el = document.getElementById('scan-result-feedback');
+            if (!el) return;
+            el.textContent = text;
+            el.classList.toggle('text-[#22ffaa]', !!ok);
+            el.classList.toggle('text-red-400', !ok);
+        }
+
+        function ggSetzeScanPhase(phase) {
+            ggScanPhase = phase;
+            const title = document.getElementById('scan-phase-title');
+            const hint = document.getElementById('scan-phase-hint');
+            if (phase === 'sorte') {
+                if (title) title.textContent = 'Sorte scannen';
+                if (hint) hint.textContent = 'Bitte jetzt den GreenGen-Sorten-QR scannen.';
+            } else {
+                ggScanMitgliedId = null;
+                if (title) title.textContent = 'Mitglied scannen';
+                if (hint) hint.textContent = 'Bitte zuerst den GreenGen-Mitglieder-QR scannen.';
+            }
+        }
+
+        function ggParseMitgliedQR(raw) {
+            const text = String(raw || '').trim();
+            if (!text.startsWith('GREEN-GEN-ROSTOCK:')) return null;
+            const rest = text.slice('GREEN-GEN-ROSTOCK:'.length);
+            const id = rest.split(':')[0];
+            if (!id) return null;
+            return id;
+        }
+
+        function ggParseSorteQR(raw) {
+            const text = String(raw || '').trim();
+            if (!text.startsWith('GREEN-GEN-SORTE:')) return null;
+            const id = text.slice('GREEN-GEN-SORTE:'.length).split(':')[0];
+            if (!id) return null;
+            return id;
+        }
+
+        function ggVerarbeiteScan(decodedText) {
+            if (ggScanBusy) return;
+            const raw = String(decodedText || '').trim();
+            const memberId = ggParseMitgliedQR(raw);
+            const sorteId = ggParseSorteQR(raw);
+
+            if (ggScanPhase !== 'sorte') {
+                if (sorteId) {
+                    ggSetzeScanFeedback('✕ Bitte zuerst Mitglied scannen', false);
+                    return;
+                }
+                if (!memberId) {
+                    ggSetzeScanFeedback('✕ Kein gültiger GreenGen-Code', false);
+                    return;
+                }
+                const mitglied = vereinMitglieder.find(m => String(m.id) === String(memberId));
+                if (!mitglied) {
+                    ggSetzeScanFeedback('✕ Unbekannter Mitgliedscode', false);
+                    return;
+                }
+                ggScanBusy = true;
+                const memberSel = document.getElementById('pos-member-select');
+                if (memberSel) memberSel.value = mitglied.id;
+                ggScanMitgliedId = mitglied.id;
+                ggSetzeScanFeedback('✓ Mitglied erkannt', true);
+                ggSetzeScanPhase('sorte');
+                setTimeout(() => { ggScanBusy = false; }, 600);
+                return;
+            }
+
+            if (memberId) {
+                ggSetzeScanFeedback('✕ Kein gültiger Sorten-QR', false);
+                return;
+            }
+            if (!sorteId) {
+                if (raw.startsWith('GREEN-GEN-')) {
+                    ggSetzeScanFeedback('✕ Kein gültiger Sorten-QR', false);
+                } else {
+                    ggSetzeScanFeedback('✕ Kein gültiger GreenGen-Code', false);
+                }
+                return;
+            }
+            const sorte = vereinSorten.find(s => String(ggSortenStableId(s)) === String(sorteId));
+            if (!sorte) {
+                ggSetzeScanFeedback('✕ Unbekannter Sortencode', false);
+                return;
+            }
+            ggScanBusy = true;
+            const strainSel = document.getElementById('pos-strain-select');
+            if (strainSel) strainSel.value = sorte.name;
+            ggSetzeScanFeedback('✓ Sorte erkannt', true);
+            setTimeout(() => {
+                ggScanBusy = false;
+                schliesseKameraScanner();
+            }, 700);
+        }
+
         function oeffneKameraScanner() {
+            ggScanBusy = false;
+            ggSetzeScanPhase('mitglied');
+            ggSetzeScanFeedback('Bereit zum Scannen...', true);
             document.getElementById('camera-scanner-modal').classList.remove('hidden');
             if (!html5QrCode) {
                 html5QrCode = new Html5Qrcode("reader");
             }
+            if (html5QrCodeRunning) return;
             html5QrCode.start(
                 { facingMode: "environment" },
                 { fps: 10, qrbox: { width: 200, height: 200 } },
                 (decodedText) => {
-                    document.getElementById('scan-result-feedback').textContent = `Gescannt: ${decodedText}`;
-                    setTimeout(() => schliesseKameraScanner(), 1000);
+                    ggVerarbeiteScan(decodedText);
                 },
                 (errorMessage) => {}
-            ).catch(err => {
+            ).then(() => {
+                html5QrCodeRunning = true;
+            }).catch(err => {
+                html5QrCodeRunning = false;
                 document.getElementById('scan-result-feedback').textContent = "Kamera konnte nicht gestartet werden.";
             });
         }
 
         function schliesseKameraScanner() {
-            if (html5QrCode) {
+            ggScanBusy = false;
+            ggSetzeScanPhase('mitglied');
+            if (html5QrCode && html5QrCodeRunning) {
                 html5QrCode.stop().then(() => {
+                    html5QrCodeRunning = false;
                     document.getElementById('camera-scanner-modal').classList.add('hidden');
                 }).catch(() => {
+                    html5QrCodeRunning = false;
                     document.getElementById('camera-scanner-modal').classList.add('hidden');
                 });
             } else {
+                html5QrCodeRunning = false;
                 document.getElementById('camera-scanner-modal').classList.add('hidden');
             }
         }
