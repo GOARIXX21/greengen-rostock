@@ -3995,53 +3995,48 @@ select,input,textarea,button{touch-action:manipulation}
             oeffneGroßenQR('sorte', index);
         }
 
-        async function ladeSorteQRHerunter(index) {
+        function ladeSorteQRHerunter(index) {
             if (!istVorstandEingeloggt) return;
             const s = Array.isArray(vereinSorten) ? vereinSorten[index] : null;
             if (!s) return;
-            const payload = `GREEN-GEN-SORTE:${ggSortenStableId(s)}`;
-            const size = 512;
-            let dataUrl = null;
-            try {
-                if (await ggLoadQRFallback() && window.qrcode) {
-                    const qr = window.qrcode(0, 'M');
-                    qr.addData(String(payload));
-                    qr.make();
-                    const cell = Math.max(4, Math.floor(size / qr.getModuleCount()));
-                    dataUrl = qr.createDataURL(cell, 2);
-                }
-            } catch (e) {
-                console.warn('QR-PNG (generator) fehlgeschlagen', e);
-            }
-            if (!dataUrl) {
-                const tmp = document.createElement('div');
-                tmp.style.cssText = 'position:fixed;left:-9999px;top:0;width:' + size + 'px;height:' + size + 'px;';
-                document.body.appendChild(tmp);
-                try {
-                    await ggRenderQR(tmp, payload, size);
-                    const canvas = tmp.querySelector('canvas');
-                    const img = tmp.querySelector('img');
-                    if (canvas && canvas.toDataURL) {
-                        dataUrl = canvas.toDataURL('image/png');
-                    } else if (img && img.src && String(img.src).startsWith('data:')) {
-                        dataUrl = img.src;
-                    }
-                } catch (e) {
-                    console.warn('QR-PNG (render) fehlgeschlagen', e);
-                }
-                tmp.remove();
-            }
-            if (!dataUrl) {
-                alert('QR-Code konnte nicht als PNG erzeugt werden.');
+
+            // Den bereits angezeigten Admin-QR verwenden. Dadurch bleibt der Download
+            // an die direkte Button-Aktion gebunden und wird auf Mobilgeräten nicht
+            // durch einen vorherigen await/Netzwerk-Request blockiert.
+            const box = document.getElementById(`admin-sorte-qr-${index}`);
+            if (!box) {
+                alert('QR-Code konnte nicht gefunden werden.');
                 return;
             }
+
+            let dataUrl = null;
+            const canvas = box.querySelector('canvas');
+            const img = box.querySelector('img');
+
+            try {
+                if (canvas && typeof canvas.toDataURL === 'function') {
+                    dataUrl = canvas.toDataURL('image/png');
+                } else if (img && img.src && String(img.src).startsWith('data:image/')) {
+                    dataUrl = img.src;
+                }
+            } catch (e) {
+                console.warn('QR-PNG-Export fehlgeschlagen', e);
+            }
+
+            if (!dataUrl) {
+                alert('QR-Code konnte nicht als PNG heruntergeladen werden. Bitte den QR-Code erneut anzeigen und noch einmal versuchen.');
+                return;
+            }
+
             const safe = String(s.name || 'Sorte')
                 .replace(/[^\w\-äöüÄÖÜß]+/gi, '-')
                 .replace(/^-+|-+$/g, '')
                 .slice(0, 80) || 'Sorte';
+
             const a = document.createElement('a');
             a.href = dataUrl;
             a.download = 'Green-Generation-' + safe + '-QR.png';
+            a.style.display = 'none';
             document.body.appendChild(a);
             a.click();
             a.remove();
