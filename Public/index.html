@@ -3995,48 +3995,113 @@ select,input,textarea,button{touch-action:manipulation}
             oeffneGroßenQR('sorte', index);
         }
 
-        function ladeSorteQRHerunter(index) {
+        async function ladeSorteQRHerunter(index) {
             if (!istVorstandEingeloggt) return;
             const s = Array.isArray(vereinSorten) ? vereinSorten[index] : null;
             if (!s) return;
+            const payload = `GREEN-GEN-SORTE:${ggSortenStableId(s)}`;
+            const sorteName = String(s.name || 'Sorte').trim() || 'Sorte';
+            const qrPx = 1024;
+            const margin = 96;
+            const labelBlock = 220;
+            const canvasW = qrPx + margin * 2;
+            const canvasH = qrPx + margin * 2 + labelBlock;
 
-            // Den bereits angezeigten Admin-QR verwenden. Dadurch bleibt der Download
-            // an die direkte Button-Aktion gebunden und wird auf Mobilgeräten nicht
-            // durch einen vorherigen await/Netzwerk-Request blockiert.
-            const box = document.getElementById(`admin-sorte-qr-${index}`);
-            if (!box) {
-                alert('QR-Code konnte nicht gefunden werden.');
-                return;
-            }
-
-            let dataUrl = null;
-            const canvas = box.querySelector('canvas');
-            const img = box.querySelector('img');
-
+            let qrSource = null;
             try {
-                if (canvas && typeof canvas.toDataURL === 'function') {
-                    dataUrl = canvas.toDataURL('image/png');
-                } else if (img && img.src && String(img.src).startsWith('data:image/')) {
-                    dataUrl = img.src;
+                if (!window.qrcode) await ggLoadQRFallback();
+                if (window.qrcode) {
+                    const qr = window.qrcode(0, 'M');
+                    qr.addData(String(payload));
+                    qr.make();
+                    const modules = qr.getModuleCount();
+                    const cell = Math.max(8, Math.floor(qrPx / modules));
+                    const quiet = 4;
+                    const rawSize = cell * modules + quiet * 2;
+                    const c = document.createElement('canvas');
+                    c.width = rawSize;
+                    c.height = rawSize;
+                    const qctx = c.getContext('2d');
+                    qctx.fillStyle = '#ffffff';
+                    qctx.fillRect(0, 0, rawSize, rawSize);
+                    qctx.fillStyle = '#000000';
+                    for (let r = 0; r < modules; r++) {
+                        for (let col = 0; col < modules; col++) {
+                            if (qr.isDark(r, col)) {
+                                qctx.fillRect(quiet + col * cell, quiet + r * cell, cell, cell);
+                            }
+                        }
+                    }
+                    qrSource = c;
                 }
             } catch (e) {
-                console.warn('QR-PNG-Export fehlgeschlagen', e);
+                console.warn('QR-Druck (generator) fehlgeschlagen', e);
             }
-
-            if (!dataUrl) {
-                alert('QR-Code konnte nicht als PNG heruntergeladen werden. Bitte den QR-Code erneut anzeigen und noch einmal versuchen.');
+            if (!qrSource && window.QRCode) {
+                const tmp = document.createElement('div');
+                tmp.style.cssText = 'position:fixed;left:-9999px;top:0;';
+                document.body.appendChild(tmp);
+                try {
+                    new window.QRCode(tmp, {
+                        text: String(payload),
+                        width: qrPx,
+                        height: qrPx,
+                        colorDark: '#000000',
+                        colorLight: '#ffffff',
+                        correctLevel: window.QRCode.CorrectLevel ? window.QRCode.CorrectLevel.M : 1
+                    });
+                    const canvasEl = tmp.querySelector('canvas');
+                    if (canvasEl) qrSource = canvasEl;
+                } catch (e) {
+                    console.warn('QR-Druck (QRCode.js) fehlgeschlagen', e);
+                }
+                tmp.remove();
+            }
+            if (!qrSource) {
+                alert('QR-Code konnte lokal nicht erzeugt werden. Bitte Seite neu laden und erneut versuchen.');
                 return;
             }
 
-            const safe = String(s.name || 'Sorte')
+            const out = document.createElement('canvas');
+            out.width = canvasW;
+            out.height = canvasH;
+            const ctx = out.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvasW, canvasH);
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(qrSource, margin, margin, qrPx, qrPx);
+
+            const textMaxW = canvasW - margin * 2;
+            const textY = margin + qrPx + 40;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+
+            ctx.fillStyle = '#00aa66';
+            ctx.font = '600 32px Inter, system-ui, -apple-system, sans-serif';
+            ctx.fillText('Green Generation Rostock', canvasW / 2, textY, textMaxW);
+
+            ctx.fillStyle = '#0a0a0c';
+            ctx.font = '700 40px Inter, system-ui, -apple-system, sans-serif';
+            ctx.fillText('Sorte: ' + sorteName, canvasW / 2, textY + 48, textMaxW);
+
+            ctx.fillStyle = '#22ffaa';
+            ctx.font = '500 22px Inter, system-ui, -apple-system, sans-serif';
+            ctx.fillText('Sorten-QR', canvasW / 2, textY + 108, textMaxW);
+
+            let dataUrl;
+            try {
+                dataUrl = out.toDataURL('image/png');
+            } catch (e) {
+                alert('PNG-Export fehlgeschlagen.');
+                return;
+            }
+            const safe = sorteName
                 .replace(/[^\w\-äöüÄÖÜß]+/gi, '-')
                 .replace(/^-+|-+$/g, '')
                 .slice(0, 80) || 'Sorte';
-
             const a = document.createElement('a');
             a.href = dataUrl;
             a.download = 'Green-Generation-' + safe + '-QR.png';
-            a.style.display = 'none';
             document.body.appendChild(a);
             a.click();
             a.remove();
