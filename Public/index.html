@@ -1242,6 +1242,16 @@ select,input,textarea,button{touch-action:manipulation}
                     <h3 class="font-bold text-xs mb-1 text-[#22ffaa] flex items-center gap-x-1.5">
                         <i class="fa-solid fa-door-open"></i> Zutrittsprotokoll
                     </h3>
+                    <div class="mb-3">
+                        <button type="button" id="zutritt-mitglieder-toggle" onclick="klappeZutrittMitgliederListe()" class="w-full text-left text-[10px] font-bold bg-white/10 hover:bg-white/15 border border-white/10 px-2.5 py-1.5 rounded-lg flex items-center justify-between">
+                            <span id="zutritt-mitglieder-toggle-label">Mitglieder anzeigen</span>
+                            <span id="zutritt-mitglieder-toggle-icon">▾</span>
+                        </button>
+                        <div id="zutritt-mitglieder-panel" class="hidden mt-2 max-h-40 overflow-y-auto rounded-xl border border-white/10 bg-zinc-900/80">
+                            <button type="button" onclick="setzeZutrittMitgliedFilterZurueck()" class="w-full text-left px-2.5 py-1.5 text-[10px] font-bold text-[#22ffaa] border-b border-white/5">Alle Mitglieder</button>
+                            <div id="zutritt-mitglieder-list"></div>
+                        </div>
+                    </div>
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3 text-[10px]">
                         <input id="zutritt-suche" type="search" placeholder="Suche Mitglied oder ID…" oninput="rendereZutrittsprotokoll()" class="w-full bg-zinc-900 border border-white/10 text-white px-2.5 py-2 rounded-xl">
                         <input id="zutritt-von" type="date" onchange="rendereZutrittsprotokoll()" class="w-full bg-zinc-900 border border-white/10 text-white px-2.5 py-2 rounded-xl">
@@ -2013,6 +2023,7 @@ select,input,textarea,button{touch-action:manipulation}
         let ggEingangScanBusy = false;
         let ggEingangSitzungErledigt = false;
         let ggZutrittQuelle = 'unbekannt';
+        let ggZutrittMitgliedFilterId = '';
         let vereinGuthabenHistorie = [];
         // Standardmäßig sichtbar, damit bestehende Installationen unverändert starten.
         let vereinSepaSichtbar = true;
@@ -5389,6 +5400,9 @@ select,input,textarea,button{touch-action:manipulation}
             const bis = document.getElementById('zutritt-bis')?.value || '';
             let list = Array.isArray(vereinZutritte) ? vereinZutritte.slice() : [];
             list.sort((a, b) => String(b.ts || '').localeCompare(String(a.ts || '')));
+            if (ggZutrittMitgliedFilterId) {
+                list = list.filter(e => String(e.memberId) === String(ggZutrittMitgliedFilterId));
+            }
             if (q) {
                 list = list.filter(e =>
                     String(e.memberName || '').toLowerCase().includes(q) ||
@@ -5405,12 +5419,69 @@ select,input,textarea,button{touch-action:manipulation}
             }
             return list;
         }
+        function klappeZutrittMitgliederListe() {
+            if (!istVorstandEingeloggt) return;
+            const panel = document.getElementById('zutritt-mitglieder-panel');
+            const icon = document.getElementById('zutritt-mitglieder-toggle-icon');
+            if (!panel) return;
+            const oeffnen = panel.classList.contains('hidden');
+            if (oeffnen) {
+                panel.classList.remove('hidden');
+                if (icon) icon.textContent = '▴';
+                rendereZutrittMitgliederListe();
+            } else {
+                panel.classList.add('hidden');
+                if (icon) icon.textContent = '▾';
+            }
+        }
+        function rendereZutrittMitgliederListe() {
+            if (!istVorstandEingeloggt) return;
+            const el = document.getElementById('zutritt-mitglieder-list');
+            if (!el) return;
+            const mitglieder = Array.isArray(vereinMitglieder) ? vereinMitglieder.slice() : [];
+            mitglieder.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'de'));
+            if (!mitglieder.length) {
+                el.innerHTML = '<p class="text-white/40 italic text-center py-2 text-[10px]">Keine Mitglieder vorhanden.</p>';
+                return;
+            }
+            el.innerHTML = mitglieder.map(m => {
+                const id = String(m.id || '');
+                const name = escapeHtml(m.name || 'Mitglied');
+                const sel = ggZutrittMitgliedFilterId && String(ggZutrittMitgliedFilterId) === id;
+                const cls = sel ? 'bg-[#22ffaa]/10 text-[#22ffaa]' : 'text-white/80 hover:bg-white/5';
+                return '<button type="button" onclick=\'waehleZutrittMitglied(' + JSON.stringify(id) + ')\' class="w-full text-left px-2.5 py-1.5 border-b border-white/5 ' + cls + '"><p class="font-bold text-[10px]">' + name + '</p><p class="text-[8px] font-mono text-white/40">' + escapeHtml(id) + '</p></button>';
+            }).join('');
+        }
+        function waehleZutrittMitglied(id) {
+            if (!istVorstandEingeloggt) return;
+            ggZutrittMitgliedFilterId = String(id || '');
+            const label = document.getElementById('zutritt-mitglieder-toggle-label');
+            const m = (vereinMitglieder || []).find(x => String(x.id) === ggZutrittMitgliedFilterId);
+            if (label) label.textContent = m ? String(m.name || m.id) : 'Mitglieder anzeigen';
+            const panel = document.getElementById('zutritt-mitglieder-panel');
+            const icon = document.getElementById('zutritt-mitglieder-toggle-icon');
+            if (panel) panel.classList.add('hidden');
+            if (icon) icon.textContent = '▾';
+            rendereZutrittsprotokoll();
+        }
+        function setzeZutrittMitgliedFilterZurueck() {
+            if (!istVorstandEingeloggt) return;
+            ggZutrittMitgliedFilterId = '';
+            const label = document.getElementById('zutritt-mitglieder-toggle-label');
+            if (label) label.textContent = 'Mitglieder anzeigen';
+            const panel = document.getElementById('zutritt-mitglieder-panel');
+            const icon = document.getElementById('zutritt-mitglieder-toggle-icon');
+            if (panel) panel.classList.add('hidden');
+            if (icon) icon.textContent = '▾';
+            rendereZutrittsprotokoll();
+        }
         async function ladeUndRendereZutrittsprotokoll() {
             if (!istVorstandEingeloggt) return;
             try {
                 const list = await ggLadeZutritteAutoritaet([]);
                 if (Array.isArray(list)) vereinZutritte = list;
             } catch (_) {}
+            rendereZutrittMitgliederListe();
             rendereZutrittsprotokoll();
         }
         function rendereZutrittsprotokoll() {
