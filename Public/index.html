@@ -5845,9 +5845,11 @@ select,input,textarea,button{touch-action:manipulation}
         }
 
         function erzeugeInformationszettel() {
-            const m = vereinMitglieder[0];
-            const s = vereinSorten.find(x => x.status === 'verfügbar') || vereinSorten[0];
-            if (!m || !s) { alert('Für den Informationszettel werden ein Mitglied und eine Charge benötigt.'); return; }
+            const memberId = document.getElementById('pos-member-select')?.value || '';
+            const strainName = document.getElementById('pos-strain-select')?.value || '';
+            const m = vereinMitglieder.find(x => String(x.id) === String(memberId));
+            const s = vereinSorten.find(x => String(x.name) === String(strainName));
+            if (!m || !s) { alert('Bitte zuerst im Abgabe-Terminal ein Mitglied und eine Sorte auswählen.'); return; }
             const text = `INFORMATIONSZETTEL\n\nMitglied: ${m.name} (${m.id})\nSorte: ${s.name}\nCharge: ${s.batch}\nErntedatum: ${s.harvestDate || 'nicht hinterlegt'}\nMHD: ${s.bestBefore || 'nicht hinterlegt'}\nTHC: ${s.thc || 'nicht hinterlegt'}\nCBD: ${s.cbd || 'nicht hinterlegt'}\n\nHinweis: Dieser Ausdruck ersetzt keine rechtliche oder medizinische Beratung.`;
             const blob = new Blob([text], {type:'text/plain;charset=utf-8'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`Informationszettel-${s.batch || 'charge'}.txt`; a.click(); URL.revokeObjectURL(url);
         }
