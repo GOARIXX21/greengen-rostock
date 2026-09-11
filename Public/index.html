@@ -1242,9 +1242,6 @@ select,input,textarea,button{touch-action:manipulation}
                     <h3 class="font-bold text-xs mb-1 text-[#22ffaa] flex items-center gap-x-1.5">
                         <i class="fa-solid fa-door-open"></i> Zutrittsprotokoll
                     </h3>
-                    <p class="text-[10px] text-white/60 mb-1">Dokumentation erfolgreicher Eingangsscans.</p>
-                    <p class="text-[9px] text-white/40 mb-1">Maßgeblich ist der vorhandene Server-/D1-App-State. LocalStorage dient nur als Cache und überschreibt keine Serverdaten.</p>
-                    <p id="zutritt-quelle-hinweis" class="text-[9px] text-amber-300/80 mb-3"></p>
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3 text-[10px]">
                         <input id="zutritt-suche" type="search" placeholder="Suche Mitglied oder ID…" oninput="rendereZutrittsprotokoll()" class="w-full bg-zinc-900 border border-white/10 text-white px-2.5 py-2 rounded-xl">
                         <input id="zutritt-von" type="date" onchange="rendereZutrittsprotokoll()" class="w-full bg-zinc-900 border border-white/10 text-white px-2.5 py-2 rounded-xl">
