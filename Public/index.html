@@ -510,7 +510,7 @@ select,input,textarea,button{touch-action:manipulation}
                     </div>
                     <span class="text-[9px] bg-white/5 border border-white/10 px-2 py-0.5 rounded-lg text-white/50 font-mono">24/7 LIVE</span>
                 </div>
-                <div id="ai-chat-history" class="h-36 overflow-y-auto space-y-2 pr-1 text-xs mb-3 no-scrollbar">
+                <div id="ai-chat-history" class="h-52 overflow-y-auto space-y-2 pr-1 text-xs mb-3 no-scrollbar">
                     <div class="bg-zinc-800/80 p-3 rounded-2xl rounded-tl-none border border-white/5 text-white/90 leading-relaxed">
                         Moin! 👋 Ich bin dein KCanG-Assistent. Frag mich gerne nach Abgabemengen in Gramm, Öffnungszeiten oder Beitragsdetails!
                     </div>
@@ -719,6 +719,7 @@ select,input,textarea,button{touch-action:manipulation}
                 <button onclick="wechsleUnterkapitel('sortiment')" id="sub-btn-sortiment" class="bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg whitespace-nowrap text-white/80">🌿 Sorten</button>
                 <button onclick="wechsleUnterkapitel('personen')" id="sub-btn-personen" class="bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg whitespace-nowrap text-white/80">👥 Mitglieder</button>
                 <button onclick="wechsleUnterkapitel('protokolle')" id="sub-btn-protokolle" class="bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg whitespace-nowrap text-white/80">📋 Abgabe-Log</button>
+                <button onclick="wechsleUnterkapitel('zutritt')" id="sub-btn-zutritt" class="bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg whitespace-nowrap text-white/80">🚪 Zutrittsprotokoll</button>
                 <button onclick="wechsleUnterkapitel('darstellung')" id="sub-btn-darstellung" class="bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg whitespace-nowrap text-white/80">🎨 Darstellung</button>
                 <button onclick="wechsleUnterkapitel('passphrase')" id="sub-btn-passphrase" class="bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg whitespace-nowrap text-white/80">🔐 Passphrase</button>
                 <button onclick="wechsleUnterkapitel('berechtigungen')" id="sub-btn-berechtigungen" class="bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg whitespace-nowrap text-white/80">🛡️ Admins</button>
@@ -731,10 +732,14 @@ select,input,textarea,button{touch-action:manipulation}
                         <i class="fa-solid fa-cash-register"></i> Express-Abgabe &amp; Kassenbon-Generator
                     </h3>
                     <p class="text-[11px] text-white/60 mb-3 leading-relaxed">Erfasst interne Transaktionsdaten und erzeugt einen vereinsinternen Abgabe-QR-Code. Eine echte TSE/behördliche Zertifizierung wird hier nicht simuliert.</p>
-                    <div class="mb-3">
-                        <button onclick="oeffneKameraScanner()" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-x-2 shadow-md active:scale-95 transition-all">
+                    <div class="mb-3 space-y-2">
+                        <button type="button" onclick="oeffneEingangsScanner()" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-x-2 shadow-md active:scale-95 transition-all">
+                            <i class="fa-solid fa-door-open"></i>
+                            <span>Eingang scannen</span>
+                        </button>
+                        <button type="button" onclick="oeffneKameraScanner()" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-x-2 shadow-md active:scale-95 transition-all">
                             <i class="fa-solid fa-camera"></i>
-                            <span>Kamera-Scanner für Barcodes öffnen</span>
+                            <span>Kamera-Scanner für Abgabe öffnen</span>
                         </button>
                     </div>
                     <div class="space-y-2.5 text-xs">
@@ -1231,6 +1236,28 @@ select,input,textarea,button{touch-action:manipulation}
                 </div>
             </div>
 
+            <!-- UNTERKAPITEL: ZUTRITTSPROTOKOLL -->
+            <div id="unterkapitel-zutritt" class="kapitel-inhalt hidden space-y-3">
+                <div class="glass-card rounded-2xl p-3 border border-white/10">
+                    <h3 class="font-bold text-xs mb-1 text-[#22ffaa] flex items-center gap-x-1.5">
+                        <i class="fa-solid fa-door-open"></i> Zutrittsprotokoll
+                    </h3>
+                    <p class="text-[10px] text-white/60 mb-1">Dokumentation erfolgreicher Eingangsscans.</p>
+                    <p class="text-[9px] text-white/40 mb-1">Maßgeblich ist der vorhandene Server-/D1-App-State. LocalStorage dient nur als Cache und überschreibt keine Serverdaten.</p>
+                    <p id="zutritt-quelle-hinweis" class="text-[9px] text-amber-300/80 mb-3"></p>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3 text-[10px]">
+                        <input id="zutritt-suche" type="search" placeholder="Suche Mitglied oder ID…" oninput="rendereZutrittsprotokoll()" class="w-full bg-zinc-900 border border-white/10 text-white px-2.5 py-2 rounded-xl">
+                        <input id="zutritt-von" type="date" onchange="rendereZutrittsprotokoll()" class="w-full bg-zinc-900 border border-white/10 text-white px-2.5 py-2 rounded-xl">
+                        <input id="zutritt-bis" type="date" onchange="rendereZutrittsprotokoll()" class="w-full bg-zinc-900 border border-white/10 text-white px-2.5 py-2 rounded-xl">
+                    </div>
+                    <div class="flex flex-wrap gap-2 mb-3">
+                        <button type="button" onclick="exportiereZutrittsCSV()" class="text-[10px] font-bold bg-white/10 hover:bg-white/15 border border-white/10 px-2.5 py-1.5 rounded-lg">CSV-Export</button>
+                        <button type="button" onclick="druckeZutrittsprotokoll()" class="text-[10px] font-bold bg-white/10 hover:bg-white/15 border border-white/10 px-2.5 py-1.5 rounded-lg">Drucken</button>
+                    </div>
+                    <div id="admin-zutritt-list" class="space-y-2 text-xs"></div>
+                </div>
+            </div>
+
             <!-- UNTERKAPITEL: DARSTELLUNG / SEPA-ANZEIGE -->
             <div id="unterkapitel-darstellung" class="kapitel-inhalt hidden space-y-3">
                 <div class="glass-card rounded-2xl p-4 border border-[#22ffaa]/40 green-glow">
@@ -1607,7 +1634,7 @@ select,input,textarea,button{touch-action:manipulation}
             'vereinKassenbons', 'vereinWissen', 'vereinInfoArtikel',
             'vereinQualitaetspruefungen', 'vereinRueckrufe', 'vereinAudit',
             'vereinGuthabenHistorie', 'vereinReservierungen', 'vereinUmsatz',
-            'vereinAbholzeitfenster', 'vereinSepaSichtbar', 'vereinPraevention',
+            'vereinAbholzeitfenster', 'vereinSepaSichtbar', 'vereinPraevention', 'vereinZutritte',
             'standortKoordinaten', 'mitglieder', 'sorten'
         ]);
         // Gerätelokal, niemals nach D1: lastQuotaResetMonth, GG_RO_accessibilityScale
@@ -1777,7 +1804,105 @@ select,input,textarea,button{touch-action:manipulation}
             }
         }
 
+        async function ggLadeZutritteAutoritaet(standardWert) {
+            const fallback = Array.isArray(standardWert) ? standardWert : [];
+            if (ggD1Available === null) await ggD1Health();
+            if (ggD1Available) {
+                const remote = await ggD1GetRaw('vereinZutritte');
+                if (remote && remote.value) {
+                    const data = await entschlüsseleDaten(remote.value, null);
+                    if (!Array.isArray(data)) {
+                        ggZutrittQuelle = 'd1';
+                        return Array.isArray(vereinZutritte) ? vereinZutritte.slice() : fallback;
+                    }
+                    try {
+                        localStorage.setItem('vereinZutritte', remote.value);
+                        if (remote.updated_at) ggSetLocalTs('vereinZutritte', remote.updated_at);
+                    } catch (_) {}
+                    ggZutrittQuelle = 'd1';
+                    return data;
+                }
+                ggZutrittQuelle = 'd1';
+                return [];
+            }
+            ggZutrittQuelle = 'cache';
+            try {
+                const localRaw = localStorage.getItem('vereinZutritte');
+                if (!localRaw) return fallback;
+                const data = await entschlüsseleDaten(localRaw, fallback);
+                return Array.isArray(data) ? data : fallback;
+            } catch (_) {
+                return fallback;
+            }
+        }
+        function ggMergeZutrittListen(remoteList, incomingList) {
+            const byId = new Map();
+            (Array.isArray(remoteList) ? remoteList : []).forEach(e => {
+                if (e && e.id) byId.set(String(e.id), e);
+            });
+            (Array.isArray(incomingList) ? incomingList : []).forEach(e => {
+                if (e && e.id) byId.set(String(e.id), e);
+            });
+            const merged = Array.from(byId.values());
+            merged.sort((a, b) => String(b.ts || '').localeCompare(String(a.ts || '')));
+            if (merged.length > 5000) merged.length = 5000;
+            return merged;
+        }
+        async function ggSchreibeZutritteAutoritaet(liste) {
+            if (ggD1Available === null) await ggD1Health();
+            if (!ggD1Available) {
+                throw new Error('Zutritt nicht bestätigt: Server/D1 nicht erreichbar.');
+            }
+            const remote = await ggD1GetRaw('vereinZutritte');
+            let remoteList = [];
+            if (remote && remote.value) {
+                const decoded = await entschlüsseleDaten(remote.value, null);
+                if (!Array.isArray(decoded)) {
+                    throw new Error('Zutritt nicht bestätigt: bestehende Serverdaten nicht lesbar.');
+                }
+                remoteList = decoded;
+            }
+            const merged = ggMergeZutrittListen(remoteList, liste);
+            const verschlüsselt = await verschlüsseleDaten(merged);
+            let clientUpdatedAt = new Date().toISOString();
+            if (remote && remote.updated_at) {
+                const rMs = Date.parse(remote.updated_at);
+                const nMs = Date.parse(clientUpdatedAt);
+                if (Number.isFinite(rMs) && rMs >= nMs) {
+                    clientUpdatedAt = new Date(rMs + 1000).toISOString();
+                }
+            }
+            const r = await fetch('/api/state/' + encodeURIComponent('vereinZutritte'), {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ value: verschlüsselt, clientUpdatedAt: clientUpdatedAt })
+            });
+            if (!r.ok) throw new Error('Zutritt nicht bestätigt: Server-Antwort ungültig.');
+            let j = null;
+            try { j = await r.json(); } catch (_) { throw new Error('Zutritt nicht bestätigt: Server-Antwort ungültig.'); }
+            if (j && (j.skipped === true || j.status === 'skipped')) {
+                throw new Error('Zutritt nicht bestätigt: Server hat den Stand nicht übernommen.');
+            }
+            if (!(j && j.ok)) throw new Error('Zutritt nicht bestätigt: Server hat abgelehnt.');
+            const verify = await ggD1GetRaw('vereinZutritte');
+            if (!verify || !verify.value) throw new Error('Zutritt nicht bestätigt: Serverstand nicht prüfbar.');
+            const verified = await entschlüsseleDaten(verify.value, null);
+            if (!Array.isArray(verified)) throw new Error('Zutritt nicht bestätigt: Serverstand nicht lesbar.');
+            const ids = new Set(verified.map(e => e && e.id ? String(e.id) : ''));
+            const missing = merged.filter(e => e && e.id && !ids.has(String(e.id)));
+            if (missing.length) throw new Error('Zutritt nicht bestätigt: Serverstand unvollständig.');
+            try {
+                localStorage.setItem('vereinZutritte', verify.value);
+                ggSetLocalTs('vereinZutritte', verify.updated_at || j.updated_at || clientUpdatedAt);
+            } catch (_) {}
+            ggZutrittQuelle = 'd1';
+            vereinZutritte = verified;
+        }
+
         async function ladeVerschlüsseltenState(schlüssel, standardWert) {
+            if (schlüssel === 'vereinZutritte') {
+                return await ggLadeZutritteAutoritaet(standardWert);
+            }
             let localRaw = null;
             try {
                 localRaw = localStorage.getItem(schlüssel);
@@ -1826,6 +1951,10 @@ select,input,textarea,button{touch-action:manipulation}
         }
 
         async function speichereVerschlüsseltenState(schlüssel, daten) {
+            if (schlüssel === 'vereinZutritte') {
+                await ggSchreibeZutritteAutoritaet(daten);
+                return;
+            }
             const verschlüsselt = await verschlüsseleDaten(daten);
             const nowIso = new Date().toISOString();
 
@@ -1882,6 +2011,11 @@ select,input,textarea,button{touch-action:manipulation}
         let vereinQualitaetspruefungen = [];
         let vereinRueckrufe = [];
         let vereinAudit = [];
+        let vereinZutritte = [];
+        let ggScanModus = 'abgabe';
+        let ggEingangScanBusy = false;
+        let ggEingangSitzungErledigt = false;
+        let ggZutrittQuelle = 'unbekannt';
         let vereinGuthabenHistorie = [];
         // Standardmäßig sichtbar, damit bestehende Installationen unverändert starten.
         let vereinSepaSichtbar = true;
@@ -2121,6 +2255,7 @@ select,input,textarea,button{touch-action:manipulation}
                     ['vereinQualitaetspruefungen', vereinQualitaetspruefungen],
                     ['vereinRueckrufe', vereinRueckrufe],
                     ['vereinAudit', vereinAudit],
+                    ['vereinZutritte', vereinZutritte],
                     ['vereinGuthabenHistorie', vereinGuthabenHistorie]
                 ];
                 const geladen = {};
@@ -2140,6 +2275,7 @@ select,input,textarea,button{touch-action:manipulation}
                 if (Array.isArray(geladen.vereinQualitaetspruefungen)) vereinQualitaetspruefungen = geladen.vereinQualitaetspruefungen;
                 if (Array.isArray(geladen.vereinRueckrufe)) vereinRueckrufe = geladen.vereinRueckrufe;
                 if (Array.isArray(geladen.vereinAudit)) vereinAudit = geladen.vereinAudit;
+                if (Array.isArray(geladen.vereinZutritte)) vereinZutritte = geladen.vereinZutritte;
                 if (Array.isArray(geladen.vereinGuthabenHistorie)) vereinGuthabenHistorie = geladen.vereinGuthabenHistorie;
                 const idsNeu = ggEnsureSortenStableIds();
                 if (idsNeu) await speichereVerschlüsseltenState('vereinSorten', vereinSorten);
@@ -2347,6 +2483,7 @@ select,input,textarea,button{touch-action:manipulation}
                 if (Array.isArray(legacyMitglieder) && legacyMitglieder.length) { vereinMitglieder=legacyMitglieder; await speichereVerschlüsseltenState('vereinMitglieder',vereinMitglieder); }
             }
             vereinAudit = await ladeVerschlüsseltenState('vereinAudit', []);
+            vereinZutritte = await ladeVerschlüsseltenState('vereinZutritte', []);
             vereinGuthabenHistorie = await ladeVerschlüsseltenState('vereinGuthabenHistorie', []);
             if (!Array.isArray(vereinGuthabenHistorie)) vereinGuthabenHistorie = [];
             vereinSepaSichtbar = await ladeVerschlüsseltenState('vereinSepaSichtbar', true);
@@ -2727,6 +2864,7 @@ select,input,textarea,button{touch-action:manipulation}
                 rueckruf: rendereRueckrufe,
                 sortiment: rendereSortiment,
                 protokolle: () => { rendereProtokolle(); rendereAuditVerlauf(); },
+                zutritt: ladeUndRendereZutrittsprotokoll,
                 buchhaltung: rendereFinanzzahlen,
                 reservierungen: rendereReservierungen,
                 terminal: befüllePosOptionen,
@@ -2947,6 +3085,7 @@ select,input,textarea,button{touch-action:manipulation}
                 document.body.classList.add('gg-vorstand-mode');
                 document.getElementById('security-gate').classList.add('hidden');
                 wechsleAnsicht('vorstand');
+                ggChatZeichneVerlauf();
                 await protokolliereAudit('bootstrap_login', uInput);
                 alert('Einmaliger Startzugang erkannt. Öffne jetzt im Bereich „Admins“ die Master-Einrichtung.');
                 return;
@@ -2972,6 +3111,7 @@ select,input,textarea,button{touch-action:manipulation}
                 document.getElementById('security-gate').classList.add('hidden');
                 try { rendereMitgliederIdentität(); } catch (e) { console.error(e); }
                 wechsleAnsicht('vorstand');
+                ggChatZeichneVerlauf();
                 await protokolliereAudit('master_login', uInput);
                 return;
             }
@@ -2991,6 +3131,7 @@ select,input,textarea,button{touch-action:manipulation}
                 document.getElementById('security-gate').classList.add('hidden');
                 try { rendereMitgliederIdentität(); } catch (e) { console.error(e); }
                 wechsleAnsicht('vorstand');
+                ggChatZeichneVerlauf();
                 await protokolliereAudit('admin_login', uInput);
                 return;
             }
@@ -3010,6 +3151,7 @@ select,input,textarea,button{touch-action:manipulation}
         }
 
         function zeigeStartGate() {
+            ggChatLeereSichtbarenVerlauf();
             mitgliedSession = null;
             document.body.classList.remove('gate-modal-open');
             document.getElementById('login-modal-overlay')?.classList.add('hidden');
@@ -3052,6 +3194,7 @@ select,input,textarea,button{touch-action:manipulation}
             document.body.classList.remove('pre-gate');
             document.body.classList.add('gate-open');
             wechsleAnsicht('home');
+            ggChatZeichneVerlauf();
             await protokolliereAudit('member_login', m.id);
 
             if (m.forceAccessCodeChange) {
@@ -4533,36 +4676,145 @@ select,input,textarea,button{touch-action:manipulation}
             rendereWissensbasis();
         }
 
+        const GG_CHAT_WELCOME = "Moin! 👋 Ich bin dein KCanG-Assistent. Frag mich gerne nach Abgabemengen in Gramm, Öffnungszeiten oder Beitragsdetails!";
+
+        function ggChatProfilSchluessel() {
+            if (mitgliedSession && mitgliedSession.id) return 'mitglied:' + String(mitgliedSession.id);
+            if (istVorstandEingeloggt) return 'vorstand:' + String(aktiveVorstandsrolle || 'ADMIN');
+            return 'gast';
+        }
+        function ggChatStorageKey() {
+            return 'gg_ai_chat_' + ggChatProfilSchluessel();
+        }
+        function ggChatLeseVerlauf() {
+            try {
+                const raw = sessionStorage.getItem(ggChatStorageKey());
+                const list = raw ? JSON.parse(raw) : [];
+                return Array.isArray(list) ? list : [];
+            } catch (e) {
+                return [];
+            }
+        }
+        function ggChatSchreibeVerlauf(list) {
+            try {
+                sessionStorage.setItem(ggChatStorageKey(), JSON.stringify(list.slice(-80)));
+            } catch (e) {}
+        }
+        function ggChatZeichneVerlauf() {
+            const history = document.getElementById('ai-chat-history');
+            if (!history) return;
+            history.innerHTML = '';
+            const items = ggChatLeseVerlauf();
+            if (!items.length) {
+                const welcome = document.createElement('div');
+                welcome.className = "bg-zinc-800/80 p-3 rounded-2xl rounded-tl-none border border-white/5 text-white/90 leading-relaxed";
+                welcome.textContent = GG_CHAT_WELCOME;
+                history.appendChild(welcome);
+                return;
+            }
+            items.forEach(item => {
+                const bubble = document.createElement('div');
+                if (item.role === 'user') {
+                    bubble.className = "bg-[#22ffaa]/20 border border-[#22ffaa]/30 p-2.5 rounded-2xl rounded-tr-none text-white text-right ml-8";
+                } else {
+                    bubble.className = "bg-zinc-800/80 p-3 rounded-2xl rounded-tl-none border border-white/5 text-white/90 leading-relaxed mr-8";
+                }
+                bubble.textContent = String(item.text || '');
+                history.appendChild(bubble);
+            });
+            history.scrollTop = history.scrollHeight;
+        }
+        function ggChatLeereSichtbarenVerlauf() {
+            const history = document.getElementById('ai-chat-history');
+            if (!history) return;
+            history.innerHTML = '';
+            const welcome = document.createElement('div');
+            welcome.className = "bg-zinc-800/80 p-3 rounded-2xl rounded-tl-none border border-white/5 text-white/90 leading-relaxed";
+            welcome.textContent = GG_CHAT_WELCOME;
+            history.appendChild(welcome);
+            const input = document.getElementById('ai-input');
+            if (input) input.value = '';
+        }
+
+        function ggNormalisiereFrage(text) {
+            return String(text || '')
+                .toLowerCase()
+                .replace(/ß/g, 'ss')
+                .replace(/ä/g, 'ae')
+                .replace(/ö/g, 'oe')
+                .replace(/ü/g, 'ue')
+                .replace(/[^a-z0-9\s]+/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+        function ggTriggerListe(raw) {
+            return String(raw || '')
+                .toLowerCase()
+                .split(/[,;/|]+/)
+                .map(s => s.trim())
+                .filter(Boolean);
+        }
+        function ggFrageTrifftTrigger(frage, trigger) {
+            if (!frage || !trigger) return false;
+            if (frage.includes(trigger)) return true;
+            const tokens = frage.split(' ').filter(Boolean);
+            if (tokens.includes(trigger)) return true;
+            if (trigger.length >= 4) {
+                return tokens.some(tok => tok === trigger || tok.startsWith(trigger) || trigger.startsWith(tok) && tok.length >= 4);
+            }
+            return false;
+        }
+        function ggFindeWissensAntwort(text) {
+            const frage = ggNormalisiereFrage(text);
+            const eintraege = Array.isArray(vereinWissen) ? vereinWissen : [];
+            for (const entry of eintraege) {
+                const triggers = ggTriggerListe(entry && entry.trigger);
+                if (triggers.some(tr => ggFrageTrifftTrigger(frage, tr))) {
+                    return String(entry.response || '').trim();
+                }
+            }
+            // eingebaute Fallbacks, falls Admin-Trigger fehlen oder zu eng sind
+            if (/\b(support|hilfe|hotline|kundenservice|beschwerde|kontakt|vorstand erreichen)\b/.test(frage) || frage.includes('support')) {
+                return 'Für Support wende dich bitte direkt an den Vorstand in der Ausgabestelle oder nutze die bekannten Vereins-Kontaktwege. Der Chat speichert keine Tickets.';
+            }
+            if (/\b(gramm|menge|mengen|kontingent|limit|monat|monatslimit|tageslimit|abgabe)\b/.test(frage)) {
+                return 'Gemäß § 19 KCanG gilt für erwachsene Vollmitglieder in der Regel maximal 50 Gramm pro Monat und maximal 25 Gramm pro Tag. Das genaue Restkontingent siehst du oben auf der Startseite.';
+            }
+            if (/\b(beitrag|sepa|mitgliedsbeitrag|gebuehr)\b/.test(frage)) {
+                return 'Der jährliche Mitgliedsbeitrag beträgt 120,00 € und wird per SEPA-Lastschrift eingezogen.';
+            }
+            if (/\b(oeffnung|offen|abholung|ausgabe|grubenstrasse|oeffnungszeit)\b/.test(frage)) {
+                return 'Die Warenausgabe erfolgt ausschließlich persönlich in der Grubenstraße 62 gegen Vorlage des digitalen QR-Ausweises.';
+            }
+            return 'Dazu habe ich gerade keinen passenden Eintrag. Formuliere kürzer (z. B. „Support“, „Menge“, „Beitrag“) oder wende dich an den Vorstand.';
+        }
+
         function sendeKanalNachricht() {
             const input = document.getElementById('ai-input');
             const history = document.getElementById('ai-chat-history');
+            if (!input || !history) return;
             const text = input.value.trim();
             if (!text) return;
+            if (!mitgliedSession && !istVorstandEingeloggt) return;
 
             const userBubble = document.createElement('div');
             userBubble.className = "bg-[#22ffaa]/20 border border-[#22ffaa]/30 p-2.5 rounded-2xl rounded-tr-none text-white text-right ml-8";
             userBubble.textContent = text;
             history.appendChild(userBubble);
-
             input.value = '';
 
+            const verlauf = ggChatLeseVerlauf();
+            verlauf.push({ role: 'user', text: text });
+
             setTimeout(() => {
-                let botAntwort = "Zu dieser spezifischen Anfrage liegen mir aktuell keine genauen KCanG-Vorgaben vor. Bitte wende dich an den Vorstand.";
-                const lower = text.toLowerCase();
-
-                for (let entry of vereinWissen) {
-                    if (lower.includes(entry.trigger)) {
-                        botAntwort = entry.response;
-                        break;
-                    }
-                }
-
+                let botAntwort = ggFindeWissensAntwort(text);
                 const botBubble = document.createElement('div');
                 botBubble.className = "bg-zinc-800/80 p-3 rounded-2xl rounded-tl-none border border-white/5 text-white/90 leading-relaxed mr-8";
                 botBubble.textContent = botAntwort;
                 history.appendChild(botBubble);
-
                 history.scrollTop = history.scrollHeight;
+                verlauf.push({ role: 'bot', text: botAntwort });
+                ggChatSchreibeVerlauf(verlauf);
             }, 500);
         }
 
@@ -5064,6 +5316,7 @@ select,input,textarea,button{touch-action:manipulation}
         }
 
         function ggVerarbeiteScan(decodedText) {
+            if (ggScanModus === 'eingang') return;
             if (ggScanBusy) return;
             const raw = String(decodedText || '').trim();
             const memberId = ggParseMitgliedQR(raw);
@@ -5120,7 +5373,259 @@ select,input,textarea,button{touch-action:manipulation}
             }, 700);
         }
 
+        function ggFormatiereZutrittDatum(d) {
+            const dd = String(d.getDate()).padStart(2, '0');
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const yyyy = d.getFullYear();
+            return dd + '.' + mm + '.' + yyyy;
+        }
+        function ggFormatiereZutrittZeit(d) {
+            const hh = String(d.getHours()).padStart(2, '0');
+            const mi = String(d.getMinutes()).padStart(2, '0');
+            const ss = String(d.getSeconds()).padStart(2, '0');
+            return hh + ':' + mi + ':' + ss;
+        }
+        function ggHoleGefilterteZutritte() {
+            if (!istVorstandEingeloggt) return [];
+            const q = String(document.getElementById('zutritt-suche')?.value || '').trim().toLowerCase();
+            const von = document.getElementById('zutritt-von')?.value || '';
+            const bis = document.getElementById('zutritt-bis')?.value || '';
+            let list = Array.isArray(vereinZutritte) ? vereinZutritte.slice() : [];
+            list.sort((a, b) => String(b.ts || '').localeCompare(String(a.ts || '')));
+            if (q) {
+                list = list.filter(e =>
+                    String(e.memberName || '').toLowerCase().includes(q) ||
+                    String(e.memberId || '').toLowerCase().includes(q)
+                );
+            }
+            if (von) {
+                const vonTs = von + 'T00:00:00';
+                list = list.filter(e => String(e.ts || '') >= vonTs);
+            }
+            if (bis) {
+                const bisTs = bis + 'T23:59:59.999';
+                list = list.filter(e => String(e.ts || '') <= bisTs);
+            }
+            return list;
+        }
+        async function ladeUndRendereZutrittsprotokoll() {
+            if (!istVorstandEingeloggt) return;
+            try {
+                const list = await ggLadeZutritteAutoritaet([]);
+                if (Array.isArray(list)) vereinZutritte = list;
+            } catch (_) {}
+            rendereZutrittsprotokoll();
+        }
+        function rendereZutrittsprotokoll() {
+            if (!istVorstandEingeloggt) return;
+            const el = document.getElementById('admin-zutritt-list');
+            const hint = document.getElementById('zutritt-quelle-hinweis');
+            if (hint) {
+                hint.textContent = ggZutrittQuelle === 'd1'
+                    ? 'Quelle: Server/D1 (maßgeblich).'
+                    : (ggZutrittQuelle === 'cache'
+                        ? 'Quelle: lokaler Cache — Server nicht erreichbar. Keine Bestätigung, Cache überschreibt den Server nicht.'
+                        : '');
+            }
+            if (!el) return;
+            const list = ggHoleGefilterteZutritte();
+            if (!list.length) {
+                el.innerHTML = '<p class="text-white/40 italic text-center py-4 text-xs">Keine Zutrittseinträge für die aktuelle Auswahl.</p>';
+                return;
+            }
+            el.innerHTML = list.map(e => {
+                const name = escapeHtml(e.memberName || '—');
+                const id = escapeHtml(e.memberId || '—');
+                const dat = escapeHtml(e.date || '—');
+                const zeit = escapeHtml(e.time || '—');
+                const st = escapeHtml(e.status || 'Zutritt erfasst');
+                const pid = escapeHtml(e.id || '—');
+                return '<div class="bg-zinc-900/80 p-2.5 rounded-xl border border-white/5 flex flex-wrap justify-between gap-2">' +
+                    '<div><p class="font-bold text-white text-[11px]">' + name + '</p>' +
+                    '<p class="text-[9px] text-white/40 font-mono">' + id + '</p>' +
+                    '<p class="text-[8px] text-white/30 font-mono">' + pid + '</p></div>' +
+                    '<div class="text-right"><p class="text-[10px] text-white/70">' + dat + ' · ' + zeit + '</p>' +
+                    '<p class="text-[9px] text-[#22ffaa] font-bold">' + st + '</p></div></div>';
+            }).join('');
+        }
+        function exportiereZutrittsCSV() {
+            if (!istVorstandEingeloggt) return;
+            const list = ggHoleGefilterteZutritte();
+            const rows = [['Protokoll-ID', 'Mitglieds-ID', 'Mitglied', 'Datum', 'Uhrzeit', 'Status', 'Ereignis', 'Club', 'Zeitstempel']];
+            list.forEach(e => {
+                rows.push([
+                    e.id || '',
+                    e.memberId || '',
+                    e.memberName || '',
+                    e.date || '',
+                    e.time || '',
+                    e.status || '',
+                    e.ereignis || 'Zutritt',
+                    e.club || 'Green Generation Rostock',
+                    e.ts || ''
+                ]);
+            });
+            const csv = rows.map(r => r.map(c => {
+                const s = String(c ?? '');
+                return /[";\n,]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+            }).join(';')).join('\n');
+            const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'Green-Generation-Zutrittsprotokoll.csv';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+        function druckeZutrittsprotokoll() {
+            if (!istVorstandEingeloggt) return;
+            const list = ggHoleGefilterteZutritte();
+            const rows = list.map(e =>
+                '<tr><td>' + escapeHtml(e.date || '') + '</td><td>' + escapeHtml(e.time || '') +
+                '</td><td>' + escapeHtml(e.memberName || '') + '</td><td>' + escapeHtml(e.memberId || '') +
+                '</td><td>' + escapeHtml(e.id || '') + '</td><td>' + escapeHtml(e.status || '') + '</td></tr>'
+            ).join('');
+            const w = window.open('', '_blank');
+            if (!w) { alert('Pop-up blockiert. Bitte Pop-ups erlauben.'); return; }
+            w.document.write('<!DOCTYPE html><html><head><title>Zutrittsprotokoll</title>' +
+                '<style>body{font-family:system-ui,sans-serif;padding:16px;color:#111}table{width:100%;border-collapse:collapse;font-size:12px}' +
+                'th,td{border:1px solid #ccc;padding:6px;text-align:left}th{background:#f3f3f3}h1{font-size:16px}</style></head><body>' +
+                '<h1>Green Generation Rostock – Zutrittsprotokoll</h1>' +
+                '<table><thead><tr><th>Datum</th><th>Uhrzeit</th><th>Mitglied</th><th>ID</th><th>Protokoll-ID</th><th>Status</th></tr></thead><tbody>' +
+                rows + '</tbody></table></body></html>');
+            w.document.close();
+            w.focus();
+            w.print();
+        }
+        async function speichereZutrittseintrag(mitglied) {
+            if (!mitglied || !mitglied.id) return null;
+            if (ggD1Available === null) await ggD1Health();
+            if (!ggD1Available) {
+                throw new Error('Zutritt nicht bestätigt: Server/D1 nicht erreichbar.');
+            }
+            const remoteList = await ggLadeZutritteAutoritaet([]);
+            const now = new Date();
+            const windowMs = 45000;
+            const bestand = Array.isArray(remoteList) ? remoteList : [];
+            const recent = bestand.find(e =>
+                String(e.memberId) === String(mitglied.id) &&
+                e.ts && (now.getTime() - Date.parse(e.ts) < windowMs)
+            );
+            if (recent) {
+                vereinZutritte = bestand;
+                return recent;
+            }
+            const eintrag = {
+                id: 'ZT-' + Date.now() + '-' + Math.floor(Math.random() * 1e6),
+                memberId: String(mitglied.id),
+                memberName: String(mitglied.name || 'Mitglied'),
+                date: ggFormatiereZutrittDatum(now),
+                time: ggFormatiereZutrittZeit(now),
+                ts: now.toISOString(),
+                status: 'Zutritt erfasst',
+                ereignis: 'Zutritt',
+                club: 'Green Generation Rostock'
+            };
+            const neu = [eintrag].concat(bestand);
+            if (neu.length > 5000) neu.length = 5000;
+            await ggSchreibeZutritteAutoritaet(neu);
+            try { await protokolliereAudit('zutritt_erfasst', 'Mitglied: ' + eintrag.memberId); } catch (_) {}
+            return eintrag;
+        }
+        function ggVerarbeiteEingangsScan(decodedText) {
+            if (ggEingangScanBusy || ggScanBusy || ggEingangSitzungErledigt) return;
+            if (ggScanModus !== 'eingang') return;
+            const raw = String(decodedText || '').trim();
+            const memberId = ggParseMitgliedQR(raw);
+            if (!memberId) {
+                if (ggParseSorteQR(raw)) {
+                    ggSetzeScanFeedback('✕ Bitte Mitglieder-QR scannen (kein Sorten-QR)', false);
+                } else {
+                    ggSetzeScanFeedback('✕ Kein gültiger GreenGen-Mitglieder-QR', false);
+                }
+                return;
+            }
+            const mitglied = (vereinMitglieder || []).find(m => String(m.id) === String(memberId));
+            if (!mitglied) {
+                ggSetzeScanFeedback('✕ Unbekannte Mitglieds-ID', false);
+                return;
+            }
+            ggEingangScanBusy = true;
+            ggScanBusy = true;
+            ggSetzeScanFeedback('Zutritt wird serverseitig gespeichert…', true);
+            speichereZutrittseintrag(mitglied).then((eintrag) => {
+                if (!eintrag) {
+                    ggEingangScanBusy = false;
+                    ggScanBusy = false;
+                    ggSetzeScanFeedback('✕ Vorgang nicht bestätigt. Zutritt nicht dokumentiert.', false);
+                    return;
+                }
+                ggEingangSitzungErledigt = true;
+                ggSetzeScanFeedback('✓ Zutritt erfasst: ' + (mitglied.name || memberId), true);
+                setTimeout(() => {
+                    schliesseKameraScanner();
+                    ggEingangScanBusy = false;
+                    ggScanBusy = false;
+                    if (istVorstandEingeloggt) {
+                        try { rendereZutrittsprotokoll(); } catch (_) {}
+                    }
+                }, 700);
+            }).catch(() => {
+                ggEingangScanBusy = false;
+                ggScanBusy = false;
+                ggSetzeScanFeedback('✕ Vorgang nicht bestätigt. Zutritt nicht dokumentiert.', false);
+            });
+        }
+        async function oeffneEingangsScanner() {
+            if (!istVorstandEingeloggt) {
+                alert('Nur Vorstand/Admin darf den Eingang scannen.');
+                return;
+            }
+            if (html5QrCodeRunning) {
+                alert('Bitte zuerst den offenen Scanner schließen.');
+                return;
+            }
+            if (ggD1Available === null) await ggD1Health();
+            if (!ggD1Available) {
+                alert('Eingang nicht möglich: Server/D1 nicht erreichbar. Ein Zutritt würde nicht dokumentiert.');
+                return;
+            }
+            ggScanModus = 'eingang';
+            ggEingangScanBusy = false;
+            ggEingangSitzungErledigt = false;
+            ggScanBusy = false;
+            ggSetzeScanPhase('mitglied');
+            ggSetzeScanFeedback('Eingang: Mitglieder-QR scannen…', true);
+            const title = document.getElementById('scan-phase-title');
+            const hint = document.getElementById('scan-phase-hint');
+            if (title) title.textContent = 'Eingang scannen';
+            if (hint) hint.textContent = 'Bitte den GreenGen-Mitglieder-QR am Eingang scannen.';
+            document.getElementById('camera-scanner-modal').classList.remove('hidden');
+            if (!html5QrCode) {
+                html5QrCode = new Html5Qrcode('reader');
+            }
+            if (html5QrCodeRunning) return;
+            html5QrCode.start(
+                { facingMode: 'environment' },
+                { fps: 10, qrbox: { width: 200, height: 200 } },
+                (decodedText) => { ggVerarbeiteEingangsScan(decodedText); },
+                () => {}
+            ).then(() => {
+                html5QrCodeRunning = true;
+            }).catch(() => {
+                html5QrCodeRunning = false;
+                const fb = document.getElementById('scan-result-feedback');
+                if (fb) fb.textContent = 'Kamera konnte nicht gestartet werden.';
+            });
+        }
+
         function oeffneKameraScanner() {
+            if (html5QrCodeRunning) return;
+            ggScanModus = 'abgabe';
+            ggEingangScanBusy = false;
+            ggEingangSitzungErledigt = false;
             ggScanBusy = false;
             ggSetzeScanPhase('mitglied');
             ggSetzeScanFeedback('Bereit zum Scannen...', true);
@@ -5146,6 +5651,8 @@ select,input,textarea,button{touch-action:manipulation}
 
         function schliesseKameraScanner() {
             ggScanBusy = false;
+            ggEingangScanBusy = false;
+            ggScanModus = 'abgabe';
             ggSetzeScanPhase('mitglied');
             if (html5QrCode && html5QrCodeRunning) {
                 html5QrCode.stop().then(() => {
