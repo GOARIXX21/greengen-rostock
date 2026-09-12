@@ -296,6 +296,19 @@
             color: #12141a;
         }
         html.gg-log-compact #admin-logs-list details > div { display: none; }
+        #gg-float-cart {
+            position: fixed;
+            right: 12px;
+            bottom: 92px;
+            z-index: 70;
+            width: min(230px, 72vw);
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+            cursor: grab;
+        }
+        #gg-float-cart.dragging { cursor: grabbing; }
+        #gg-float-cart.hidden { display: none !important; }
         /* Wenn ein Login vom Start-Gate geöffnet wird, darf das Gate nicht über dem Dialog liegen. */
         body.gate-modal-open #security-gate { visibility: hidden !important; pointer-events: none !important; }
         #security-gate { position: fixed; inset: 0; z-index: 9999; background: radial-gradient(circle at top, rgba(34,255,170,.12), #08080c 45%); display:flex; align-items:center; justify-content:center; padding:20px; }
@@ -1335,10 +1348,19 @@ select,input,textarea,button{touch-action:manipulation}
                             <div id="abgabe-mitglieder-list"></div>
                         </div>
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2 text-[10px]">
+                    <div class="mb-2 text-[10px]">
+                        <label class="text-white/50 block mb-1">Suche Mitglied oder ID</label>
                         <input id="abgabe-log-suche" type="search" placeholder="Suche Mitglied oder ID…" oninput="rendereProtokolle()" class="w-full bg-zinc-900 border border-white/10 text-white px-2.5 py-2 rounded-xl">
-                        <input id="abgabe-log-von" type="date" onchange="rendereProtokolle()" class="w-full bg-zinc-900 border border-white/10 text-white px-2.5 py-2 rounded-xl">
-                        <input id="abgabe-log-bis" type="date" onchange="rendereProtokolle()" class="w-full bg-zinc-900 border border-white/10 text-white px-2.5 py-2 rounded-xl">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 mb-2 text-[10px]">
+                        <div>
+                            <label class="text-white/50 block mb-1">Von</label>
+                            <input id="abgabe-log-von" type="date" onchange="rendereProtokolle()" class="w-full bg-zinc-900 border border-white/10 text-white px-2.5 py-2 rounded-xl">
+                        </div>
+                        <div>
+                            <label class="text-white/50 block mb-1">Bis</label>
+                            <input id="abgabe-log-bis" type="date" onchange="rendereProtokolle()" class="w-full bg-zinc-900 border border-white/10 text-white px-2.5 py-2 rounded-xl">
+                        </div>
                     </div>
                     <div class="flex flex-wrap gap-2 mb-3">
                         <button type="button" onclick="setzeAbgabeLogSchnellfilter('heute')" class="text-[10px] font-bold bg-white/10 hover:bg-white/15 border border-white/10 px-2.5 py-1.5 rounded-lg">Heute</button>
@@ -1379,10 +1401,19 @@ select,input,textarea,button{touch-action:manipulation}
                             <div id="zutritt-mitglieder-list"></div>
                         </div>
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3 text-[10px]">
+                    <div class="mb-2 text-[10px]">
+                        <label class="text-white/50 block mb-1">Suche Mitglied oder ID</label>
                         <input id="zutritt-suche" type="search" placeholder="Suche Mitglied oder ID…" oninput="rendereZutrittsprotokoll()" class="w-full bg-zinc-900 border border-white/10 text-white px-2.5 py-2 rounded-xl">
-                        <input id="zutritt-von" type="date" onchange="rendereZutrittsprotokoll()" class="w-full bg-zinc-900 border border-white/10 text-white px-2.5 py-2 rounded-xl">
-                        <input id="zutritt-bis" type="date" onchange="rendereZutrittsprotokoll()" class="w-full bg-zinc-900 border border-white/10 text-white px-2.5 py-2 rounded-xl">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 mb-3 text-[10px]">
+                        <div>
+                            <label class="text-white/50 block mb-1">Von</label>
+                            <input id="zutritt-von" type="date" onchange="rendereZutrittsprotokoll()" class="w-full bg-zinc-900 border border-white/10 text-white px-2.5 py-2 rounded-xl">
+                        </div>
+                        <div>
+                            <label class="text-white/50 block mb-1">Bis</label>
+                            <input id="zutritt-bis" type="date" onchange="rendereZutrittsprotokoll()" class="w-full bg-zinc-900 border border-white/10 text-white px-2.5 py-2 rounded-xl">
+                        </div>
                     </div>
                     <div class="flex flex-wrap gap-2 mb-3">
                         <button type="button" onclick="exportiereZutrittsCSV()" class="text-[10px] font-bold bg-white/10 hover:bg-white/15 border border-white/10 px-2.5 py-1.5 rounded-lg">CSV-Export</button>
@@ -1641,53 +1672,52 @@ select,input,textarea,button{touch-action:manipulation}
 
 
     <!-- MITGLIEDER-AKTE MODAL: nur Vorstand/Admin/Master -->
-    <div id="member-details-modal" class="hidden fixed inset-0 bg-black/95 backdrop-blur-2xl z-[420] flex items-center justify-center p-4" onclick="schliesseMitgliedDetails()">
-        <div class="glass-card border border-[#22ffaa]/35 rounded-3xl p-5 w-full max-w-md max-h-[88vh] overflow-y-auto" onclick="event.stopPropagation()">
-            <div class="flex items-start justify-between gap-3 mb-4">
+    <div id="member-details-modal" class="hidden fixed inset-0 bg-black/95 backdrop-blur-2xl z-[420] flex items-center justify-center p-3 sm:p-6" onclick="schliesseMitgliedDetails()">
+        <div class="glass-card border border-[#22ffaa]/35 rounded-3xl p-6 w-full max-w-3xl max-h-[94vh] overflow-y-auto" onclick="event.stopPropagation()">
+            <div class="flex items-start justify-between gap-3 mb-5">
                 <div>
                     <span class="kcang-badge">INTERNE MITGLIEDERAKTE</span>
-                    <h3 id="member-details-name" class="font-black text-xl mt-1">Mitglied</h3>
-                    <p id="member-details-id" class="text-[10px] text-[#22ffaa] font-mono mt-1">—</p>
+                    <h3 id="member-details-name" class="font-black text-2xl sm:text-3xl mt-1">Mitglied</h3>
+                    <p id="member-details-id" class="text-xs sm:text-sm text-[#22ffaa] font-mono mt-1">—</p>
                 </div>
-                <button onclick="schliesseMitgliedDetails()" class="w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="schliesseMitgliedDetails()" class="w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            <div class="grid grid-cols-2 gap-2 text-xs">
-                <div class="bg-zinc-900/90 rounded-xl p-3 border border-white/5"><span class="text-white/45 block text-[9px]">Geburtsdatum</span><b id="member-details-birthdate">—</b></div>
-                <div class="bg-zinc-900/90 rounded-xl p-3 border border-white/5"><span class="text-white/45 block text-[9px]">Mitglied seit</span><b id="member-details-created">—</b></div>
-                <div class="bg-zinc-900/90 rounded-xl p-3 border border-white/5 col-span-2"><span class="text-white/45 block text-[9px]">Anschrift</span><b id="member-details-address">—</b></div>
-                <div class="bg-zinc-900/90 rounded-xl p-3 border border-white/5"><span class="text-white/45 block text-[9px]">Status</span><b id="member-details-status">—</b></div>
-                <div class="bg-zinc-900/90 rounded-xl p-3 border border-white/5"><span class="text-white/45 block text-[9px]">Beitrag</span><b id="member-details-fee">—</b></div>
-                <div class="bg-zinc-900/90 rounded-xl p-3 border border-white/5"><span class="text-white/45 block text-[9px]">Guthaben</span><b id="member-details-balance" class="text-[#22ffaa]">—</b></div>
-                <div class="bg-zinc-900/90 rounded-xl p-3 border border-white/5"><span class="text-white/45 block text-[9px]">Kontingent</span><b id="member-details-quota">—</b></div>
+            <div class="grid grid-cols-2 gap-3 text-sm">
+                <div class="bg-zinc-900/90 rounded-2xl p-4 border border-white/5"><span class="text-white/45 block text-[11px] mb-1">Geburtsdatum</span><b id="member-details-birthdate" class="text-base">—</b></div>
+                <div class="bg-zinc-900/90 rounded-2xl p-4 border border-white/5"><span class="text-white/45 block text-[11px] mb-1">Mitglied seit</span><b id="member-details-created" class="text-base">—</b></div>
+                <div class="bg-zinc-900/90 rounded-2xl p-4 border border-white/5 col-span-2"><span class="text-white/45 block text-[11px] mb-1">Anschrift</span><b id="member-details-address" class="text-base">—</b></div>
+                <div class="bg-zinc-900/90 rounded-2xl p-4 border border-white/5"><span class="text-white/45 block text-[11px] mb-1">Status</span><b id="member-details-status" class="text-base">—</b></div>
+                <div class="bg-zinc-900/90 rounded-2xl p-4 border border-white/5"><span class="text-white/45 block text-[11px] mb-1">Beitrag</span><b id="member-details-fee" class="text-base">—</b></div>
+                <div class="bg-zinc-900/90 rounded-2xl p-4 border border-white/5"><span class="text-white/45 block text-[11px] mb-1">Guthaben</span><b id="member-details-balance" class="text-[#22ffaa] text-lg">—</b></div>
+                <div class="bg-zinc-900/90 rounded-2xl p-4 border border-white/5"><span class="text-white/45 block text-[11px] mb-1">Kontingent</span><b id="member-details-quota" class="text-base">—</b></div>
             </div>
-            <div class="mt-3 bg-zinc-900/90 rounded-xl p-3 border border-amber-400/20">
-                <div class="flex justify-between gap-3"><span class="text-white/45 text-[9px]">Mitglieder-Zugangscode</span><button id="member-details-code-toggle" onclick="toggleMitgliedCodeDetails()" class="text-[9px] text-[#22ffaa] font-bold">Anzeigen</button></div>
-                <p id="member-details-accesscode" class="font-mono text-xs mt-2 tracking-wider">••••••••</p>
-                <p id="member-details-access-expiry" class="text-[9px] text-white/35 mt-1">Kein temporärer Code aktiv.</p>
+            <div class="mt-4 bg-zinc-900/90 rounded-2xl p-4 border border-amber-400/20">
+                <div class="flex justify-between gap-3"><span class="text-white/45 text-[11px]">Mitglieder-Zugangscode</span><button id="member-details-code-toggle" onclick="toggleMitgliedCodeDetails()" class="text-xs text-[#22ffaa] font-bold">Anzeigen</button></div>
+                <p id="member-details-accesscode" class="font-mono text-sm mt-2 tracking-wider">••••••••</p>
+                <p id="member-details-access-expiry" class="text-[11px] text-white/35 mt-1">Kein temporärer Code aktiv.</p>
             </div>
-            <div class="mt-3 bg-zinc-900/90 rounded-xl p-3 border border-[#22ffaa]/20">
+            <div class="mt-4 bg-zinc-900/90 rounded-2xl p-4 border border-[#22ffaa]/20">
                 <div class="flex items-center justify-between gap-2 mb-2">
                     <div>
-                        <p class="font-bold text-xs text-white">Zugang verwalten</p>
-                        <p class="text-[9px] text-white/40">Temporären Einmal-Code erzeugen und E-Mail vorbereiten.</p>
+                        <p class="font-bold text-sm text-white">Zugang verwalten</p>
+                        <p class="text-[11px] text-white/40">Temporären Einmal-Code erzeugen und E-Mail vorbereiten.</p>
                     </div>
                     <i class="fa-solid fa-envelope text-[#22ffaa]"></i>
                 </div>
-                <input id="member-details-email" type="email" placeholder="mitglied@beispiel.de" class="w-full bg-zinc-950 border border-white/10 px-3 py-2 rounded-xl text-white text-xs">
+                <input id="member-details-email" type="email" placeholder="mitglied@beispiel.de" class="w-full bg-zinc-950 border border-white/10 px-3 py-2.5 rounded-xl text-white text-sm">
                 <div class="grid grid-cols-2 gap-2 mt-2">
-                    <button onclick="generiereUndSpeichereMitgliederResetCode()" class="bg-[#22ffaa] text-black font-bold py-2 rounded-xl text-[10px]">Neuen Code erzeugen</button>
-                    <button onclick="sendeMitgliederZugangPerEmail()" class="bg-white/10 border border-white/10 text-white font-bold py-2 rounded-xl text-[10px]">E-Mail vorbereiten</button>
+                    <button onclick="generiereUndSpeichereMitgliederResetCode()" class="bg-[#22ffaa] text-black font-bold py-2.5 rounded-xl text-xs">Neuen Code erzeugen</button>
+                    <button onclick="sendeMitgliederZugangPerEmail()" class="bg-white/10 border border-white/10 text-white font-bold py-2.5 rounded-xl text-xs">E-Mail vorbereiten</button>
                 </div>
-                <p id="member-details-reset-status" class="text-[9px] text-white/35 mt-2"></p>
+                <p id="member-details-reset-status" class="text-[11px] text-white/35 mt-2"></p>
             </div>
-            <div class="mt-3">
-                <h4 class="font-bold text-xs text-[#22ffaa] mb-2">Letzte dokumentierte Vorgänge</h4>
-                <div id="member-details-audit" class="space-y-2"></div>
+            <div class="mt-4">
+                <h4 class="font-bold text-sm text-[#22ffaa] mb-2">Letzte dokumentierte Vorgänge</h4>
+                <div id="member-details-audit" class="space-y-2 text-sm"></div>
             </div>
-            <div class="grid grid-cols-2 gap-2 mt-4">
-                <button id="member-details-qr-btn" class="bg-[#22ffaa]/10 border border-[#22ffaa]/30 text-[#22ffaa] font-bold py-2.5 rounded-xl text-xs">QR anzeigen</button>
-                <button onclick="schliesseMitgliedDetails()" class="bg-white/10 border border-white/10 text-white font-bold py-2.5 rounded-xl text-xs">Schließen</button>
-                <button onclick="schliesseMitgliedDetails()" class="bg-white/10 text-white font-bold py-2.5 rounded-xl text-xs">Schließen</button>
+            <div class="grid grid-cols-2 gap-2 mt-5">
+                <button id="member-details-qr-btn" class="bg-[#22ffaa]/10 border border-[#22ffaa]/30 text-[#22ffaa] font-bold py-3 rounded-xl text-sm">QR anzeigen</button>
+                <button onclick="schliesseMitgliedDetails()" class="bg-white/10 border border-white/10 text-white font-bold py-3 rounded-xl text-sm">Schließen</button>
             </div>
         </div>
     </div>
@@ -2163,6 +2193,13 @@ select,input,textarea,button{touch-action:manipulation}
         let ggAutoRefreshTimer = null;
         let ggAutoRefreshInFlight = false;
         const GG_AUTO_REFRESH_MS = 25000;
+        const GG_FAST_SYNC_MS = 2000;
+        let ggFastSyncTimer = null;
+        let ggFastSyncInFlight = false;
+        let ggLetzteSyncSignatur = '';
+        let ggLetzteVollRefreshSignatur = '';
+        let ggBalanceAnzeigeWert = null;
+        let ggBalanceAnimFrame = 0;
         let mapInitialized = false;
         let mapInstance = null;
         let mapMarker = null;
@@ -2196,6 +2233,7 @@ select,input,textarea,button{touch-action:manipulation}
         let ggZutrittQuelle = 'unbekannt';
         let ggZutrittMitgliedFilterId = '';
         let ggReservierungsWarenkorb = [];
+        let ggFloatCartDrag = null;
         let ggSliderPrefTimer = null;
         let ggAktivePosReservierungId = null;
         let vereinGuthabenHistorie = [];
@@ -2336,6 +2374,13 @@ select,input,textarea,button{touch-action:manipulation}
             });
             ggIdleTimer = setInterval(ggPruefeInaktivitaet, 1000);
             starteAutoRefreshTimer();
+            window.addEventListener('storage', (e) => {
+                if (!e || !e.key) return;
+                if (e.key === 'vereinReservierungen' || e.key === 'vereinMitglieder' || e.key === 'vereinUmsatz' || e.key === 'vereinGuthabenHistorie') {
+                    ggSyncReservierungenUndGuthaben();
+                }
+            });
+            initialisiereFloatWarenkorb();
         }
 
         function ggRefreshAlleQRs() {
@@ -2403,13 +2448,19 @@ select,input,textarea,button{touch-action:manipulation}
                 clearInterval(ggAutoRefreshTimer);
                 ggAutoRefreshTimer = null;
             }
+            if (ggFastSyncTimer) {
+                clearInterval(ggFastSyncTimer);
+                ggFastSyncTimer = null;
+            }
         }
 
         function starteAutoRefreshTimer() {
             stoppeAutoRefreshTimer();
             if (!ggIstGeschuetzterBereichAktiv()) return;
             if (document.hidden) return;
-            if (vereinUiEinstellungen && vereinUiEinstellungen.autoRefresh === false) return;
+            if (vereinUiEinstellungen && vereinUiEinstellungen.autoRefresh === false) {
+                return;
+            }
             const ms = Number(vereinUiEinstellungen && vereinUiEinstellungen.autoRefreshMs) || GG_AUTO_REFRESH_MS;
             ggAutoRefreshTimer = setInterval(() => {
                 if (document.hidden) return;
@@ -2419,6 +2470,112 @@ select,input,textarea,button{touch-action:manipulation}
                 }
                 ggAutoRefreshJetzt();
             }, ms);
+            ggSyncReservierungenUndGuthaben();
+            ggFastSyncTimer = setInterval(() => {
+                if (document.hidden) return;
+                if (!ggIstGeschuetzterBereichAktiv()) return;
+                ggSyncReservierungenUndGuthaben();
+            }, GG_FAST_SYNC_MS);
+        }
+
+        function ggReservierungGuthabenSignatur() {
+            const res = Array.isArray(vereinReservierungen)
+                ? vereinReservierungen.map(r => [r && r.id, r && r.status, r && r.price, r && r.memberId, r && r.amount, r && r.totalGrams])
+                : [];
+            const mit = Array.isArray(vereinMitglieder)
+                ? vereinMitglieder.map(m => [m && m.id, Number(m && m.balance || 0), Number(m && m.quota || 0)])
+                : [];
+            return JSON.stringify({ res, mit, umsatz: vereinUmsatz });
+        }
+
+        function formatiereEuroAnzeige(betrag) {
+            const n = Number(betrag);
+            if (!Number.isFinite(n)) return '0,00 €';
+            return n.toFixed(2).replace('.', ',') + ' €';
+        }
+
+        function setzeGuthabenAnzeigeTexte(betrag) {
+            const text = formatiereEuroAnzeige(betrag);
+            ['home-balance-display', 'reservation-balance-display', 'finanzen-balance-display'].forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                if (el.textContent === '—') return;
+                el.textContent = text;
+            });
+        }
+
+        function animiereGuthabenAnzeige(von, nach) {
+            const start = Number(von);
+            const end = Number(nach);
+            if (!Number.isFinite(end)) return;
+            if (!Number.isFinite(start) || Math.abs(end - start) < 0.005) {
+                ggBalanceAnzeigeWert = end;
+                setzeGuthabenAnzeigeTexte(end);
+                return;
+            }
+            if (ggBalanceAnimFrame) {
+                cancelAnimationFrame(ggBalanceAnimFrame);
+                ggBalanceAnimFrame = 0;
+            }
+            const startInt = Math.round(start);
+            const endInt = Math.round(end);
+            if (startInt === endInt) {
+                ggBalanceAnzeigeWert = end;
+                setzeGuthabenAnzeigeTexte(end);
+                return;
+            }
+            const steps = Math.abs(endInt - startInt);
+            const duration = Math.min(520, Math.max(160, steps * 12));
+            const t0 = performance.now();
+            const tick = (now) => {
+                const p = Math.min(1, (now - t0) / duration);
+                const current = startInt + Math.round((endInt - startInt) * p);
+                setzeGuthabenAnzeigeTexte(current);
+                if (p < 1) {
+                    ggBalanceAnimFrame = requestAnimationFrame(tick);
+                } else {
+                    ggBalanceAnzeigeWert = end;
+                    setzeGuthabenAnzeigeTexte(end);
+                    ggBalanceAnimFrame = 0;
+                }
+            };
+            ggBalanceAnimFrame = requestAnimationFrame(tick);
+        }
+
+        async function ggSyncReservierungenUndGuthaben() {
+            if (ggFastSyncInFlight || ggAutoRefreshInFlight) return;
+            if (!ggIstGeschuetzterBereichAktiv()) return;
+            if (document.hidden) return;
+            if (ggScannerIstOffen()) return;
+            ggFastSyncInFlight = true;
+            try {
+                const vorher = ggReservierungGuthabenSignatur();
+                const res = await ladeVerschlüsseltenState('vereinReservierungen', vereinReservierungen);
+                const mit = await ladeVerschlüsseltenState('vereinMitglieder', vereinMitglieder);
+                const ums = await ladeVerschlüsseltenState('vereinUmsatz', vereinUmsatz);
+                const hist = await ladeVerschlüsseltenState('vereinGuthabenHistorie', vereinGuthabenHistorie);
+                if (Array.isArray(res)) vereinReservierungen = res;
+                if (Array.isArray(mit)) vereinMitglieder = mit;
+                if (ums !== undefined && ums !== null) vereinUmsatz = ums;
+                if (Array.isArray(hist)) vereinGuthabenHistorie = hist;
+                const nachher = ggReservierungGuthabenSignatur();
+                if (nachher === vorher) return;
+                ggLetzteSyncSignatur = nachher;
+                if (ggNutzerBearbeitetEingabe()) return;
+                try { rendereReservierungen(); } catch (_) {}
+                try { rendereGuthabenHistorie(); } catch (_) {}
+                try { rendereFinanzzahlen(); } catch (_) {}
+                try { rendereMitgliederIdentität(); } catch (_) {}
+                try { aktualisiereReservierungsKontrollen(); } catch (_) {}
+                const personenTab = document.getElementById('unterkapitel-personen');
+                if (personenTab && !personenTab.classList.contains('hidden')) {
+                    try { rendereMitgliederListe(); } catch (_) {}
+                }
+            } catch (e) {
+                console.warn('Reservierungs-/Guthaben-Sync fehlgeschlagen', e);
+            } finally {
+                ggFastSyncInFlight = false;
+            }
         }
 
         async function ggAutoRefreshJetzt() {
@@ -2465,7 +2622,19 @@ select,input,textarea,button{touch-action:manipulation}
                 if (Array.isArray(geladen.vereinGuthabenHistorie)) vereinGuthabenHistorie = geladen.vereinGuthabenHistorie;
                 const idsNeu = ggEnsureSortenStableIds();
                 if (idsNeu) await speichereVerschlüsseltenState('vereinSorten', vereinSorten);
-                if (!ggScannerIstOffen() && !ggNutzerBearbeitetEingabe()) {
+                const vollSig = JSON.stringify({
+                    res: Array.isArray(geladen.vereinReservierungen) ? geladen.vereinReservierungen.map(r => [r && r.id, r && r.status, r && r.price, r && r.memberId]) : [],
+                    mit: Array.isArray(geladen.vereinMitglieder) ? geladen.vereinMitglieder.map(m => [m && m.id, m && m.balance, m && m.quota]) : [],
+                    news: geladen.vereinNews,
+                    prot: Array.isArray(geladen.vereinProtokolle) ? geladen.vereinProtokolle.length : 0,
+                    bons: Array.isArray(geladen.vereinKassenbons) ? geladen.vereinKassenbons.length : 0,
+                    ums: geladen.vereinUmsatz,
+                    audit: Array.isArray(geladen.vereinAudit) ? geladen.vereinAudit.length : 0
+                });
+                const skipRender = (vollSig === ggLetzteVollRefreshSignatur);
+                ggLetzteVollRefreshSignatur = vollSig;
+                ggLetzteSyncSignatur = ggReservierungGuthabenSignatur();
+                if (!skipRender && !ggScannerIstOffen() && !ggNutzerBearbeitetEingabe()) {
                     const posMember = document.getElementById('pos-member-select')?.value;
                     const posStrain = document.getElementById('pos-strain-select')?.value;
                     rendereAlles();
@@ -3028,6 +3197,7 @@ select,input,textarea,button{touch-action:manipulation}
             }
             if (ansichtId === 'karte') setTimeout(initialisiereKarte, 100);
             if (ansichtId === 'wissen') rendereMitgliederInfos();
+            aktualisiereFloatWarenkorb();
         }
 
         function oeffneAdminDrawer() {
@@ -3516,10 +3686,14 @@ select,input,textarea,button{touch-action:manipulation}
             const percent = Math.min(100, Math.max(0, (remainingQuota / 50) * 100));
             document.getElementById('quota-bar').style.width = `${percent}%`;
 
-            const formatiertesGuthaben = aktivesMitglied.balance.toFixed(2).replace('.', ',') + ' €';
-            if(document.getElementById('home-balance-display')) document.getElementById('home-balance-display').textContent = formatiertesGuthaben;
-            if(document.getElementById('reservation-balance-display')) document.getElementById('reservation-balance-display').textContent = formatiertesGuthaben;
-            if(document.getElementById('finanzen-balance-display')) document.getElementById('finanzen-balance-display').textContent = formatiertesGuthaben;
+            const neuesGuthaben = Number(aktivesMitglied.balance || 0);
+            if (ggBalanceAnzeigeWert == null || Math.abs(Number(ggBalanceAnzeigeWert) - neuesGuthaben) < 0.005) {
+                ggBalanceAnzeigeWert = neuesGuthaben;
+                setzeGuthabenAnzeigeTexte(neuesGuthaben);
+            } else {
+                animiereGuthabenAnzeige(ggBalanceAnzeigeWert, neuesGuthaben);
+                ggBalanceAnzeigeWert = neuesGuthaben;
+            }
 
             const feeFormatted = aktivesMitglied.feeAmount.toFixed(2).replace('.', ',') + ' €';
             if(document.getElementById('finanzen-fee-amount-display')) document.getElementById('finanzen-fee-amount-display').innerHTML = `${feeFormatted} <span class="text-xs font-normal text-white/60">/ Jahr</span>`;
@@ -3896,6 +4070,95 @@ select,input,textarea,button{touch-action:manipulation}
             return (ggReservierungsWarenkorb || []).reduce((s, it) => s + (Number(it.idx) === Number(idx) ? 0 : (Number(it.grams) || 0)), 0);
         }
 
+        function ggWarenkorbSummen() {
+            let g = 0, p = 0, n = 0;
+            (ggReservierungsWarenkorb || []).forEach(it => {
+                n += 1;
+                g += Number(it.grams) || 0;
+                p += Number(it.linePrice) || 0;
+            });
+            return { n, g, p };
+        }
+        function aktualisiereFloatWarenkorb() {
+            const el = document.getElementById('gg-float-cart');
+            if (!el) return;
+            const resView = document.getElementById('bereich-reservieren');
+            const sichtbar = !!(resView && resView.classList.contains('active') && mitgliedSession && !istVorstandEingeloggt);
+            el.classList.toggle('hidden', !sichtbar);
+            const { n, g, p } = ggWarenkorbSummen();
+            const nEl = document.getElementById('gg-float-cart-n');
+            const gEl = document.getElementById('gg-float-cart-g');
+            const pEl = document.getElementById('gg-float-cart-p');
+            if (nEl) nEl.textContent = n + ' Sorten / ' + g + ' g';
+            if (gEl) gEl.textContent = g + ' g';
+            if (pEl) pEl.textContent = p.toFixed(2).replace('.', ',') + ' €';
+        }
+        function oeffneFloatWarenkorbZiel() {
+            const ziel = document.getElementById('reservierungs-warenkorb');
+            if (ziel) ziel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        function initialisiereFloatWarenkorb() {
+            const el = document.getElementById('gg-float-cart');
+            if (!el || el.dataset.ggDragReady === '1') return;
+            el.dataset.ggDragReady = '1';
+            const clamp = () => {
+                const w = el.offsetWidth || 230;
+                const h = el.offsetHeight || 90;
+                const maxL = Math.max(8, window.innerWidth - w - 8);
+                const maxT = Math.max(8, window.innerHeight - h - 8);
+                const left = Math.min(maxL, Math.max(8, el.offsetLeft));
+                const top = Math.min(maxT, Math.max(8, el.offsetTop));
+                el.style.left = left + 'px';
+                el.style.top = top + 'px';
+                el.style.right = 'auto';
+                el.style.bottom = 'auto';
+            };
+            el.addEventListener('pointerdown', (ev) => {
+                if (ev.button != null && ev.button !== 0) return;
+                const rect = el.getBoundingClientRect();
+                ggFloatCartDrag = {
+                    pointer: ev.pointerId,
+                    startX: ev.clientX,
+                    startY: ev.clientY,
+                    origL: rect.left,
+                    origT: rect.top,
+                    moved: false
+                };
+                el.classList.add('dragging');
+                try { el.setPointerCapture(ev.pointerId); } catch (_) {}
+            });
+            el.addEventListener('pointermove', (ev) => {
+                if (!ggFloatCartDrag || ggFloatCartDrag.pointer !== ev.pointerId) return;
+                const dx = ev.clientX - ggFloatCartDrag.startX;
+                const dy = ev.clientY - ggFloatCartDrag.startY;
+                if (Math.abs(dx) + Math.abs(dy) > 8) ggFloatCartDrag.moved = true;
+                if (!ggFloatCartDrag.moved) return;
+                ev.preventDefault();
+                const w = el.offsetWidth || 230;
+                const h = el.offsetHeight || 90;
+                let left = ggFloatCartDrag.origL + dx;
+                let top = ggFloatCartDrag.origT + dy;
+                left = Math.min(window.innerWidth - w - 8, Math.max(8, left));
+                top = Math.min(window.innerHeight - h - 8, Math.max(8, top));
+                el.style.left = left + 'px';
+                el.style.top = top + 'px';
+                el.style.right = 'auto';
+                el.style.bottom = 'auto';
+            }, { passive: false });
+            const endDrag = (ev) => {
+                if (!ggFloatCartDrag || (ev.pointerId != null && ggFloatCartDrag.pointer !== ev.pointerId)) return;
+                const moved = ggFloatCartDrag.moved;
+                ggFloatCartDrag = null;
+                el.classList.remove('dragging');
+                try { el.releasePointerCapture(ev.pointerId); } catch (_) {}
+                if (!moved) oeffneFloatWarenkorbZiel();
+            };
+            el.addEventListener('pointerup', endDrag);
+            el.addEventListener('pointercancel', endDrag);
+            window.addEventListener('resize', () => { if (!el.classList.contains('hidden')) clamp(); });
+            aktualisiereFloatWarenkorb();
+        }
+
         function rendereWarenkorb() {
             const zeilen = document.getElementById('warenkorb-zeilen');
             const gEl = document.getElementById('warenkorb-gesamt-g');
@@ -3912,6 +4175,7 @@ select,input,textarea,button{touch-action:manipulation}
                 zeilen.innerHTML = '<p class="text-white/40 italic">Noch keine Sorten in der Reservierung.</p>';
                 if (gEl) gEl.textContent = '0 g';
                 if (pEl) pEl.textContent = '0,00 €';
+                aktualisiereFloatWarenkorb();
                 return;
             }
             let g = 0, p = 0;
@@ -3925,6 +4189,7 @@ select,input,textarea,button{touch-action:manipulation}
             }).join('');
             if (gEl) gEl.textContent = g + ' g';
             if (pEl) pEl.textContent = p.toFixed(2).replace('.', ',') + ' €';
+            aktualisiereFloatWarenkorb();
         }
 
         function entferneWarenkorbPosition(i) {
@@ -6613,5 +6878,11 @@ select,input,textarea,button{touch-action:manipulation}
             <button id="nav-vorstand" class="nav-item nav-item-admin" onclick="wechsleAnsicht('vorstand')"><i class="fa-solid fa-user-shield"></i><span>Vorstand</span></button>
         </div>
     </nav>
+    <div id="gg-float-cart" class="hidden glass-card border border-[#22ffaa]/40 rounded-2xl p-3 shadow-xl shadow-black/40">
+        <p class="text-[11px] font-black text-[#22ffaa] mb-1"><i class="fa-solid fa-basket-shopping mr-1"></i> Meine Reservierung</p>
+        <p id="gg-float-cart-n" class="text-[11px] text-white/80">0 Sorten / 0 g</p>
+        <p class="text-[11px] text-white/60">Gesamt: <span id="gg-float-cart-g" class="text-white font-bold">0 g</span></p>
+        <p class="text-[11px] text-[#22ffaa] font-black" id="gg-float-cart-p">0,00 €</p>
+    </div>
 </body>
 </html>
