@@ -319,6 +319,16 @@
         }
         #gg-float-cart.dragging { cursor: grabbing; }
         #gg-float-cart.hidden { display: none !important; }
+        #gg-float-cart-reopen {
+            position: fixed;
+            right: 12px;
+            bottom: 92px;
+            z-index: 70;
+            width: 44px;
+            height: 44px;
+            border-radius: 999px;
+        }
+        #gg-float-cart-reopen.hidden { display: none !important; }
         /* Wenn ein Login vom Start-Gate geöffnet wird, darf das Gate nicht über dem Dialog liegen. */
         body.gate-modal-open #security-gate { visibility: hidden !important; pointer-events: none !important; }
         #security-gate { position: fixed; inset: 0; z-index: 9999; background: radial-gradient(circle at top, rgba(34,255,170,.12), #08080c 45%); display:flex; align-items:center; justify-content:center; padding:20px; }
@@ -1480,39 +1490,9 @@ select,input,textarea,button{touch-action:manipulation}
                         <div>
                             <p class="text-[10px] font-bold text-white/50 mb-1">Darstellung</p>
                             <div class="grid grid-cols-3 gap-2">
-                                <button type="button" onclick="setzeUiEinstellung('theme','dark')" class="bg-white/10 border border-white/10 rounded-lg py-2">Dunkel</button>
-                                <button type="button" onclick="setzeUiEinstellung('theme','light')" class="bg-white/10 border border-white/10 rounded-lg py-2">Hell</button>
-                                <button type="button" onclick="setzeUiEinstellung('theme','system')" class="bg-white/10 border border-white/10 rounded-lg py-2">System</button>
-                            </div>
-                        </div>
-                        <div>
-                            <p class="text-[10px] font-bold text-white/50 mb-1">Schriftgröße</p>
-                            <div class="grid grid-cols-2 gap-2">
-                                <button type="button" onclick="setzeUiEinstellung('font','normal')" class="bg-white/10 border border-white/10 rounded-lg py-2">Normal</button>
-                                <button type="button" onclick="setzeUiEinstellung('font','large')" class="bg-white/10 border border-white/10 rounded-lg py-2">Größer</button>
-                            </div>
-                        </div>
-                        <div>
-                            <p class="text-[10px] font-bold text-white/50 mb-1">Bedienung</p>
-                            <label class="flex items-center justify-between bg-zinc-900/70 border border-white/10 rounded-lg px-3 py-2 mb-2">
-                                <span>Auto-Aktualisierung</span>
-                                <input id="ui-autorefresh" type="checkbox" onchange="setzeUiEinstellung('autoRefresh', this.checked)" class="accent-[#22ffaa]">
-                            </label>
-                            <select id="ui-autorefresh-ms" onchange="setzeUiEinstellung('autoRefreshMs', Number(this.value))" class="w-full bg-zinc-900 border border-white/10 text-white px-3 py-2 rounded-xl">
-                                <option value="15000">15 Sekunden</option>
-                                <option value="30000">30 Sekunden</option>
-                                <option value="60000">60 Sekunden</option>
-                            </select>
-                        </div>
-                        <label class="flex items-center justify-between bg-zinc-900/70 border border-white/10 rounded-lg px-3 py-2">
-                            <span>Letzten Admin-Bereich merken</span>
-                            <input id="ui-remember-tab" type="checkbox" onchange="setzeUiEinstellung('rememberAdminTab', this.checked)" class="accent-[#22ffaa]">
-                        </label>
-                        <div>
-                            <p class="text-[10px] font-bold text-white/50 mb-1">Log-Darstellung</p>
-                            <div class="grid grid-cols-2 gap-2">
-                                <button type="button" onclick="setzeUiEinstellung('logDisplay','compact')" class="bg-white/10 border border-white/10 rounded-lg py-2">Kompakt</button>
-                                <button type="button" onclick="setzeUiEinstellung('logDisplay','normal')" class="bg-white/10 border border-white/10 rounded-lg py-2">Normal</button>
+                                <button type="button" data-ui-theme="dark" onclick="setzeUiEinstellung('theme','dark')" class="bg-white/10 border border-white/10 rounded-lg py-2">Dunkel</button>
+                                <button type="button" data-ui-theme="light" onclick="setzeUiEinstellung('theme','light')" class="bg-white/10 border border-white/10 rounded-lg py-2">Hell</button>
+                                <button type="button" data-ui-theme="system" onclick="setzeUiEinstellung('theme','system')" class="bg-white/10 border border-white/10 rounded-lg py-2">System</button>
                             </div>
                         </div>
                     </div>
@@ -2257,6 +2237,7 @@ select,input,textarea,button{touch-action:manipulation}
         let ggZutrittMitgliedFilterId = '';
         let ggReservierungsWarenkorb = [];
         let ggFloatCartDrag = null;
+        let ggFloatCartManuellGeschlossen = false;
         let ggSliderPrefTimer = null;
         let ggAktivePosReservierungId = null;
         let ggAktivePosAbgabeCart = null;
@@ -2265,7 +2246,7 @@ select,input,textarea,button{touch-action:manipulation}
         let vereinGuthabenHistorie = [];
         // Standardmäßig sichtbar, damit bestehende Installationen unverändert starten.
         let vereinSepaSichtbar = true;
-        let vereinUiEinstellungen = { theme: 'dark', font: 'normal', autoRefresh: true, autoRefreshMs: 30000, rememberAdminTab: false, lastAdminTab: 'terminal', logDisplay: 'normal' };
+        let vereinUiEinstellungen = { theme: 'dark' };
         let ggAbgabeLogFilterId = '';
         let vereinPraevention = { name: '', contact: '' };
         let mitgliedSession = null;
@@ -2292,6 +2273,7 @@ select,input,textarea,button{touch-action:manipulation}
             if (el.closest('.nav-scroll')) return true;
             if (el.closest('.finance-swipe')) return true;
             if (el.closest('#gg-float-cart')) return true;
+            if (el.closest('#gg-float-cart-reopen')) return true;
             if (el.closest('.leaflet-container')) return true;
             if (el.closest('#camera-scanner-modal')) return true;
             if (el.closest('input[type="range"]')) return true;
@@ -2459,9 +2441,13 @@ select,input,textarea,button{touch-action:manipulation}
             window.addEventListener('storage', (e) => {
                 if (!e || !e.key) return;
                 if (Date.now() < ggUiBusyUntil || ggScannerIstOffen() || ggNutzerBearbeitetEingabe()) return;
-                if (e.key === 'vereinReservierungen' || e.key === 'vereinMitglieder' || e.key === 'vereinUmsatz' || e.key === 'vereinGuthabenHistorie' || e.key === 'vereinNews') {
+                if (e.key === 'vereinReservierungen' || e.key === 'vereinMitglieder' || e.key === 'vereinUmsatz' || e.key === 'vereinGuthabenHistorie' || e.key === 'vereinNews' || e.key === 'vereinWissen') {
                     if (e.key === 'vereinNews') {
                         ggAutoRefreshJetzt();
+                        return;
+                    }
+                    if (e.key === 'vereinWissen') {
+                        ggLadeVereinWissenAktuell();
                         return;
                     }
                     ggSyncReservierungenUndGuthaben();
@@ -2545,11 +2531,7 @@ select,input,textarea,button{touch-action:manipulation}
             stoppeAutoRefreshTimer();
             if (!ggIstGeschuetzterBereichAktiv()) return;
             if (document.hidden) return;
-            if (vereinUiEinstellungen && vereinUiEinstellungen.autoRefresh === false) {
-                return;
-            }
-            let ms = Number(vereinUiEinstellungen && vereinUiEinstellungen.autoRefreshMs) || GG_AUTO_REFRESH_MS;
-            if (!Number.isFinite(ms) || ms < 15000) ms = GG_AUTO_REFRESH_MS;
+            const ms = GG_AUTO_REFRESH_MS;
             ggAutoRefreshTimer = setInterval(() => {
                 if (document.hidden) return;
                 if (!ggIstGeschuetzterBereichAktiv()) {
@@ -2585,7 +2567,6 @@ select,input,textarea,button{touch-action:manipulation}
             ['home-balance-display', 'reservation-balance-display', 'finanzen-balance-display'].forEach(id => {
                 const el = document.getElementById(id);
                 if (!el) return;
-                if (el.textContent === '—') return;
                 el.textContent = text;
             });
         }
@@ -2963,7 +2944,7 @@ select,input,textarea,button{touch-action:manipulation}
             vereinSepaSichtbar = await ladeVerschlüsseltenState('vereinSepaSichtbar', true);
             if (typeof vereinSepaSichtbar !== 'boolean') vereinSepaSichtbar = true;
             const uiGeladen = await ladeVerschlüsseltenState('vereinUiEinstellungen', vereinUiEinstellungen);
-            if (uiGeladen && typeof uiGeladen === 'object') vereinUiEinstellungen = Object.assign(vereinUiEinstellungen, uiGeladen);
+            if (uiGeladen && typeof uiGeladen === 'object') vereinUiEinstellungen = uiGeladen;
             wendeUiEinstellungenAn();
             vereinPraevention = await ladeVerschlüsseltenState('vereinPraevention', {name:'', contact:''});
 
@@ -3301,8 +3282,7 @@ select,input,textarea,button{touch-action:manipulation}
             if (zielNav) zielNav.classList.add('nav-item-active');
 
             if (ansichtId === 'vorstand') {
-                const last = (vereinUiEinstellungen.rememberAdminTab && vereinUiEinstellungen.lastAdminTab) ? vereinUiEinstellungen.lastAdminTab : 'terminal';
-                try { wechsleUnterkapitel(last); } catch (err) {
+                try { wechsleUnterkapitel('terminal'); } catch (err) {
                     console.error('Admin-Terminal konnte nicht aktiviert werden', err);
                     try { wechsleUnterkapitel('terminal'); } catch (_) {}
                 }
@@ -3370,10 +3350,6 @@ select,input,textarea,button{touch-action:manipulation}
             try { if (tabRender[kapitelId]) tabRender[kapitelId](); } catch (err) {
                 console.error('Tab-Renderfehler in ' + kapitelId, err);
             }
-            if (vereinUiEinstellungen && vereinUiEinstellungen.rememberAdminTab) {
-                vereinUiEinstellungen.lastAdminTab = kapitelId;
-                speichereVerschlüsseltenState('vereinUiEinstellungen', vereinUiEinstellungen).catch(() => {});
-            }
             schliesseAdminDrawer();
 
             if (kapitelId === 'standort') {
@@ -3414,9 +3390,9 @@ select,input,textarea,button{touch-action:manipulation}
         }
 
         function ggHoleUiEinstellungen() {
-            if (!vereinUiEinstellungen || typeof vereinUiEinstellungen !== 'object') {
-                vereinUiEinstellungen = { theme: 'dark', font: 'normal', autoRefresh: true, autoRefreshMs: 30000, rememberAdminTab: false, lastAdminTab: 'terminal', logDisplay: 'normal' };
-            }
+            const raw = (vereinUiEinstellungen && typeof vereinUiEinstellungen === 'object') ? vereinUiEinstellungen : {};
+            const theme = (raw.theme === 'light' || raw.theme === 'system' || raw.theme === 'dark') ? raw.theme : 'dark';
+            vereinUiEinstellungen = { theme };
             return vereinUiEinstellungen;
         }
         function wendeUiEinstellungenAn() {
@@ -3426,25 +3402,25 @@ select,input,textarea,button{touch-action:manipulation}
             if (theme === 'system') theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
             html.classList.toggle('gg-theme-light', theme === 'light');
             html.classList.toggle('dark', theme !== 'light');
-            if (ui.font === 'large') setzeBarrierefreiheitsGroesse(1.5);
-            else setzeBarrierefreiheitsGroesse(1);
-            html.classList.toggle('gg-log-compact', ui.logDisplay === 'compact');
             fuelleUiEinstellungFelder();
             starteAutoRefreshTimer();
         }
         function fuelleUiEinstellungFelder() {
             const ui = ggHoleUiEinstellungen();
-            const ar = document.getElementById('ui-autorefresh');
-            if (ar) ar.checked = ui.autoRefresh !== false;
-            const ms = document.getElementById('ui-autorefresh-ms');
-            if (ms) ms.value = String(ui.autoRefreshMs === 15000 || ui.autoRefreshMs === 60000 ? ui.autoRefreshMs : 30000);
-            const tab = document.getElementById('ui-remember-tab');
-            if (tab) tab.checked = !!ui.rememberAdminTab;
+            const theme = ui.theme || 'dark';
+            document.querySelectorAll('[data-ui-theme]').forEach(btn => {
+                const aktiv = btn.getAttribute('data-ui-theme') === theme;
+                btn.className = aktiv
+                    ? 'bg-[#22ffaa]/15 border border-[#22ffaa] text-[#22ffaa] font-black rounded-lg py-2'
+                    : 'bg-white/10 border border-white/10 rounded-lg py-2 text-white';
+            });
         }
         async function setzeUiEinstellung(feld, wert) {
             if (!istVorstandEingeloggt) return;
+            if (feld !== 'theme') return;
+            if (wert !== 'dark' && wert !== 'light' && wert !== 'system') return;
             const ui = ggHoleUiEinstellungen();
-            ui[feld] = wert;
+            ui.theme = wert;
             vereinUiEinstellungen = ui;
             await speichereVerschlüsseltenState('vereinUiEinstellungen', vereinUiEinstellungen);
             wendeUiEinstellungenAn();
@@ -3731,6 +3707,13 @@ select,input,textarea,button{touch-action:manipulation}
             document.getElementById('security-gate').classList.add('hidden');
             document.body.classList.remove('pre-gate');
             document.body.classList.add('gate-open');
+            try {
+                if (initialisierungPromise) await initialisierungPromise;
+                const mit = await ladeVerschlüsseltenState('vereinMitglieder', vereinMitglieder);
+                if (Array.isArray(mit)) vereinMitglieder = mit;
+                await ggLadeVereinWissenAktuell();
+                ggBalanceAnzeigeWert = null;
+            } catch (_) {}
             wechsleAnsicht('home');
             ggChatZeichneVerlauf();
             await protokolliereAudit('member_login', m.id);
@@ -3796,6 +3779,7 @@ select,input,textarea,button{touch-action:manipulation}
                 if (document.getElementById('finanzen-fee-amount-display')) document.getElementById('finanzen-fee-amount-display').innerHTML = '—';
                 const homeRes = document.getElementById('home-aktive-reservierung');
                 if (homeRes) { homeRes.classList.add('hidden'); homeRes.innerHTML = ''; }
+                ggBalanceAnzeigeWert = null;
                 return;
             }
 
@@ -4199,10 +4183,13 @@ select,input,textarea,button{touch-action:manipulation}
         }
         function aktualisiereFloatWarenkorb() {
             const el = document.getElementById('gg-float-cart');
+            const reopen = document.getElementById('gg-float-cart-reopen');
             if (!el) return;
             const resView = document.getElementById('bereich-reservieren');
-            const sichtbar = !!(resView && resView.classList.contains('active') && mitgliedSession && !istVorstandEingeloggt);
+            const imReservieren = !!(resView && resView.classList.contains('active') && mitgliedSession && !istVorstandEingeloggt);
+            const sichtbar = imReservieren && !ggFloatCartManuellGeschlossen;
             el.classList.toggle('hidden', !sichtbar);
+            if (reopen) reopen.classList.toggle('hidden', !(imReservieren && ggFloatCartManuellGeschlossen));
             const { n, g, p } = ggWarenkorbSummen();
             const nEl = document.getElementById('gg-float-cart-n');
             const gEl = document.getElementById('gg-float-cart-g');
@@ -4214,6 +4201,27 @@ select,input,textarea,button{touch-action:manipulation}
         function oeffneFloatWarenkorbZiel() {
             const ziel = document.getElementById('reservierungs-warenkorb');
             if (ziel) ziel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        function ggFloatCartFrageSchliessen(ev) {
+            if (ev) ev.stopPropagation();
+            const box = document.getElementById('gg-float-cart-confirm');
+            if (box) box.classList.remove('hidden');
+        }
+        function ggFloatCartConfirmNein(ev) {
+            if (ev) ev.stopPropagation();
+            const box = document.getElementById('gg-float-cart-confirm');
+            if (box) box.classList.add('hidden');
+        }
+        function ggFloatCartConfirmJa(ev) {
+            if (ev) ev.stopPropagation();
+            ggFloatCartManuellGeschlossen = true;
+            const box = document.getElementById('gg-float-cart-confirm');
+            if (box) box.classList.add('hidden');
+            aktualisiereFloatWarenkorb();
+        }
+        function oeffneFloatWarenkorbWieder() {
+            ggFloatCartManuellGeschlossen = false;
+            aktualisiereFloatWarenkorb();
         }
         function initialisiereFloatWarenkorb() {
             const el = document.getElementById('gg-float-cart');
@@ -4233,6 +4241,7 @@ select,input,textarea,button{touch-action:manipulation}
             };
             el.addEventListener('pointerdown', (ev) => {
                 if (ev.button != null && ev.button !== 0) return;
+                if (ev.target && ev.target.closest && ev.target.closest('button')) return;
                 const rect = el.getBoundingClientRect();
                 ggFloatCartDrag = {
                     pointer: ev.pointerId,
@@ -4804,6 +4813,7 @@ select,input,textarea,button{touch-action:manipulation}
                 `Mitglied: ${res.member || 'unbekannt'}; Menge: ${menge} g; Betrag: ${preis.toFixed(2)} €; Kontingent zurück: ${menge} g; Grund: ${grund || 'nicht angegeben'}`
             );
 
+            ggBalanceAnzeigeWert = null;
             rendereAlles();
             rendereReservierungen();
             rendereFinanzzahlen();
@@ -5489,11 +5499,14 @@ select,input,textarea,button{touch-action:manipulation}
         }
 
         async function speichereWissensEintrag() {
-            const trigger = document.getElementById('admin-ai-trigger').value.toLowerCase().trim();
+            const trigger = ggNormalisiereFrage(document.getElementById('admin-ai-trigger').value);
             const response = document.getElementById('admin-ai-response').value.trim();
 
             if (!trigger || !response) { alert("Bitte Trigger und Antwort eingeben."); return; }
 
+            vereinWissen = Array.isArray(vereinWissen) ? vereinWissen : [];
+            const vorhandener = vereinWissen.findIndex(w => ggNormalisiereFrage(w && w.trigger) === trigger);
+            if (vorhandener >= 0) vereinWissen.splice(vorhandener, 1);
             vereinWissen.unshift({ trigger, response });
             await speichereVerschlüsseltenState('vereinWissen', vereinWissen);
             rendereWissensbasis();
@@ -5581,28 +5594,41 @@ select,input,textarea,button{touch-action:manipulation}
         }
         function ggTriggerListe(raw) {
             return String(raw || '')
-                .toLowerCase()
                 .split(/[,;/|]+/)
-                .map(s => s.trim())
+                .map(s => ggNormalisiereFrage(s))
                 .filter(Boolean);
         }
         function ggFrageTrifftTrigger(frage, trigger) {
-            if (!frage || !trigger) return false;
-            if (frage.includes(trigger)) return true;
-            const tokens = frage.split(' ').filter(Boolean);
-            if (tokens.includes(trigger)) return true;
-            if (trigger.length >= 4) {
-                return tokens.some(tok => tok === trigger || tok.startsWith(trigger) || trigger.startsWith(tok) && tok.length >= 4);
+            const f = ggNormalisiereFrage(frage);
+            const t = ggNormalisiereFrage(trigger);
+            if (!f || !t) return false;
+            if (f === t) return true;
+            if (f.includes(t)) return true;
+            const tokens = f.split(' ').filter(Boolean);
+            if (tokens.includes(t)) return true;
+            if (t.length >= 3) {
+                return tokens.some(tok => tok === t || tok.startsWith(t) || (t.startsWith(tok) && tok.length >= 3));
             }
             return false;
+        }
+        async function ggLadeVereinWissenAktuell() {
+            try {
+                const bestand = Array.isArray(vereinWissen) ? vereinWissen : [];
+                const geladen = await ladeVerschlüsseltenState('vereinWissen', bestand);
+                if (Array.isArray(geladen)) vereinWissen = geladen;
+            } catch (_) {}
+            if (!Array.isArray(vereinWissen)) vereinWissen = [];
+            return vereinWissen;
         }
         function ggFindeWissensAntwort(text) {
             const frage = ggNormalisiereFrage(text);
             const eintraege = Array.isArray(vereinWissen) ? vereinWissen : [];
             for (const entry of eintraege) {
-                const triggers = ggTriggerListe(entry && entry.trigger);
+                const rohTrigger = (entry && (entry.trigger || entry.Trigger || '')) || '';
+                const triggers = ggTriggerListe(rohTrigger);
                 if (triggers.some(tr => ggFrageTrifftTrigger(frage, tr))) {
-                    return String(entry.response || '').trim();
+                    const antwort = String((entry && (entry.response || entry.antwort || '')) || '').trim();
+                    if (antwort) return antwort;
                 }
             }
             // eingebaute Fallbacks, falls Admin-Trigger fehlen oder zu eng sind
@@ -5621,7 +5647,7 @@ select,input,textarea,button{touch-action:manipulation}
             return 'Dazu habe ich gerade keinen passenden Eintrag. Formuliere kürzer (z. B. „Support“, „Menge“, „Beitrag“) oder wende dich an den Vorstand.';
         }
 
-        function sendeKanalNachricht() {
+        async function sendeKanalNachricht() {
             const input = document.getElementById('ai-input');
             const history = document.getElementById('ai-chat-history');
             if (!input || !history) return;
@@ -5638,16 +5664,15 @@ select,input,textarea,button{touch-action:manipulation}
             const verlauf = ggChatLeseVerlauf();
             verlauf.push({ role: 'user', text: text });
 
-            setTimeout(() => {
-                let botAntwort = ggFindeWissensAntwort(text);
-                const botBubble = document.createElement('div');
-                botBubble.className = "bg-zinc-800/80 p-3 rounded-2xl rounded-tl-none border border-white/5 text-white/90 leading-relaxed mr-8";
-                botBubble.textContent = botAntwort;
-                history.appendChild(botBubble);
-                history.scrollTop = history.scrollHeight;
-                verlauf.push({ role: 'bot', text: botAntwort });
-                ggChatSchreibeVerlauf(verlauf);
-            }, 500);
+            await ggLadeVereinWissenAktuell();
+            const botAntwort = ggFindeWissensAntwort(text);
+            const botBubble = document.createElement('div');
+            botBubble.className = "bg-zinc-800/80 p-3 rounded-2xl rounded-tl-none border border-white/5 text-white/90 leading-relaxed mr-8";
+            botBubble.textContent = botAntwort;
+            history.appendChild(botBubble);
+            history.scrollTop = history.scrollHeight;
+            verlauf.push({ role: 'bot', text: botAntwort });
+            ggChatSchreibeVerlauf(verlauf);
         }
 
 
@@ -7213,10 +7238,24 @@ select,input,textarea,button{touch-action:manipulation}
         </div>
     </nav>
     <div id="gg-float-cart" class="hidden glass-card border border-[#22ffaa]/40 rounded-2xl p-3 shadow-xl shadow-black/40">
-        <p class="text-[11px] font-black text-[#22ffaa] mb-1"><i class="fa-solid fa-basket-shopping mr-1"></i> Meine Reservierung</p>
+        <div class="flex items-start justify-between gap-2 mb-1">
+            <p class="text-[11px] font-black text-[#22ffaa]"><i class="fa-solid fa-basket-shopping mr-1"></i> Abgabe-Warenkorb</p>
+            <button type="button" onclick="ggFloatCartFrageSchliessen(event)" class="w-6 h-6 rounded-lg bg-white/10 border border-white/15 text-white font-black text-sm leading-none" title="Schließen">×</button>
+        </div>
+        <p class="text-[9px] text-white/45 leading-relaxed mb-2">Abgabe-Warenkorb: Hier werden deine ausgewählten Sorten und Mengen gesammelt. Du kannst den Warenkorb verschieben oder schließen. Deine Auswahl bleibt dabei erhalten.</p>
         <p id="gg-float-cart-n" class="text-[11px] text-white/80">0 Sorten / 0 g</p>
         <p class="text-[11px] text-white/60">Gesamt: <span id="gg-float-cart-g" class="text-white font-bold">0 g</span></p>
         <p class="text-[11px] text-[#22ffaa] font-black" id="gg-float-cart-p">0,00 €</p>
+        <div id="gg-float-cart-confirm" class="hidden mt-2 pt-2 border-t border-white/10">
+            <p class="text-[10px] text-white mb-2">Abgabe-Warenkorb schließen?</p>
+            <div class="grid grid-cols-2 gap-1.5">
+                <button type="button" onclick="ggFloatCartConfirmNein(event)" class="bg-white/10 border border-white/15 text-white font-bold py-1.5 rounded-lg text-[10px]">Abbrechen</button>
+                <button type="button" onclick="ggFloatCartConfirmJa(event)" class="bg-[#22ffaa] text-black font-black py-1.5 rounded-lg text-[10px]">Schließen</button>
+            </div>
+        </div>
     </div>
+    <button type="button" id="gg-float-cart-reopen" class="hidden glass-card border border-[#22ffaa]/40 text-[#22ffaa] shadow-xl shadow-black/40" onclick="oeffneFloatWarenkorbWieder()" title="Warenkorb öffnen">
+        <i class="fa-solid fa-basket-shopping"></i>
+    </button>
 </body>
 </html>
