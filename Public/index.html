@@ -264,7 +264,7 @@
             position: fixed;
             inset: 0;
             background: rgba(0,0,0,0.55);
-            z-index: 80;
+            z-index: 240;
         }
         #admin-drawer-overlay.open { display: block; }
         #admin-drawer {
@@ -272,23 +272,30 @@
             top: 0;
             left: 0;
             height: 100%;
-            width: min(82vw, 320px);
+            width: min(86vw, 340px);
             background: #101018;
             border-right: 1px solid rgba(255,255,255,0.1);
-            z-index: 81;
+            z-index: 241;
             transform: translateX(-105%);
             transition: transform 0.22s ease;
             overflow-y: auto;
-            padding: 16px 12px 80px;
+            padding: 16px 12px 96px;
+            -webkit-overflow-scrolling: touch;
         }
         #admin-drawer.open { transform: translateX(0); }
+        #admin-drawer-toggle {
+            display: inline-flex !important;
+            align-items: center;
+            justify-content: center;
+        }
         @media (max-width: 767px) {
             .admin-subnav { display: none; }
         }
-        @media (min-width: 768px) {
-            #admin-drawer-toggle { display: none !important; }
-            #admin-drawer, #admin-drawer-overlay { display: none !important; }
+        html.gg-theme-light body {
+            background-color: #eef1f4;
+            color: #12141a;
         }
+        html.gg-log-compact #admin-logs-list details > div { display: none; }
         /* Wenn ein Login vom Start-Gate geöffnet wird, darf das Gate nicht über dem Dialog liegen. */
         body.gate-modal-open #security-gate { visibility: hidden !important; pointer-events: none !important; }
         #security-gate { position: fixed; inset: 0; z-index: 9999; background: radial-gradient(circle at top, rgba(34,255,170,.12), #08080c 45%); display:flex; align-items:center; justify-content:center; padding:20px; }
@@ -746,8 +753,8 @@ select,input,textarea,button{touch-action:manipulation}
         <div id="bereich-vorstand" class="ansatz-bereich px-4 pt-4">
             <div class="flex justify-between items-center mb-3">
                 <div class="flex items-center gap-2 min-w-0">
-                    <button type="button" id="admin-drawer-toggle" onclick="oeffneAdminDrawer()" class="w-9 h-9 shrink-0 rounded-xl bg-white/10 border border-white/10 text-white" aria-label="Verwaltungsmenü">
-                        <i class="fa-solid fa-bars"></i>
+                    <button type="button" id="admin-drawer-toggle" onclick="oeffneAdminDrawer()" class="w-11 h-11 shrink-0 rounded-xl bg-[#22ffaa] text-black border border-[#22ffaa] shadow-lg shadow-[#22ffaa]/20" aria-label="Verwaltungsmenü öffnen">
+                        <i class="fa-solid fa-bars text-base"></i>
                     </button>
                     <div>
                     <span class="kcang-badge">VERWALTUNG</span>
@@ -790,25 +797,37 @@ select,input,textarea,button{touch-action:manipulation}
                     <p class="text-xs font-black text-[#22ffaa]">Verwaltung</p>
                     <button type="button" onclick="schliesseAdminDrawer()" class="w-8 h-8 rounded-lg bg-white/10 text-white"><i class="fa-solid fa-xmark"></i></button>
                 </div>
-                <div class="space-y-1 text-xs">
-                    <button type="button" onclick="wechsleUnterkapitelAusDrawer('terminal')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">⚡ Abgabe-Terminal</button>
-                    <button type="button" onclick="wechsleUnterkapitelAusDrawer('reservierungen')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">📦 Reservierungen</button>
-                    <button type="button" onclick="wechsleUnterkapitelAusDrawer('standort')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">📍 Standorteinstellung</button>
-                    <button type="button" onclick="wechsleUnterkapitelAusDrawer('beitraege')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">💳 Beiträge</button>
-                    <button type="button" onclick="wechsleUnterkapitelAusDrawer('wissen')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">🤖 KI-Wissen</button>
-                    <button type="button" onclick="wechsleUnterkapitelAusDrawer('mitgliederwissen')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">📚 Mitgliederwissen</button>
-                    <button type="button" onclick="wechsleUnterkapitelAusDrawer('compliance')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">🛡️ Compliance</button>
-                    <button type="button" onclick="wechsleUnterkapitelAusDrawer('qualitaet')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">🧪 Qualität</button>
-                    <button type="button" onclick="wechsleUnterkapitelAusDrawer('rueckruf')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">🚨 Rückruf</button>
-                    <button type="button" onclick="wechsleUnterkapitelAusDrawer('mitteilungen')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">📰 News</button>
-                    <button type="button" onclick="wechsleUnterkapitelAusDrawer('buchhaltung')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">💶 Finanzen</button>
-                    <button type="button" onclick="wechsleUnterkapitelAusDrawer('sortiment')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">🌿 Sorten</button>
-                    <button type="button" onclick="wechsleUnterkapitelAusDrawer('personen')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">👥 Mitglieder</button>
-                    <button type="button" onclick="wechsleUnterkapitelAusDrawer('protokolle')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">📋 Abgabe-Log</button>
-                    <button type="button" onclick="wechsleUnterkapitelAusDrawer('zutritt')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">🚪 Zutrittsprotokoll</button>
-                    <button type="button" onclick="wechsleUnterkapitelAusDrawer('darstellung')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">🎨 Darstellung</button>
-                    <button type="button" onclick="wechsleUnterkapitelAusDrawer('passphrase')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">🔐 Passphrase</button>
-                    <button type="button" onclick="wechsleUnterkapitelAusDrawer('berechtigungen')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">🛡️ Admins</button>
+                <div class="space-y-3 text-xs">
+                    <div>
+                        <p class="text-[9px] font-black text-white/40 uppercase tracking-wider px-1 mb-1">Betrieb</p>
+                        <button type="button" onclick="wechsleUnterkapitelAusDrawer('terminal')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white mb-1">⚡ Abgabe-Terminal</button>
+                        <button type="button" onclick="wechsleUnterkapitelAusDrawer('reservierungen')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white mb-1">📦 Reservierungen</button>
+                        <button type="button" onclick="wechsleUnterkapitelAusDrawer('sortiment')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white mb-1">🌿 Sorten</button>
+                        <button type="button" onclick="wechsleUnterkapitelAusDrawer('personen')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">👥 Mitglieder</button>
+                    </div>
+                    <div>
+                        <p class="text-[9px] font-black text-white/40 uppercase tracking-wider px-1 mb-1">Protokolle</p>
+                        <button type="button" onclick="wechsleUnterkapitelAusDrawer('protokolle')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white mb-1">📋 Abgabe-Log</button>
+                        <button type="button" onclick="wechsleUnterkapitelAusDrawer('zutritt')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white mb-1">🚪 Zutrittsprotokoll</button>
+                        <button type="button" onclick="wechsleUnterkapitelAusDrawer('buchhaltung')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">💶 Finanzen</button>
+                    </div>
+                    <div>
+                        <p class="text-[9px] font-black text-white/40 uppercase tracking-wider px-1 mb-1">Verwaltung</p>
+                        <button type="button" onclick="wechsleUnterkapitelAusDrawer('standort')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white mb-1">📍 Standorteinstellung</button>
+                        <button type="button" onclick="wechsleUnterkapitelAusDrawer('beitraege')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white mb-1">💳 Beiträge</button>
+                        <button type="button" onclick="wechsleUnterkapitelAusDrawer('mitteilungen')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white mb-1">📰 News</button>
+                        <button type="button" onclick="wechsleUnterkapitelAusDrawer('rueckruf')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white mb-1">🚨 Rückruf</button>
+                        <button type="button" onclick="wechsleUnterkapitelAusDrawer('compliance')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white mb-1">🛡️ Compliance</button>
+                        <button type="button" onclick="wechsleUnterkapitelAusDrawer('qualitaet')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white mb-1">🧪 Qualität</button>
+                        <button type="button" onclick="wechsleUnterkapitelAusDrawer('wissen')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white mb-1">🤖 KI-Wissen</button>
+                        <button type="button" onclick="wechsleUnterkapitelAusDrawer('mitgliederwissen')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">📚 Mitgliederwissen</button>
+                    </div>
+                    <div>
+                        <p class="text-[9px] font-black text-white/40 uppercase tracking-wider px-1 mb-1">Einstellungen</p>
+                        <button type="button" onclick="wechsleUnterkapitelAusDrawer('darstellung')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white mb-1">🎨 Darstellung</button>
+                        <button type="button" onclick="wechsleUnterkapitelAusDrawer('passphrase')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white mb-1">🔐 Passphrase</button>
+                        <button type="button" onclick="wechsleUnterkapitelAusDrawer('berechtigungen')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">🛡️ Admins</button>
+                    </div>
                 </div>
             </aside>
 
@@ -1306,7 +1325,27 @@ select,input,textarea,button{touch-action:manipulation}
                     </h3>
                     <p class="text-[10px] text-white/60 mb-3">Lückenlose Aufzeichnung aller Weitergaben.</p>
                     <p class="text-[9px] text-white/40 mb-2">Alle Abgaben werden hier chronologisch und chargenbezogen dokumentiert.</p>
-                    <div id="admin-logs-list" class="space-y-2 text-xs"></div>
+                    <div class="mb-3">
+                        <button type="button" id="abgabe-mitglieder-toggle" onclick="klappeAbgabeMitgliederListe()" class="w-full text-left text-[10px] font-bold bg-white/10 hover:bg-white/15 border border-white/10 px-2.5 py-1.5 rounded-lg flex items-center justify-between">
+                            <span id="abgabe-mitglieder-toggle-label">Mitglieder anzeigen</span>
+                            <span id="abgabe-mitglieder-toggle-icon">▾</span>
+                        </button>
+                        <div id="abgabe-mitglieder-panel" class="hidden mt-2 max-h-40 overflow-y-auto rounded-xl border border-white/10 bg-zinc-900/80">
+                            <button type="button" onclick="setzeAbgabeMitgliedFilterZurueck()" class="w-full text-left px-2.5 py-1.5 text-[10px] font-bold text-[#22ffaa] border-b border-white/5">Alle Mitglieder</button>
+                            <div id="abgabe-mitglieder-list"></div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2 text-[10px]">
+                        <input id="abgabe-log-suche" type="search" placeholder="Suche Mitglied oder ID…" oninput="rendereProtokolle()" class="w-full bg-zinc-900 border border-white/10 text-white px-2.5 py-2 rounded-xl">
+                        <input id="abgabe-log-von" type="date" onchange="rendereProtokolle()" class="w-full bg-zinc-900 border border-white/10 text-white px-2.5 py-2 rounded-xl">
+                        <input id="abgabe-log-bis" type="date" onchange="rendereProtokolle()" class="w-full bg-zinc-900 border border-white/10 text-white px-2.5 py-2 rounded-xl">
+                    </div>
+                    <div class="flex flex-wrap gap-2 mb-3">
+                        <button type="button" onclick="setzeAbgabeLogSchnellfilter('heute')" class="text-[10px] font-bold bg-white/10 hover:bg-white/15 border border-white/10 px-2.5 py-1.5 rounded-lg">Heute</button>
+                        <button type="button" onclick="setzeAbgabeLogSchnellfilter('woche')" class="text-[10px] font-bold bg-white/10 hover:bg-white/15 border border-white/10 px-2.5 py-1.5 rounded-lg">Diese Woche</button>
+                        <button type="button" onclick="setzeAbgabeLogSchnellfilter('alle')" class="text-[10px] font-bold bg-white/10 hover:bg-white/15 border border-white/10 px-2.5 py-1.5 rounded-lg">Alle</button>
+                    </div>
+                    <div id="admin-logs-list" class="space-y-2 text-xs max-h-80 overflow-y-auto no-scrollbar"></div>
                 </div>
 
                 <div class="glass-card rounded-2xl p-3 border border-[#22ffaa]/20">
@@ -1379,6 +1418,49 @@ select,input,textarea,button{touch-action:manipulation}
                     <div class="mt-3 bg-zinc-900/70 border border-white/10 rounded-2xl p-3 text-[10px] text-white/55 leading-relaxed">
                         <strong class="text-white/80">AUS:</strong> Der komplette SEPA-Bereich wird aus der Mitgliederansicht entfernt. An derselben Stelle erscheint ausschließlich das fest hinterlegte Green-Generation-Logo.
                         <br><strong class="text-white/80">EIN:</strong> Der vorhandene SEPA-Bereich bleibt unverändert sichtbar.
+                    </div>
+                </div>
+                <div class="glass-card rounded-2xl p-4 border border-white/10">
+                    <h3 class="font-bold text-xs text-[#22ffaa] mb-3 flex items-center gap-x-1.5"><i class="fa-solid fa-sliders"></i> Zentrale Einstellungen</h3>
+                    <div class="space-y-3 text-xs">
+                        <div>
+                            <p class="text-[10px] font-bold text-white/50 mb-1">Darstellung</p>
+                            <div class="grid grid-cols-3 gap-2">
+                                <button type="button" onclick="setzeUiEinstellung('theme','dark')" class="bg-white/10 border border-white/10 rounded-lg py-2">Dunkel</button>
+                                <button type="button" onclick="setzeUiEinstellung('theme','light')" class="bg-white/10 border border-white/10 rounded-lg py-2">Hell</button>
+                                <button type="button" onclick="setzeUiEinstellung('theme','system')" class="bg-white/10 border border-white/10 rounded-lg py-2">System</button>
+                            </div>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold text-white/50 mb-1">Schriftgröße</p>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button type="button" onclick="setzeUiEinstellung('font','normal')" class="bg-white/10 border border-white/10 rounded-lg py-2">Normal</button>
+                                <button type="button" onclick="setzeUiEinstellung('font','large')" class="bg-white/10 border border-white/10 rounded-lg py-2">Größer</button>
+                            </div>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold text-white/50 mb-1">Bedienung</p>
+                            <label class="flex items-center justify-between bg-zinc-900/70 border border-white/10 rounded-lg px-3 py-2 mb-2">
+                                <span>Auto-Aktualisierung</span>
+                                <input id="ui-autorefresh" type="checkbox" onchange="setzeUiEinstellung('autoRefresh', this.checked)" class="accent-[#22ffaa]">
+                            </label>
+                            <select id="ui-autorefresh-ms" onchange="setzeUiEinstellung('autoRefreshMs', Number(this.value))" class="w-full bg-zinc-900 border border-white/10 text-white px-3 py-2 rounded-xl">
+                                <option value="15000">15 Sekunden</option>
+                                <option value="30000">30 Sekunden</option>
+                                <option value="60000">60 Sekunden</option>
+                            </select>
+                        </div>
+                        <label class="flex items-center justify-between bg-zinc-900/70 border border-white/10 rounded-lg px-3 py-2">
+                            <span>Letzten Admin-Bereich merken</span>
+                            <input id="ui-remember-tab" type="checkbox" onchange="setzeUiEinstellung('rememberAdminTab', this.checked)" class="accent-[#22ffaa]">
+                        </label>
+                        <div>
+                            <p class="text-[10px] font-bold text-white/50 mb-1">Log-Darstellung</p>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button type="button" onclick="setzeUiEinstellung('logDisplay','compact')" class="bg-white/10 border border-white/10 rounded-lg py-2">Kompakt</button>
+                                <button type="button" onclick="setzeUiEinstellung('logDisplay','normal')" class="bg-white/10 border border-white/10 rounded-lg py-2">Normal</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1730,6 +1812,7 @@ select,input,textarea,button{touch-action:manipulation}
             'vereinQualitaetspruefungen', 'vereinRueckrufe', 'vereinAudit',
             'vereinGuthabenHistorie', 'vereinReservierungen', 'vereinUmsatz',
             'vereinAbholzeitfenster', 'vereinSepaSichtbar', 'vereinPraevention', 'vereinZutritte',
+            'vereinUiEinstellungen',
             'standortKoordinaten', 'mitglieder', 'sorten'
         ]);
         // Gerätelokal, niemals nach D1: lastQuotaResetMonth, GG_RO_accessibilityScale
@@ -2118,6 +2201,8 @@ select,input,textarea,button{touch-action:manipulation}
         let vereinGuthabenHistorie = [];
         // Standardmäßig sichtbar, damit bestehende Installationen unverändert starten.
         let vereinSepaSichtbar = true;
+        let vereinUiEinstellungen = { theme: 'dark', font: 'normal', autoRefresh: true, autoRefreshMs: 25000, rememberAdminTab: false, lastAdminTab: 'terminal', logDisplay: 'normal' };
+        let ggAbgabeLogFilterId = '';
         let vereinPraevention = { name: '', contact: '' };
         let mitgliedSession = null;
         let standortKoordinaten = { lat: 54.08985, lng: 12.14362 };
@@ -2324,6 +2409,8 @@ select,input,textarea,button{touch-action:manipulation}
             stoppeAutoRefreshTimer();
             if (!ggIstGeschuetzterBereichAktiv()) return;
             if (document.hidden) return;
+            if (vereinUiEinstellungen && vereinUiEinstellungen.autoRefresh === false) return;
+            const ms = Number(vereinUiEinstellungen && vereinUiEinstellungen.autoRefreshMs) || GG_AUTO_REFRESH_MS;
             ggAutoRefreshTimer = setInterval(() => {
                 if (document.hidden) return;
                 if (!ggIstGeschuetzterBereichAktiv()) {
@@ -2331,7 +2418,7 @@ select,input,textarea,button{touch-action:manipulation}
                     return;
                 }
                 ggAutoRefreshJetzt();
-            }, GG_AUTO_REFRESH_MS);
+            }, ms);
         }
 
         async function ggAutoRefreshJetzt() {
@@ -2587,6 +2674,9 @@ select,input,textarea,button{touch-action:manipulation}
             if (!Array.isArray(vereinGuthabenHistorie)) vereinGuthabenHistorie = [];
             vereinSepaSichtbar = await ladeVerschlüsseltenState('vereinSepaSichtbar', true);
             if (typeof vereinSepaSichtbar !== 'boolean') vereinSepaSichtbar = true;
+            const uiGeladen = await ladeVerschlüsseltenState('vereinUiEinstellungen', vereinUiEinstellungen);
+            if (uiGeladen && typeof uiGeladen === 'object') vereinUiEinstellungen = Object.assign(vereinUiEinstellungen, uiGeladen);
+            wendeUiEinstellungenAn();
             vereinPraevention = await ladeVerschlüsseltenState('vereinPraevention', {name:'', contact:''});
 
             // Legacy-Daten sicher ergänzen, ohne bestehende Daten zu überschreiben
@@ -2923,8 +3013,10 @@ select,input,textarea,button{touch-action:manipulation}
             if (zielNav) zielNav.classList.add('nav-item-active');
 
             if (ansichtId === 'vorstand') {
-                try { wechsleUnterkapitel('terminal'); } catch (err) {
+                const last = (vereinUiEinstellungen.rememberAdminTab && vereinUiEinstellungen.lastAdminTab) ? vereinUiEinstellungen.lastAdminTab : 'terminal';
+                try { wechsleUnterkapitel(last); } catch (err) {
                     console.error('Admin-Terminal konnte nicht aktiviert werden', err);
+                    try { wechsleUnterkapitel('terminal'); } catch (_) {}
                 }
                 setTimeout(() => {
                     document.querySelectorAll('[data-gg-global-receipts="true"]').forEach(el => el.remove());
@@ -2983,11 +3075,15 @@ select,input,textarea,button{touch-action:manipulation}
                 buchhaltung: rendereFinanzzahlen,
                 reservierungen: rendereReservierungen,
                 terminal: befüllePosOptionen,
-                darstellung: aktualisiereSepaAnzeige,
+                darstellung: () => { aktualisiereSepaAnzeige(); fuelleUiEinstellungFelder(); },
                 berechtigungen: rendereAdminAccounts
             };
             try { if (tabRender[kapitelId]) tabRender[kapitelId](); } catch (err) {
                 console.error('Tab-Renderfehler in ' + kapitelId, err);
+            }
+            if (vereinUiEinstellungen && vereinUiEinstellungen.rememberAdminTab) {
+                vereinUiEinstellungen.lastAdminTab = kapitelId;
+                speichereVerschlüsseltenState('vereinUiEinstellungen', vereinUiEinstellungen).catch(() => {});
             }
             schliesseAdminDrawer();
 
@@ -3026,6 +3122,43 @@ select,input,textarea,button{touch-action:manipulation}
             await speichereVerschlüsseltenState('vereinSepaSichtbar', vereinSepaSichtbar);
             await protokolliereAudit('sepa_display_changed', vereinSepaSichtbar ? 'SEPA-Anzeige aktiviert' : 'SEPA-Anzeige deaktiviert');
             aktualisiereSepaAnzeige();
+        }
+
+        function ggHoleUiEinstellungen() {
+            if (!vereinUiEinstellungen || typeof vereinUiEinstellungen !== 'object') {
+                vereinUiEinstellungen = { theme: 'dark', font: 'normal', autoRefresh: true, autoRefreshMs: 25000, rememberAdminTab: false, lastAdminTab: 'terminal', logDisplay: 'normal' };
+            }
+            return vereinUiEinstellungen;
+        }
+        function wendeUiEinstellungenAn() {
+            const ui = ggHoleUiEinstellungen();
+            const html = document.documentElement;
+            let theme = ui.theme || 'dark';
+            if (theme === 'system') theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+            html.classList.toggle('gg-theme-light', theme === 'light');
+            html.classList.toggle('dark', theme !== 'light');
+            if (ui.font === 'large') setzeBarrierefreiheitsGroesse(1.5);
+            else setzeBarrierefreiheitsGroesse(1);
+            html.classList.toggle('gg-log-compact', ui.logDisplay === 'compact');
+            fuelleUiEinstellungFelder();
+            starteAutoRefreshTimer();
+        }
+        function fuelleUiEinstellungFelder() {
+            const ui = ggHoleUiEinstellungen();
+            const ar = document.getElementById('ui-autorefresh');
+            if (ar) ar.checked = ui.autoRefresh !== false;
+            const ms = document.getElementById('ui-autorefresh-ms');
+            if (ms) ms.value = String(ui.autoRefreshMs === 15000 || ui.autoRefreshMs === 60000 ? ui.autoRefreshMs : 30000);
+            const tab = document.getElementById('ui-remember-tab');
+            if (tab) tab.checked = !!ui.rememberAdminTab;
+        }
+        async function setzeUiEinstellung(feld, wert) {
+            if (!istVorstandEingeloggt) return;
+            const ui = ggHoleUiEinstellungen();
+            ui[feld] = wert;
+            vereinUiEinstellungen = ui;
+            await speichereVerschlüsseltenState('vereinUiEinstellungen', vereinUiEinstellungen);
+            wendeUiEinstellungenAn();
         }
 
         function steuereVorstandZugriff() {
@@ -5098,12 +5231,108 @@ select,input,textarea,button{touch-action:manipulation}
             });
         }
 
+        function ggParseProtokollDatum(p) {
+            const s = String(p && p.date || '');
+            const iso = s.match(/(\d{4}-\d{2}-\d{2})/);
+            if (iso) return iso[1];
+            const de = s.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+            if (!de) return '';
+            return de[3] + '-' + String(de[2]).padStart(2, '0') + '-' + String(de[1]).padStart(2, '0');
+        }
+        function klappeAbgabeMitgliederListe() {
+            if (!istVorstandEingeloggt) return;
+            const panel = document.getElementById('abgabe-mitglieder-panel');
+            const icon = document.getElementById('abgabe-mitglieder-toggle-icon');
+            if (!panel) return;
+            const oeffnen = panel.classList.contains('hidden');
+            panel.classList.toggle('hidden', !oeffnen);
+            if (icon) icon.textContent = oeffnen ? '▴' : '▾';
+            if (oeffnen) rendereAbgabeMitgliederListe();
+        }
+        function rendereAbgabeMitgliederListe() {
+            const el = document.getElementById('abgabe-mitglieder-list');
+            if (!el) return;
+            const mitglieder = Array.isArray(vereinMitglieder) ? vereinMitglieder.slice() : [];
+            mitglieder.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'de'));
+            if (!mitglieder.length) {
+                el.innerHTML = '<p class="text-white/40 italic text-center py-2 text-[10px]">Keine Mitglieder vorhanden.</p>';
+                return;
+            }
+            el.innerHTML = mitglieder.map(m => {
+                const id = String(m.id || '');
+                const sel = ggAbgabeLogFilterId && String(ggAbgabeLogFilterId) === id;
+                const cls = sel ? 'bg-[#22ffaa]/10 text-[#22ffaa]' : 'text-white/80 hover:bg-white/5';
+                return '<button type="button" onclick=\'waehleAbgabeLogMitglied(' + JSON.stringify(id) + ')\' class="w-full text-left px-2.5 py-1.5 border-b border-white/5 ' + cls + '"><p class="font-bold text-[10px]">' + escapeHtml(m.name || 'Mitglied') + '</p><p class="text-[8px] font-mono text-white/40">' + escapeHtml(id) + '</p></button>';
+            }).join('');
+        }
+        function waehleAbgabeLogMitglied(id) {
+            ggAbgabeLogFilterId = String(id || '');
+            const label = document.getElementById('abgabe-mitglieder-toggle-label');
+            const m = (vereinMitglieder || []).find(x => String(x.id) === ggAbgabeLogFilterId);
+            if (label) label.textContent = m ? String(m.name || m.id) : 'Mitglieder anzeigen';
+            document.getElementById('abgabe-mitglieder-panel')?.classList.add('hidden');
+            const icon = document.getElementById('abgabe-mitglieder-toggle-icon');
+            if (icon) icon.textContent = '▾';
+            rendereProtokolle();
+        }
+        function setzeAbgabeMitgliedFilterZurueck() {
+            ggAbgabeLogFilterId = '';
+            const label = document.getElementById('abgabe-mitglieder-toggle-label');
+            if (label) label.textContent = 'Mitglieder anzeigen';
+            document.getElementById('abgabe-mitglieder-panel')?.classList.add('hidden');
+            const icon = document.getElementById('abgabe-mitglieder-toggle-icon');
+            if (icon) icon.textContent = '▾';
+            rendereProtokolle();
+        }
+        function setzeAbgabeLogSchnellfilter(art) {
+            const von = document.getElementById('abgabe-log-von');
+            const bis = document.getElementById('abgabe-log-bis');
+            const today = new Date();
+            const iso = (d) => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+            if (art === 'heute') {
+                if (von) von.value = iso(today);
+                if (bis) bis.value = iso(today);
+            } else if (art === 'woche') {
+                const start = new Date(today);
+                const day = (start.getDay() + 6) % 7;
+                start.setDate(start.getDate() - day);
+                if (von) von.value = iso(start);
+                if (bis) bis.value = iso(today);
+            } else {
+                if (von) von.value = '';
+                if (bis) bis.value = '';
+            }
+            rendereProtokolle();
+        }
         function rendereProtokolle() {
             const list = document.getElementById('admin-logs-list');
             if (!list) return;
+            rendereAbgabeMitgliederListe();
+            const q = String(document.getElementById('abgabe-log-suche')?.value || '').trim().toLowerCase();
+            const von = document.getElementById('abgabe-log-von')?.value || '';
+            const bis = document.getElementById('abgabe-log-bis')?.value || '';
+            let rows = Array.isArray(vereinProtokolle) ? vereinProtokolle.slice() : [];
+            if (ggAbgabeLogFilterId) {
+                rows = rows.filter(p => String(p.member || '').includes(ggAbgabeLogFilterId) || String(p.memberId || '') === String(ggAbgabeLogFilterId));
+            }
+            if (q) {
+                rows = rows.filter(p =>
+                    String(p.member || '').toLowerCase().includes(q) ||
+                    String(p.strain || '').toLowerCase().includes(q) ||
+                    String(p.batch || '').toLowerCase().includes(q)
+                );
+            }
+            if (von) rows = rows.filter(p => ggParseProtokollDatum(p) >= von);
+            if (bis) rows = rows.filter(p => {
+                const d = ggParseProtokollDatum(p);
+                return !d || d <= bis;
+            });
             list.innerHTML = '';
-
-            vereinProtokolle.forEach(p => {
+            if (!rows.length) {
+                list.innerHTML = '<p class="text-white/40 italic text-center py-4 text-xs">Keine Abgaben für die aktuelle Auswahl.</p>';
+                return;
+            }
+            rows.forEach(p => {
                 const card = document.createElement('details');
                 card.className = "bg-zinc-900/90 p-2.5 rounded-xl border border-white/5 text-[10px]";
                 card.innerHTML = `
@@ -5599,7 +5828,7 @@ select,input,textarea,button{touch-action:manipulation}
             } else {
                 ggScanMitgliedId = null;
                 if (title) title.textContent = 'Mitglied scannen';
-                if (hint) hint.textContent = 'Bitte zuerst den GreenGen-Mitglieder-QR scannen.';
+                if (hint) hint.textContent = 'Bitte den Mitglieder-QR oder den Abgabe-Barcode scannen.';
             }
         }
 
@@ -5647,11 +5876,7 @@ select,input,textarea,button{touch-action:manipulation}
 
             if (ggScanPhase !== 'sorte') {
                 if (sorteId) {
-                    ggSetzeScanFeedback('✕ Bitte zuerst Abgabe-QR oder Reservierungs-QR scannen', false);
-                    return;
-                }
-                if (memberIdClassic) {
-                    ggSetzeScanFeedback('✕ Bitte Abgabe-QR scannen (kein Eingangs-QR)', false);
+                    ggSetzeScanFeedback('✕ Bitte zuerst Mitglied oder Abgabe-Barcode scannen', false);
                     return;
                 }
                 if (resId) {
@@ -5666,11 +5891,12 @@ select,input,textarea,button{touch-action:manipulation}
                     setTimeout(() => { ggScanBusy = false; schliesseKameraScanner(); }, 700);
                     return;
                 }
-                if (!abgabeId) {
-                    ggSetzeScanFeedback('✕ Kein gültiger Abgabe-QR', false);
+                if (!abgabeId && !memberIdClassic) {
+                    ggSetzeScanFeedback('✕ Kein gültiger Mitglieder- oder Abgabe-Code', false);
                     return;
                 }
-                const mitglied = vereinMitglieder.find(m => String(m.id) === String(abgabeId));
+                const memberId = abgabeId || memberIdClassic;
+                const mitglied = vereinMitglieder.find(m => String(m.id) === String(memberId));
                 if (!mitglied) {
                     ggSetzeScanFeedback('✕ Unbekannter Mitgliedscode', false);
                     return;
