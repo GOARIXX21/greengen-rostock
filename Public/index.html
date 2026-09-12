@@ -228,6 +228,7 @@
             -webkit-appearance: none;
             width: 100%;
             background: transparent;
+            touch-action: none;
         }
         input[type=range]:focus {
             outline: none;
@@ -257,6 +258,37 @@
         body.pre-gate > #member-login-modal,
         body.pre-gate > #login-modal-overlay { visibility: visible !important; }
         body.gate-open > *:not(#security-gate) { visibility: visible !important; }
+
+        #admin-drawer-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.55);
+            z-index: 80;
+        }
+        #admin-drawer-overlay.open { display: block; }
+        #admin-drawer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: min(82vw, 320px);
+            background: #101018;
+            border-right: 1px solid rgba(255,255,255,0.1);
+            z-index: 81;
+            transform: translateX(-105%);
+            transition: transform 0.22s ease;
+            overflow-y: auto;
+            padding: 16px 12px 80px;
+        }
+        #admin-drawer.open { transform: translateX(0); }
+        @media (max-width: 767px) {
+            .admin-subnav { display: none; }
+        }
+        @media (min-width: 768px) {
+            #admin-drawer-toggle { display: none !important; }
+            #admin-drawer, #admin-drawer-overlay { display: none !important; }
+        }
         /* Wenn ein Login vom Start-Gate geöffnet wird, darf das Gate nicht über dem Dialog liegen. */
         body.gate-modal-open #security-gate { visibility: hidden !important; pointer-events: none !important; }
         #security-gate { position: fixed; inset: 0; z-index: 9999; background: radial-gradient(circle at top, rgba(34,255,170,.12), #08080c 45%); display:flex; align-items:center; justify-content:center; padding:20px; }
@@ -497,6 +529,8 @@ select,input,textarea,button{touch-action:manipulation}
                 </div>
             </div>
 
+            <div id="home-aktive-reservierung" class="hidden mb-5"></div>
+
             <div class="glass-card rounded-3xl p-4 mb-5 border border-[#22ffaa]/30 relative">
                 <div class="flex items-center justify-between pb-3 border-b border-white/10 mb-3">
                     <div class="flex items-center gap-x-2.5">
@@ -549,6 +583,27 @@ select,input,textarea,button{touch-action:manipulation}
                 <i class="fa-solid fa-search absolute left-3.5 top-3.5 text-white/40 text-xs"></i>
             </div>
             <div id="strains-list" class="space-y-3.5"></div>
+            <div id="reservierungs-warenkorb" class="glass-card rounded-2xl p-4 mt-4 mb-4 border border-[#22ffaa]/30">
+                <h3 class="font-bold text-xs text-[#22ffaa] mb-2 flex items-center gap-x-1.5"><i class="fa-solid fa-basket-shopping"></i> Meine Reservierung</h3>
+                <div id="warenkorb-zeilen" class="space-y-1.5 text-xs mb-3"></div>
+                <div class="flex justify-between text-xs font-bold border-t border-white/10 pt-2 mb-3">
+                    <span class="text-white/70">Gesamt: <span id="warenkorb-gesamt-g">0 g</span></span>
+                    <span class="text-[#22ffaa]" id="warenkorb-gesamt-preis">0,00 €</span>
+                </div>
+                <div class="bg-zinc-900/90 border border-white/10 rounded-xl p-3 mb-3 space-y-2 text-xs">
+                    <div>
+                        <label class="text-white/60 block mb-1 font-medium">Datum der Abholung</label>
+                        <input type="date" id="warenkorb-res-date" onchange="aktualisiereReservierungsKontrollen()" class="w-full bg-zinc-800 border border-white/10 text-white px-2.5 py-1.5 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="text-white/60 block mb-1 font-medium">Genaues Zeitfenster (Uhrzeit)</label>
+                        <select id="warenkorb-res-time" class="w-full bg-zinc-800 border border-white/10 text-white px-2.5 py-1.5 rounded-lg">
+                            <option value="">Bitte wählen...</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="button" onclick="schliesseWarenkorbReservierung()" class="w-full bg-[#22ffaa] text-black font-black py-3 rounded-xl text-xs active:scale-95 transition-all">Reservierung verbindlich abschließen</button>
+            </div>
         </div>
 
         <!-- BEREICH 3: FINANZEN -->
@@ -690,9 +745,14 @@ select,input,textarea,button{touch-action:manipulation}
         <!-- BEREICH 5: VORSTANDS & VERWALTUNGSPANEL -->
         <div id="bereich-vorstand" class="ansatz-bereich px-4 pt-4">
             <div class="flex justify-between items-center mb-3">
-                <div>
+                <div class="flex items-center gap-2 min-w-0">
+                    <button type="button" id="admin-drawer-toggle" onclick="oeffneAdminDrawer()" class="w-9 h-9 shrink-0 rounded-xl bg-white/10 border border-white/10 text-white" aria-label="Verwaltungsmenü">
+                        <i class="fa-solid fa-bars"></i>
+                    </button>
+                    <div>
                     <span class="kcang-badge">VERWALTUNG</span>
                     <h2 class="text-xl font-black mt-0.5">Vorstandspanel</h2>
+                    </div>
                 </div>
                 <div class="flex items-center gap-2">
                     <button onclick="wechsleAnsicht('home')" class="text-[11px] bg-white/10 text-white border border-white/10 px-2.5 py-1 rounded-lg font-bold hover:bg-white/15 active:scale-95 transition-all">
@@ -724,6 +784,33 @@ select,input,textarea,button{touch-action:manipulation}
                 <button onclick="wechsleUnterkapitel('passphrase')" id="sub-btn-passphrase" class="bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg whitespace-nowrap text-white/80">🔐 Passphrase</button>
                 <button onclick="wechsleUnterkapitel('berechtigungen')" id="sub-btn-berechtigungen" class="bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg whitespace-nowrap text-white/80">🛡️ Admins</button>
             </div>
+            <div id="admin-drawer-overlay" onclick="schliesseAdminDrawer()"></div>
+            <aside id="admin-drawer" aria-label="Verwaltungsmenü">
+                <div class="flex items-center justify-between mb-3">
+                    <p class="text-xs font-black text-[#22ffaa]">Verwaltung</p>
+                    <button type="button" onclick="schliesseAdminDrawer()" class="w-8 h-8 rounded-lg bg-white/10 text-white"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="space-y-1 text-xs">
+                    <button type="button" onclick="wechsleUnterkapitelAusDrawer('terminal')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">⚡ Abgabe-Terminal</button>
+                    <button type="button" onclick="wechsleUnterkapitelAusDrawer('reservierungen')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">📦 Reservierungen</button>
+                    <button type="button" onclick="wechsleUnterkapitelAusDrawer('standort')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">📍 Standorteinstellung</button>
+                    <button type="button" onclick="wechsleUnterkapitelAusDrawer('beitraege')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">💳 Beiträge</button>
+                    <button type="button" onclick="wechsleUnterkapitelAusDrawer('wissen')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">🤖 KI-Wissen</button>
+                    <button type="button" onclick="wechsleUnterkapitelAusDrawer('mitgliederwissen')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">📚 Mitgliederwissen</button>
+                    <button type="button" onclick="wechsleUnterkapitelAusDrawer('compliance')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">🛡️ Compliance</button>
+                    <button type="button" onclick="wechsleUnterkapitelAusDrawer('qualitaet')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">🧪 Qualität</button>
+                    <button type="button" onclick="wechsleUnterkapitelAusDrawer('rueckruf')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">🚨 Rückruf</button>
+                    <button type="button" onclick="wechsleUnterkapitelAusDrawer('mitteilungen')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">📰 News</button>
+                    <button type="button" onclick="wechsleUnterkapitelAusDrawer('buchhaltung')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">💶 Finanzen</button>
+                    <button type="button" onclick="wechsleUnterkapitelAusDrawer('sortiment')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">🌿 Sorten</button>
+                    <button type="button" onclick="wechsleUnterkapitelAusDrawer('personen')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">👥 Mitglieder</button>
+                    <button type="button" onclick="wechsleUnterkapitelAusDrawer('protokolle')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">📋 Abgabe-Log</button>
+                    <button type="button" onclick="wechsleUnterkapitelAusDrawer('zutritt')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">🚪 Zutrittsprotokoll</button>
+                    <button type="button" onclick="wechsleUnterkapitelAusDrawer('darstellung')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">🎨 Darstellung</button>
+                    <button type="button" onclick="wechsleUnterkapitelAusDrawer('passphrase')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">🔐 Passphrase</button>
+                    <button type="button" onclick="wechsleUnterkapitelAusDrawer('berechtigungen')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">🛡️ Admins</button>
+                </div>
+            </aside>
 
             <!-- UNTERKAPITEL 1: POS -->
             <div id="unterkapitel-terminal" class="kapitel-inhalt space-y-3">
@@ -747,7 +834,7 @@ select,input,textarea,button{touch-action:manipulation}
                             <label class="text-white/60 block mb-1 font-medium">Mitglied per Barcode / ID wählen</label>
                             <select id="pos-member-select" class="w-full bg-zinc-900 border border-white/10 text-white px-3 py-2 rounded-xl focus:outline-none focus:border-[#22ffaa]"></select>
                         </div>
-                        <div class="grid grid-cols-2 gap-2">
+                        <div class="grid grid-cols-2 gap-2" id="pos-einzel-felder">
                             <div>
                                 <label class="text-white/60 block mb-1 font-medium">Sorte / Batch</label>
                                 <select id="pos-strain-select" class="w-full bg-zinc-900 border border-white/10 text-white px-3 py-2 rounded-xl focus:outline-none focus:border-[#22ffaa]"></select>
@@ -757,9 +844,10 @@ select,input,textarea,button{touch-action:manipulation}
                                 <input id="pos-amount-input" type="number" value="10" max="25" class="w-full bg-zinc-900 border border-white/10 text-white px-3 py-2 rounded-xl focus:outline-none focus:border-[#22ffaa]">
                             </div>
                         </div>
-                        <button onclick="buxeAbgabeEin()" class="w-full bg-[#22ffaa] text-black font-black py-3 rounded-xl text-xs hover:bg-[#1ae89a] active:scale-95 transition-all shadow-lg shadow-[#22ffaa]/20 mt-1">
+                        <button id="pos-abgabe-button" onclick="buxeAbgabeEin()" class="w-full bg-[#22ffaa] text-black font-black py-3 rounded-xl text-xs hover:bg-[#1ae89a] active:scale-95 transition-all shadow-lg shadow-[#22ffaa]/20 mt-1">
                             <i class="fa-solid fa-barcode mr-1"></i> Abgabe buchen &amp; Abgabe-QR generieren
                         </button>
+                        <div id="pos-reservierung-hinweis" class="hidden text-[10px] text-[#22ffaa] bg-[#22ffaa]/10 border border-[#22ffaa]/20 rounded-xl px-2.5 py-2 mt-2"></div>
                         <button onclick="erzeugeInformationszettel()" class="w-full bg-white/10 text-white font-bold py-2.5 rounded-xl text-[10px] mt-2">Informationszettel für Weitergabe vorbereiten (§21)</button>
                     </div>
                 </div>
@@ -2024,6 +2112,9 @@ select,input,textarea,button{touch-action:manipulation}
         let ggEingangSitzungErledigt = false;
         let ggZutrittQuelle = 'unbekannt';
         let ggZutrittMitgliedFilterId = '';
+        let ggReservierungsWarenkorb = [];
+        let ggSliderPrefTimer = null;
+        let ggAktivePosReservierungId = null;
         let vereinGuthabenHistorie = [];
         // Standardmäßig sichtbar, damit bestehende Installationen unverändert starten.
         let vereinSepaSichtbar = true;
@@ -2507,7 +2598,7 @@ select,input,textarea,button{touch-action:manipulation}
                 const geburtsjahr = parseInt(m.birthYear, 10);
                 const alter = Number.isFinite(geburtsjahr) ? new Date().getFullYear() - geburtsjahr : 21;
                 const limit = alter >= 18 && alter < 21 ? 30 : 50;
-                return {...m, birthDate:m.birthDate||'', address:m.address||{street:'',city:''}, birthYear:m.birthYear||'', accessCode:m.accessCode||'', monthlyQuotaLimit:m.monthlyQuotaLimit||limit, quota:(typeof m.quota==='number'?m.quota:limit)};
+                return {...m, birthDate:m.birthDate||'', address:m.address||{street:'',city:''}, birthYear:m.birthYear||'', accessCode:m.accessCode||'', monthlyQuotaLimit:m.monthlyQuotaLimit||limit, quota:(typeof m.quota==='number'?m.quota:limit), strainQuantityPreferences:(m.strainQuantityPreferences && typeof m.strainQuantityPreferences==='object')?m.strainQuantityPreferences:{}};
             });
 
             vereinReservierungen = await ladeVerschlüsseltenState('vereinReservierungen', []);
@@ -2847,6 +2938,22 @@ select,input,textarea,button{touch-action:manipulation}
             if (ansichtId === 'wissen') rendereMitgliederInfos();
         }
 
+        function oeffneAdminDrawer() {
+            if (!istVorstandEingeloggt) return;
+            const d = document.getElementById('admin-drawer');
+            const o = document.getElementById('admin-drawer-overlay');
+            if (d) d.classList.add('open');
+            if (o) o.classList.add('open');
+        }
+        function schliesseAdminDrawer() {
+            const d = document.getElementById('admin-drawer');
+            const o = document.getElementById('admin-drawer-overlay');
+            if (d) d.classList.remove('open');
+            if (o) o.classList.remove('open');
+        }
+        function wechsleUnterkapitelAusDrawer(kapitelId) {
+            wechsleUnterkapitel(kapitelId);
+        }
         function wechsleUnterkapitel(kapitelId) {
             document.querySelectorAll('.kapitel-inhalt').forEach(el => el.classList.add('hidden'));
             const zielKapitel = document.getElementById(`unterkapitel-${kapitelId}`);
@@ -2882,6 +2989,7 @@ select,input,textarea,button{touch-action:manipulation}
             try { if (tabRender[kapitelId]) tabRender[kapitelId](); } catch (err) {
                 console.error('Tab-Renderfehler in ' + kapitelId, err);
             }
+            schliesseAdminDrawer();
 
             if (kapitelId === 'standort') {
                 setTimeout(initialisiereAdminKarte, 100);
@@ -3264,6 +3372,8 @@ select,input,textarea,button{touch-action:manipulation}
                 if (document.getElementById('reservation-balance-display')) document.getElementById('reservation-balance-display').textContent = '—';
                 if (document.getElementById('finanzen-balance-display')) document.getElementById('finanzen-balance-display').textContent = '—';
                 if (document.getElementById('finanzen-fee-amount-display')) document.getElementById('finanzen-fee-amount-display').innerHTML = '—';
+                const homeRes = document.getElementById('home-aktive-reservierung');
+                if (homeRes) { homeRes.classList.add('hidden'); homeRes.innerHTML = ''; }
                 return;
             }
 
@@ -3332,6 +3442,34 @@ select,input,textarea,button{touch-action:manipulation}
                 if (document.getElementById('reservation-balance-display')) document.getElementById('reservation-balance-display').textContent = '—';
                 if (document.getElementById('finanzen-balance-display')) document.getElementById('finanzen-balance-display').textContent = '—';
             }
+            rendereAktiveReservierungKarte(aktivesMitglied);
+        }
+
+        function rendereAktiveReservierungKarte(mitglied) {
+            const box = document.getElementById('home-aktive-reservierung');
+            if (!box) return;
+            if (!mitglied || !mitglied.id) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+            const aktiv = (vereinReservierungen || []).find(r =>
+                String(r.memberId) === String(mitglied.id) && ggReservierungIstAktiv(r)
+            );
+            if (!aktiv) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+            const items = Array.isArray(aktiv.items) && aktiv.items.length
+                ? aktiv.items
+                : [{ strain: aktiv.strain, grams: parseReservierungsGramm(aktiv) }];
+            const zeilen = items.map(it =>
+                '<p class="text-xs text-white">' + escapeHtml(it.strain || it.name || 'Sorte') + ' – ' + (it.grams || parseReservierungsGramm(it) || 0) + ' g</p>'
+            ).join('');
+            const total = aktiv.totalGrams || items.reduce((s, it) => s + (Number(it.grams) || 0), 0);
+            box.classList.remove('hidden');
+            box.innerHTML =
+                '<div class="glass-card rounded-3xl p-4 border border-[#22ffaa]/40 green-glow">' +
+                '<h3 class="font-bold text-xs text-[#22ffaa] mb-2"><i class="fa-solid fa-basket-shopping mr-1"></i> Aktive Reservierung</h3>' +
+                zeilen +
+                '<p class="text-xs font-black text-white mt-2">Gesamt: ' + total + ' g</p>' +
+                '<p class="text-[10px] text-white/60 mt-1">Abholung: ' + escapeHtml(aktiv.date || '—') + ' / ' + escapeHtml(aktiv.timeslot || aktiv.timeframe || '—') + '</p>' +
+                '<p class="text-[10px] text-[#22ffaa] font-bold mt-1">Status: ' + escapeHtml(aktiv.status || 'RESERVIERT') + '</p>' +
+                '<button type="button" onclick="oeffneGroßenQR(\'reservierung\', ' + JSON.stringify(String(aktiv.id)) + ')" class="mt-3 w-full bg-[#22ffaa]/10 border border-[#22ffaa]/30 text-[#22ffaa] font-bold py-2 rounded-xl text-xs">Reservierungs-QR anzeigen</button>' +
+                '</div>';
         }
 
         async function protokolliereGuthabenAenderung(mitglied, vorher, nachher, typ, grund='') {
@@ -3512,14 +3650,27 @@ select,input,textarea,button{touch-action:manipulation}
         }
 
         function parseReservierungsGramm(res) {
-            const match = String(res && res.amount || '').match(/(\d+(?:[.,]\d+)?)/);
+            if (!res) return 0;
+            if (typeof res.totalGrams === 'number' && Number.isFinite(res.totalGrams)) return Number(res.totalGrams);
+            if (Array.isArray(res.items) && res.items.length) {
+                return res.items.reduce((s, it) => s + (Number(it.grams) || 0), 0);
+            }
+            const match = String(res.amount || '').match(/(\d+(?:[.,]\d+)?)/);
             return match ? Number(String(match[1]).replace(',', '.')) : 0;
+        }
+
+        function ggReservierungIstAktiv(res) {
+            const st = String(res && res.status || '').toLowerCase();
+            if (!st) return false;
+            if (/abgeholt|storniert|erledigt|abgeschlossen/.test(st)) return false;
+            return true;
         }
 
         function reservierungsGrammFuerMitgliedAnDatum(memberId, date) {
             if (!memberId || !date || !Array.isArray(vereinReservierungen)) return 0;
             const member = vereinMitglieder.find(m => String(m.id) === String(memberId));
             return vereinReservierungen.reduce((sum, res) => {
+                if (!ggReservierungIstAktiv(res)) return sum;
                 const sameMember = String(res.memberId || '') === String(memberId) ||
                     (!res.memberId && member && String(res.member || '').startsWith(String(member.name || '') + ' ('));
                 return sum + (sameMember && String(res.date || '') === String(date) ? parseReservierungsGramm(res) : 0);
@@ -3535,25 +3686,12 @@ select,input,textarea,button{touch-action:manipulation}
 
             sliders.forEach(slider => {
                 const idx = Number(slider.id.replace('slider-', ''));
-                const dateInput = document.getElementById(`resDate-${idx}`);
-                const date = dateInput ? dateInput.value : '';
-                const existingForDay = reservierungsGrammFuerMitgliedAnDatum(memberId, date);
+                const date = document.getElementById('warenkorb-res-date')?.value || '';
+                const existingForDay = date ? reservierungsGrammFuerMitgliedAnDatum(memberId, date) : 0;
+                const cartOther = ggWarenkorbGrammOhne(idx);
 
-                let otherPendingMonthly = 0;
-                let otherPendingDaily = 0;
-                sliders.forEach(other => {
-                    if (other === slider) return;
-                    const otherIdx = Number(other.id.replace('slider-', ''));
-                    const otherDateEl = document.getElementById(`resDate-${otherIdx}`);
-                    const otherDate = otherDateEl ? otherDateEl.value : '';
-                    const otherSelected = other.dataset.selected === 'true';
-                    const otherValue = otherSelected ? Number(other.value || 0) : 0;
-                    otherPendingMonthly += otherValue;
-                    if (date && otherDate === date) otherPendingDaily += otherValue;
-                });
-
-                const monthlyAvailable = Math.max(0, monthlyRemaining - otherPendingMonthly);
-                const dailyAvailable = date ? Math.max(0, 25 - existingForDay - otherPendingDaily) : 25;
+                const monthlyAvailable = Math.max(0, monthlyRemaining - cartOther);
+                const dailyAvailable = date ? Math.max(0, 25 - existingForDay - cartOther) : 25;
                 const maxAllowed = Math.min(25, monthlyAvailable, dailyAvailable);
                 const currentValue = Number(slider.value || 1);
                 const safeMax = Math.max(0, Math.floor(maxAllowed));
@@ -3589,6 +3727,76 @@ select,input,textarea,button{touch-action:manipulation}
                 output.textContent = `${grams} g`;
                 priceOutput.textContent = `${(grams * price).toFixed(2).replace('.', ',')} €`;
             }
+            speichereSliderPraeferenz(idx);
+            aktualisiereReservierungsKontrollen();
+        }
+
+        function speichereSliderPraeferenz(idx) {
+            const mitglied = getAktivesMitgliedFuerReservierung();
+            const strain = vereinSorten[idx];
+            const slider = document.getElementById('slider-' + idx);
+            if (!mitglied || !strain || !slider || !mitgliedSession) return;
+            const sid = ggSortenStableId(strain);
+            if (!sid) return;
+            if (!mitglied.strainQuantityPreferences || typeof mitglied.strainQuantityPreferences !== 'object') {
+                mitglied.strainQuantityPreferences = {};
+            }
+            const grams = parseInt(slider.value, 10);
+            if (!Number.isFinite(grams) || grams < 1) return;
+            mitglied.strainQuantityPreferences[sid] = grams;
+            clearTimeout(ggSliderPrefTimer);
+            ggSliderPrefTimer = setTimeout(() => {
+                speichereVerschlüsseltenState('vereinMitglieder', vereinMitglieder).catch(() => {});
+            }, 400);
+        }
+
+        function ggPraeferenzGramm(mitglied, strain) {
+            if (!mitglied || !strain) return null;
+            const sid = ggSortenStableId(strain);
+            const prefs = mitglied.strainQuantityPreferences;
+            if (!sid || !prefs || typeof prefs !== 'object') return null;
+            const n = parseInt(prefs[sid], 10);
+            return Number.isFinite(n) && n >= 1 ? n : null;
+        }
+
+        function ggWarenkorbGrammOhne(idx) {
+            return (ggReservierungsWarenkorb || []).reduce((s, it) => s + (Number(it.idx) === Number(idx) ? 0 : (Number(it.grams) || 0)), 0);
+        }
+
+        function rendereWarenkorb() {
+            const zeilen = document.getElementById('warenkorb-zeilen');
+            const gEl = document.getElementById('warenkorb-gesamt-g');
+            const pEl = document.getElementById('warenkorb-gesamt-preis');
+            const timeSel = document.getElementById('warenkorb-res-time');
+            if (timeSel && timeSel.options.length <= 1) {
+                const slots = (vereinAbholzeitfenster || []).filter(slot => slot.active);
+                timeSel.innerHTML = '<option value="">Bitte wählen...</option>' + slots.map(slot =>
+                    '<option value="' + slot.start + ' - ' + slot.end + '">' + slot.start + ' - ' + slot.end + ' Uhr</option>'
+                ).join('');
+            }
+            if (!zeilen) return;
+            if (!ggReservierungsWarenkorb.length) {
+                zeilen.innerHTML = '<p class="text-white/40 italic">Noch keine Sorten in der Reservierung.</p>';
+                if (gEl) gEl.textContent = '0 g';
+                if (pEl) pEl.textContent = '0,00 €';
+                return;
+            }
+            let g = 0, p = 0;
+            zeilen.innerHTML = ggReservierungsWarenkorb.map((it, i) => {
+                g += Number(it.grams) || 0;
+                p += Number(it.linePrice) || 0;
+                return '<div class="flex justify-between items-center bg-zinc-900/80 rounded-lg px-2.5 py-1.5 border border-white/5">' +
+                    '<span class="text-white font-bold">' + escapeHtml(it.name) + '</span>' +
+                    '<span class="text-white/70">' + it.grams + ' g · ' + (Number(it.linePrice)||0).toFixed(2).replace('.', ',') + ' €</span>' +
+                    '<button type="button" onclick="entferneWarenkorbPosition(' + i + ')" class="text-red-400 text-[10px] font-bold ml-2">Entfernen</button></div>';
+            }).join('');
+            if (gEl) gEl.textContent = g + ' g';
+            if (pEl) pEl.textContent = p.toFixed(2).replace('.', ',') + ' €';
+        }
+
+        function entferneWarenkorbPosition(i) {
+            ggReservierungsWarenkorb.splice(i, 1);
+            rendereWarenkorb();
             aktualisiereReservierungsKontrollen();
         }
 
@@ -3600,6 +3808,9 @@ select,input,textarea,button{touch-action:manipulation}
             if (adminList) adminList.innerHTML = '';
 
             vereinSorten.forEach((strain, idx) => {
+                const mitglied = getAktivesMitgliedFuerReservierung();
+                const prefG = ggPraeferenzGramm(mitglied, strain);
+                const startG = prefG || 10;
                 const card = document.createElement('div');
                 card.className = "glass-card rounded-2xl p-4 border border-white/10 relative overflow-hidden";
                 card.innerHTML = `
@@ -3628,33 +3839,18 @@ select,input,textarea,button{touch-action:manipulation}
                     <div class="bg-zinc-900/90 border border-white/10 rounded-xl p-3 mb-3">
                         <div class="flex justify-between items-center mb-1.5 text-xs">
                             <span class="text-white/60 font-medium">Reservierungsmenge (max. 25g):</span>
-                            <span class="font-black text-[#22ffaa]" id="slider-val-${idx}">10 g</span>
+                            <span class="font-black text-[#22ffaa]" id="slider-val-${idx}">${startG} g</span>
                         </div>
-                        <input type="range" id="slider-${idx}" data-selected="false" min="1" max="25" value="10" oninput="updateSliderVal(${idx}, ${strain.price})">
+                        <input type="range" id="slider-${idx}" data-selected="false" min="1" max="25" value="${startG}" oninput="updateSliderVal(${idx}, ${strain.price})">
                         <div class="flex justify-between items-center mt-2 pt-2 border-t border-white/5 text-xs">
                             <span class="text-white/50">Gesamtpreis:</span>
-                            <span class="font-extrabold text-white" id="slider-price-${idx}">${(10 * strain.price).toFixed(2).replace('.', ',')} €</span>
-                        </div>
-                    </div>
-
-                    <!-- Datum & Zeitfenster (Schnipsel 2) -->
-                    <div class="bg-zinc-900/90 border border-white/10 rounded-xl p-3 mb-3 space-y-2 text-xs">
-                        <div>
-                            <label class="text-white/60 block mb-1 font-medium">Datum der Abholung</label>
-                            <input type="date" id="resDate-${idx}" onchange="aktualisiereReservierungsKontrollen()" class="w-full bg-zinc-800 border border-white/10 text-white px-2.5 py-1.5 rounded-lg" required>
-                        </div>
-                        <div>
-                            <label class="text-white/60 block mb-1 font-medium">Genaues Zeitfenster (Uhrzeit)</label>
-                            <select id="resTimeSlot-${idx}" class="w-full bg-zinc-800 border border-white/10 text-white px-2.5 py-1.5 rounded-lg" required>
-                                <option value="">Bitte wählen...</option>
-                                ${vereinAbholzeitfenster.filter(slot => slot.active).map(slot => `<option value="${slot.start} - ${slot.end}">${slot.start} - ${slot.end} Uhr</option>`).join('')}
-                            </select>
+                            <span class="font-extrabold text-white" id="slider-price-${idx}">${(startG * strain.price).toFixed(2).replace('.', ',')} €</span>
                         </div>
                     </div>
 
                     <button onclick="reserviereSorteMitGramm(${idx})" class="w-full bg-[#22ffaa]/10 border border-[#22ffaa]/30 text-[#22ffaa] font-bold py-2.5 rounded-xl text-xs hover:bg-[#22ffaa] hover:text-black transition-all active:scale-95 flex items-center justify-center gap-x-2">
-                        <i class="fa-solid fa-cannabis"></i>
-                        <span>Verbindlich Reservieren</span>
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Zur Reservierung hinzufügen</span>
                     </button>
                 `;
                 list.appendChild(card);
@@ -3681,6 +3877,7 @@ select,input,textarea,button{touch-action:manipulation}
                 }
             });
             aktualisiereReservierungsKontrollen();
+            rendereWarenkorb();
             vereinSorten.forEach((strain, idx) => {
                 const payload = `GREEN-GEN-SORTE:${ggSortenStableId(strain)}`;
                 const box = document.getElementById(`sorte-qr-${idx}`);
@@ -3748,89 +3945,133 @@ select,input,textarea,button{touch-action:manipulation}
 
         async function reserviereSorteMitGramm(idx) {
             const strain = vereinSorten[idx];
-            const mitglied = (mitgliedSession && vereinMitglieder.find(m=>m.id===mitgliedSession.id)) || vereinMitglieder[0];
-            if (!strain || !mitglied) return;
+            const mitglied = (mitgliedSession && vereinMitglieder.find(m=>m.id===mitgliedSession.id)) || null;
+            if (!strain || !mitglied) { alert('Bitte zuerst als Mitglied anmelden.'); return; }
             const klasse = abgabeklasse(mitglied);
             const thcWert = parseFloat(String(strain.thc||'0').replace(',','.').replace('%','')) || 0;
             if (klasse.monthly===0) { alert('Kein gültiges Abgabekonto.'); return; }
             if (klasse.thcMax < 100 && thcWert > klasse.thcMax) { alert('Diese Charge überschreitet für Mitglieder unter 21 Jahren das THC-Limit von 10 %.'); return; }
+            if (strain.status && strain.status !== 'verfügbar') { alert('Diese Sorte ist derzeit nicht verfügbar.'); return; }
+            if (strain.recalled) { alert('Diese Charge ist gesperrt / zurückgerufen.'); return; }
 
             const slider = document.getElementById(`slider-${idx}`);
-            const mengeGramm = slider ? parseInt(slider.value) : 1;
+            const mengeGramm = slider ? parseInt(slider.value, 10) : 1;
+            if (!Number.isFinite(mengeGramm) || mengeGramm < 1) { alert('Bitte eine gültige Menge wählen.'); return; }
 
-            const resDateEl = document.getElementById(`resDate-${idx}`);
-            const resTimeEl = document.getElementById(`resTimeSlot-${idx}`);
-            const resDate = resDateEl ? resDateEl.value : '';
-            const resTime = resTimeEl ? resTimeEl.value : '';
+            const sid = ggSortenStableId(strain);
+            const existing = ggReservierungsWarenkorb.findIndex(it => String(it.strainId) === String(sid) || Number(it.idx) === Number(idx));
+            const pos = {
+                idx: idx,
+                strainId: sid,
+                name: strain.name,
+                batch: strain.batch || '',
+                grams: mengeGramm,
+                price: Number(strain.price) || 0,
+                linePrice: mengeGramm * (Number(strain.price) || 0)
+            };
+            if (existing >= 0) ggReservierungsWarenkorb[existing] = pos;
+            else ggReservierungsWarenkorb.push(pos);
+            speichereSliderPraeferenz(idx);
+            rendereWarenkorb();
+            aktualisiereReservierungsKontrollen();
+        }
 
-            if (!resDate || !resTime) {
-                alert("Bitte Datum und Zeitfenster auswählen!");
+        async function schliesseWarenkorbReservierung() {
+            const mitglied = (mitgliedSession && vereinMitglieder.find(m=>m.id===mitgliedSession.id)) || null;
+            if (!mitglied) { alert('Bitte zuerst als Mitglied anmelden.'); return; }
+            if (!ggReservierungsWarenkorb.length) { alert('Bitte zuerst Sorten zur Reservierung hinzufügen.'); return; }
+            const schonAktiv = (vereinReservierungen || []).find(r => String(r.memberId) === String(mitglied.id) && ggReservierungIstAktiv(r));
+            if (schonAktiv) {
+                alert('Es besteht bereits eine aktive Reservierung (' + schonAktiv.id + '). Bitte zuerst abholen oder stornieren.');
                 return;
             }
+            const resDate = document.getElementById('warenkorb-res-date')?.value || '';
+            const resTime = document.getElementById('warenkorb-res-time')?.value || '';
+            if (!resDate || !resTime) { alert('Bitte Datum und Zeitfenster für die Abholung wählen.'); return; }
 
-            const bereitsAnDiesemTag = reservierungsGrammFuerMitgliedAnDatum(mitglied.id, resDate);
-            if (bereitsAnDiesemTag + mengeGramm > klasse.daily) {
-                const verbleibendHeute = Math.max(0, klasse.daily - bereitsAnDiesemTag);
-                alert(`Für den ${resDate} sind noch ${verbleibendHeute} g verfügbar. Maximal ${klasse.daily} g pro Tag.`);
-                aktualisiereReservierungsKontrollen();
-                return;
-            }
-            if (mengeGramm > mitglied.quota) {
-                alert(`Dein verbleibendes Monatskontingent beträgt ${mitglied.quota} g.`);
-                aktualisiereReservierungsKontrollen();
-                return;
-            }
-
-            const gesamtpreis = mengeGramm * strain.price;
-
-            if (mitglied.balance < gesamtpreis) {
-                alert(`Unzureichendes Guthaben! Benötigt: ${gesamtpreis.toFixed(2).replace('.', ',')} €.`);
-                return;
-            }
-
-            if (confirm(`${mengeGramm}g '${strain.name}' für ${gesamtpreis.toFixed(2).replace('.', ',')} € am ${resDate} (${resTime}) reservieren?`)) {
-                const guthabenVorher = Number(mitglied.balance || 0);
-                mitglied.balance -= gesamtpreis;
-                vereinUmsatz += gesamtpreis;
-                await protokolliereGuthabenAenderung(mitglied, guthabenVorher, mitglied.balance, 'abbuchung', `Reservierung ${strain.name} · ${mengeGramm} g · ${gesamtpreis.toFixed(2)} €`);
-
-                // Kontingent abziehen
-                let currentQuota = typeof mitglied.quota === 'number' ? mitglied.quota : parseInt(mitglied.quota) || 50;
-                mitglied.quota = Math.max(0, currentQuota - mengeGramm);
-
-                const abholzeitraum = `${resDate} • ${resTime}`;
-                const reservierung = {
-                    id: 'RES-' + Date.now().toString().slice(-6),
-                    timestamp: new Date().toLocaleString('de-DE'),
-                    member: `${mitglied.name} (${mitglied.id})`,
-                    memberId: mitglied.id,
+            const klasse = abgabeklasse(mitglied);
+            let totalGrams = 0;
+            let totalPrice = 0;
+            const items = [];
+            for (const it of ggReservierungsWarenkorb) {
+                const strain = vereinSorten.find(s => String(ggSortenStableId(s)) === String(it.strainId)) || vereinSorten[it.idx];
+                if (!strain) { alert('Eine Sorte im Warenkorb ist unbekannt. Reservierung abgebrochen.'); return; }
+                if (strain.status && strain.status !== 'verfügbar') { alert(`„${strain.name}“ ist nicht verfügbar. Reservierung nicht gespeichert.`); return; }
+                if (strain.recalled) { alert(`„${strain.name}“ ist gesperrt. Reservierung nicht gespeichert.`); return; }
+                const thcWert = parseFloat(String(strain.thc||'0').replace(',','.').replace('%','')) || 0;
+                if (klasse.thcMax < 100 && thcWert > klasse.thcMax) { alert(`„${strain.name}“ überschreitet das THC-Limit für unter 21-Jährige. Reservierung nicht gespeichert.`); return; }
+                const grams = Number(it.grams) || 0;
+                if (grams < 1) { alert('Ungültige Menge im Warenkorb.'); return; }
+                totalGrams += grams;
+                totalPrice += grams * (Number(strain.price) || 0);
+                items.push({
+                    strainId: ggSortenStableId(strain),
                     strain: strain.name,
-                    amount: `${mengeGramm}g`,
-                    price: gesamtpreis,
-                    timeframe: abholzeitraum,
-                    date: resDate,
-                    timeslot: resTime,
-                    status: "Bereit zur Abholung"
-                };
-
-                vereinReservierungen.unshift(reservierung);
-
-                vereinProtokolle.unshift({
-                    date: new Date().toLocaleString('de-DE'),
-                    member: `${mitglied.name} (${mitglied.id})`,
-                    strain: strain.name,
-                    amount: `${mengeGramm}g (Reserviert)`,
-                    batch: strain.batch || "RESERVIERUNG"
+                    batch: strain.batch || '',
+                    grams: grams,
+                    pricePerGram: Number(strain.price) || 0,
+                    linePrice: grams * (Number(strain.price) || 0)
                 });
-
-                await speichereVerschlüsseltenState('vereinMitglieder', vereinMitglieder);
-                await speichereVerschlüsseltenState('vereinReservierungen', vereinReservierungen);
-                await speichereVerschlüsseltenState('vereinProtokolle', vereinProtokolle);
-                await speichereVerschlüsseltenState('vereinUmsatz', vereinUmsatz);
-
-                rendereAlles();
-                alert(`Reservierung über ${mengeGramm}g hinterlegt! Automatische Guthabenverrechnung durchgeführt.`);
             }
+
+            if (totalGrams > klasse.daily) { alert(`Maximal ${klasse.daily} g pro Tag. Der Warenkorb hat ${totalGrams} g und wird nicht gespeichert.`); return; }
+            const bereitsAnDiesemTag = reservierungsGrammFuerMitgliedAnDatum(mitglied.id, resDate);
+            if (bereitsAnDiesemTag + totalGrams > klasse.daily) {
+                alert(`Für den ${resDate} sind noch ${Math.max(0, klasse.daily - bereitsAnDiesemTag)} g verfügbar. Der gesamte Warenkorb wurde nicht gespeichert.`);
+                return;
+            }
+            const monthlyRemaining = typeof mitglied.quota === 'number' ? mitglied.quota : parseInt(mitglied.quota) || klasse.monthly;
+            if (totalGrams > monthlyRemaining) {
+                alert(`Dein verbleibendes Monatskontingent beträgt ${monthlyRemaining} g. Der gesamte Warenkorb (${totalGrams} g) wurde nicht gespeichert.`);
+                return;
+            }
+            if (mitglied.balance < totalPrice) {
+                alert(`Unzureichendes Guthaben. Benötigt: ${totalPrice.toFixed(2).replace('.', ',')} €. Reservierung nicht gespeichert.`);
+                return;
+            }
+
+            if (!confirm(`${totalGrams} g für ${totalPrice.toFixed(2).replace('.', ',')} € am ${resDate} (${resTime}) verbindlich reservieren?`)) return;
+
+            const guthabenVorher = Number(mitglied.balance || 0);
+            mitglied.balance -= totalPrice;
+            vereinUmsatz += totalPrice;
+            await protokolliereGuthabenAenderung(mitglied, guthabenVorher, mitglied.balance, 'abbuchung', `Warenkorb-Reservierung · ${totalGrams} g · ${totalPrice.toFixed(2)} €`);
+            mitglied.quota = Math.max(0, monthlyRemaining - totalGrams);
+
+            const reservationId = 'RES-' + Date.now().toString().slice(-8);
+            const reservierung = {
+                id: reservationId,
+                timestamp: new Date().toLocaleString('de-DE'),
+                member: `${mitglied.name} (${mitglied.id})`,
+                memberId: mitglied.id,
+                strain: items.map(i => i.strain).join(', '),
+                amount: `${totalGrams}g`,
+                price: totalPrice,
+                timeframe: `${resDate} • ${resTime}`,
+                date: resDate,
+                timeslot: resTime,
+                status: 'Bereit zur Abholung',
+                type: 'warenkorb',
+                items: items,
+                totalGrams: totalGrams,
+                totalPrice: totalPrice
+            };
+            vereinReservierungen.unshift(reservierung);
+            vereinProtokolle.unshift({
+                date: new Date().toLocaleString('de-DE'),
+                member: `${mitglied.name} (${mitglied.id})`,
+                strain: reservierung.strain,
+                amount: `${totalGrams}g (Reserviert)`,
+                batch: 'WARENKORB'
+            });
+            await speichereVerschlüsseltenState('vereinMitglieder', vereinMitglieder);
+            await speichereVerschlüsseltenState('vereinReservierungen', vereinReservierungen);
+            await speichereVerschlüsseltenState('vereinProtokolle', vereinProtokolle);
+            await speichereVerschlüsseltenState('vereinUmsatz', vereinUmsatz);
+            ggReservierungsWarenkorb = [];
+            rendereWarenkorb();
+            rendereAlles();
+            alert(`Reservierung ${reservationId} über ${totalGrams} g hinterlegt.`);
         }
 
         async function fuegeAbholzeitfensterHinzu() {
@@ -3910,6 +4151,7 @@ select,input,textarea,button{touch-action:manipulation}
                     <div class="text-[11px] space-y-1">
                         <p><strong class="text-white">Mitglied:</strong> ${res.member}</p>
                         <p><strong class="text-white">Produkt / Menge:</strong> ${res.strain} (${res.amount}) • ${res.price ? res.price.toFixed(2).replace('.', ',') + ' €' : ''}</p>
+                        ${Array.isArray(res.items) && res.items.length ? ('<p class="text-white/70">' + res.items.map(it => escapeHtml(it.strain) + ' ' + it.grams + ' g').join(' · ') + '</p>') : ''}
                         <p><strong class="text-white">Abhol-Datum:</strong> ${res.date || '—'}</p>
                         <p><strong class="text-white">Zeitfenster:</strong> ${res.timeslot || res.timeframe || '—'}</p>
                         <p><strong class="text-white">Status:</strong> <span class="text-[#22ffaa] font-semibold">${res.status}</span></p>
@@ -4862,15 +5104,18 @@ select,input,textarea,button{touch-action:manipulation}
             list.innerHTML = '';
 
             vereinProtokolle.forEach(p => {
-                const card = document.createElement('div');
-                card.className = "bg-zinc-900/90 p-2.5 rounded-xl border border-white/5 text-[10px] space-y-0.5";
+                const card = document.createElement('details');
+                card.className = "bg-zinc-900/90 p-2.5 rounded-xl border border-white/5 text-[10px]";
                 card.innerHTML = `
-                    <div class="flex justify-between text-white/40">
-                        <span>${p.date}</span>
-                        <span class="font-mono text-[#22ffaa]">${p.batch}</span>
+                    <summary class="cursor-pointer list-none flex justify-between text-white/40">
+                        <span>${escapeHtml(p.member || '')} · ${escapeHtml(p.amount || '')}</span>
+                        <span class="font-mono text-[#22ffaa]">${escapeHtml(p.batch || '')}</span>
+                    </summary>
+                    <div class="space-y-0.5 mt-1">
+                        <p class="text-white/40">${escapeHtml(p.date || '')}</p>
+                        <p><strong class="text-white">${escapeHtml(p.member || '')}</strong></p>
+                        <p class="text-white/70">${escapeHtml(p.strain || '')} • <strong class="text-[#22ffaa]">${escapeHtml(p.amount || '')}</strong></p>
                     </div>
-                    <p><strong class="text-white">${p.member}</strong></p>
-                    <p class="text-white/70">${p.strain} • <strong class="text-[#22ffaa]">${p.amount}</strong></p>
                 `;
                 list.appendChild(card);
             });
@@ -5049,6 +5294,10 @@ select,input,textarea,button{touch-action:manipulation}
         }
 
         async function buxeAbgabeEin() {
+            if (ggAktivePosReservierungId) {
+                await ggSchliesseReservierungAbgabe(ggAktivePosReservierungId);
+                return;
+            }
             const memberId = document.getElementById('pos-member-select').value;
             const strainName = document.getElementById('pos-strain-select').value;
             const menge = parseInt(document.getElementById('pos-amount-input').value) || 10;
@@ -5096,6 +5345,45 @@ select,input,textarea,button{touch-action:manipulation}
             alert(`Abgabe verbucht! Kassenbon #${bonId} generiert.`);
         }
 
+        async function ggSchliesseReservierungAbgabe(resId) {
+            const res = (vereinReservierungen || []).find(r => String(r.id) === String(resId));
+            if (!res) { alert('Reservierung nicht gefunden.'); ggAktivePosReservierungId = null; return; }
+            if (!ggReservierungIstAktiv(res)) { alert('Diese Reservierung ist bereits erledigt und wird nicht erneut gebucht.'); return; }
+            const mitglied = vereinMitglieder.find(m => String(m.id) === String(res.memberId));
+            const items = Array.isArray(res.items) && res.items.length ? res.items : [{ strain: res.strain, grams: parseReservierungsGramm(res), batch: '' }];
+            const datum = new Date().toLocaleString('de-DE');
+            const bonId = Math.floor(100000 + Math.random() * 900000).toString();
+            vereinKassenbons.unshift({
+                id: bonId,
+                date: datum,
+                member: res.member || (mitglied ? (mitglied.name + ' (' + mitglied.id + ')') : ''),
+                strain: items.map(it => it.strain + (it.batch ? ' [' + it.batch + ']' : '')).join(', '),
+                amount: (res.totalGrams || parseReservierungsGramm(res)) + 'g',
+                tseSign: 'INT-RES-' + res.id,
+                lines: items.map(it => ({ strain: it.strain, amount: (it.grams || 0) + 'g', batch: it.batch || '' }))
+            });
+            items.forEach(it => {
+                vereinProtokolle.unshift({
+                    date: datum,
+                    member: res.member,
+                    strain: it.strain,
+                    amount: (it.grams || 0) + 'g',
+                    batch: it.batch || 'RESERVIERUNG'
+                });
+            });
+            res.status = 'Abgeholt';
+            ggAktivePosReservierungId = null;
+            ggSetzePosReservierungsModus(false);
+            await speichereVerschlüsseltenState('vereinKassenbons', vereinKassenbons);
+            await speichereVerschlüsseltenState('vereinProtokolle', vereinProtokolle);
+            await speichereVerschlüsseltenState('vereinReservierungen', vereinReservierungen);
+            rendereKassenbons();
+            rendereProtokolle();
+            rendereReservierungen();
+            rendereMitgliederIdentität();
+            alert('Reservierung ' + res.id + ' als abgeholt verbucht. Kontingent wurde bereits bei der Reservierung berücksichtigt.');
+        }
+
         function rendereKassenbons() {
             // V27: Belege ausschließlich im Admin-Terminal darstellen.
             const container = document.querySelector('#bereich-vorstand #unterkapitel-terminal #pos-receipts-container');
@@ -5108,17 +5396,20 @@ select,input,textarea,button{touch-action:manipulation}
 
             container.innerHTML = '';
             vereinKassenbons.forEach(b => {
-                const card = document.createElement('div');
-                card.className = "bg-zinc-900/90 p-3 rounded-xl border border-white/10 text-xs space-y-1";
+                const card = document.createElement('details');
+                card.className = "bg-zinc-900/90 p-3 rounded-xl border border-white/10 text-xs";
+                const lines = Array.isArray(b.lines) && b.lines.length
+                    ? b.lines.map(l => '<p class="text-white/80">' + escapeHtml(l.strain || '') + ' • <strong class="text-[#22ffaa]">' + escapeHtml(l.amount || '') + '</strong> ' + escapeHtml(l.batch || '') + '</p>').join('')
+                    : ('<p><strong class="text-white">Sorte:</strong> ' + escapeHtml(b.strain || '') + '</p><p><strong class="text-[#22ffaa]">Menge:</strong> ' + escapeHtml(b.amount || '') + '</p>');
                 card.innerHTML = `
-                    <div class="flex justify-between font-mono text-[10px] text-white/50">
-                        <span>BON #${b.id}</span>
-                        <span>${b.date}</span>
+                    <summary class="cursor-pointer list-none flex justify-between font-mono text-[10px] text-white/50">
+                        <span>BON #${escapeHtml(b.id || '')} · ${escapeHtml(b.member || '')}</span>
+                        <span>${escapeHtml(b.date || '')}</span>
+                    </summary>
+                    <div class="space-y-1 mt-2">
+                        ${lines}
+                        <p class="text-[9px] font-mono text-white/40 break-all">Interne Transaktions-ID: ${escapeHtml(b.tseSign || '')}</p>
                     </div>
-                    <p><strong class="text-white">Mitglied:</strong> ${b.member}</p>
-                    <p><strong class="text-white">Sorte:</strong> ${b.strain}</p>
-                    <p><strong class="text-[#22ffaa]">Menge:</strong> ${b.amount}</p>
-                    <p class="text-[9px] font-mono text-white/40 break-all">Interne Transaktions-ID: ${b.tseSign}</p>
                 `;
                 container.appendChild(card);
             });
@@ -5270,6 +5561,12 @@ select,input,textarea,button{touch-action:manipulation}
                 title.textContent = "Sorten-QR";
                 subtitle.textContent = `${s.name} • ID: ${sid}`;
                 await ggRenderQR(container, `GREEN-GEN-SORTE:${sid}`, 240);
+            } else if (typ === 'reservierung') {
+                const res = (vereinReservierungen || []).find(r => String(r.id) === String(memberIndex));
+                if (!res) { alert('Reservierung nicht gefunden.'); return; }
+                title.textContent = "Reservierungs-QR";
+                subtitle.textContent = res.id + ' • ' + (res.amount || '');
+                await ggRenderQR(container, `GREEN-GEN-RESERVATION:${res.id}`, 240);
             } else {
                 title.textContent = "Abgabe-Barcode";
                 subtitle.textContent = `TSE-ABGABE:${m.id}`;
@@ -5315,6 +5612,22 @@ select,input,textarea,button{touch-action:manipulation}
             return id;
         }
 
+        function ggParseAbgabeQR(raw) {
+            const text = String(raw || '').trim();
+            if (!text.startsWith('KCanG-ABGABE-TSE:')) return null;
+            const id = text.slice('KCanG-ABGABE-TSE:'.length).split(':')[0];
+            if (!id) return null;
+            return id;
+        }
+
+        function ggParseReservierungQR(raw) {
+            const text = String(raw || '').trim();
+            if (!text.startsWith('GREEN-GEN-RESERVATION:')) return null;
+            const id = text.slice('GREEN-GEN-RESERVATION:'.length).split(':')[0];
+            if (!id) return null;
+            return id;
+        }
+
         function ggParseSorteQR(raw) {
             const text = String(raw || '').trim();
             if (!text.startsWith('GREEN-GEN-SORTE:')) return null;
@@ -5327,19 +5640,37 @@ select,input,textarea,button{touch-action:manipulation}
             if (ggScanModus === 'eingang') return;
             if (ggScanBusy) return;
             const raw = String(decodedText || '').trim();
-            const memberId = ggParseMitgliedQR(raw);
+            const memberIdClassic = ggParseMitgliedQR(raw);
+            const abgabeId = ggParseAbgabeQR(raw);
+            const resId = ggParseReservierungQR(raw);
             const sorteId = ggParseSorteQR(raw);
 
             if (ggScanPhase !== 'sorte') {
                 if (sorteId) {
-                    ggSetzeScanFeedback('✕ Bitte zuerst Mitglied scannen', false);
+                    ggSetzeScanFeedback('✕ Bitte zuerst Abgabe-QR oder Reservierungs-QR scannen', false);
                     return;
                 }
-                if (!memberId) {
-                    ggSetzeScanFeedback('✕ Kein gültiger GreenGen-Code', false);
+                if (memberIdClassic) {
+                    ggSetzeScanFeedback('✕ Bitte Abgabe-QR scannen (kein Eingangs-QR)', false);
                     return;
                 }
-                const mitglied = vereinMitglieder.find(m => String(m.id) === String(memberId));
+                if (resId) {
+                    const res = (vereinReservierungen || []).find(r => String(r.id) === String(resId));
+                    if (!res) { ggSetzeScanFeedback('✕ Unbekannte Reservierung', false); return; }
+                    if (!ggReservierungIstAktiv(res)) { ggSetzeScanFeedback('✕ Reservierung bereits erledigt', false); return; }
+                    const mitglied = vereinMitglieder.find(m => String(m.id) === String(res.memberId));
+                    if (!mitglied) { ggSetzeScanFeedback('✕ Mitglied zur Reservierung unbekannt', false); return; }
+                    ggScanBusy = true;
+                    ggLadeReservierungInPos(res);
+                    ggSetzeScanFeedback('✓ Reservierung geladen', true);
+                    setTimeout(() => { ggScanBusy = false; schliesseKameraScanner(); }, 700);
+                    return;
+                }
+                if (!abgabeId) {
+                    ggSetzeScanFeedback('✕ Kein gültiger Abgabe-QR', false);
+                    return;
+                }
+                const mitglied = vereinMitglieder.find(m => String(m.id) === String(abgabeId));
                 if (!mitglied) {
                     ggSetzeScanFeedback('✕ Unbekannter Mitgliedscode', false);
                     return;
@@ -5348,18 +5679,20 @@ select,input,textarea,button{touch-action:manipulation}
                 const memberSel = document.getElementById('pos-member-select');
                 if (memberSel) memberSel.value = mitglied.id;
                 ggScanMitgliedId = mitglied.id;
+                ggAktivePosReservierungId = null;
+                ggSetzePosReservierungsModus(false);
                 ggSetzeScanFeedback('✓ Mitglied erkannt', true);
                 ggSetzeScanPhase('sorte');
                 setTimeout(() => { ggScanBusy = false; }, 600);
                 return;
             }
 
-            if (memberId) {
+            if (abgabeId || memberIdClassic || resId) {
                 ggSetzeScanFeedback('✕ Kein gültiger Sorten-QR', false);
                 return;
             }
             if (!sorteId) {
-                if (raw.startsWith('GREEN-GEN-')) {
+                if (raw.startsWith('GREEN-GEN-') || raw.startsWith('KCanG-ABGABE-TSE:')) {
                     ggSetzeScanFeedback('✕ Kein gültiger Sorten-QR', false);
                 } else {
                     ggSetzeScanFeedback('✕ Kein gültiger GreenGen-Code', false);
@@ -5374,11 +5707,50 @@ select,input,textarea,button{touch-action:manipulation}
             ggScanBusy = true;
             const strainSel = document.getElementById('pos-strain-select');
             if (strainSel) strainSel.value = sorte.name;
+            const mitglied = vereinMitglieder.find(m => String(m.id) === String(ggScanMitgliedId));
+            const pref = ggPraeferenzGramm(mitglied, sorte);
+            const amountEl = document.getElementById('pos-amount-input');
+            if (amountEl && pref) amountEl.value = String(pref);
             ggSetzeScanFeedback('✓ Sorte erkannt', true);
             setTimeout(() => {
                 ggScanBusy = false;
                 schliesseKameraScanner();
             }, 700);
+        }
+
+        function ggSetzePosReservierungsModus(aktiv, res) {
+            const felder = document.getElementById('pos-einzel-felder');
+            const btn = document.getElementById('pos-abgabe-button');
+            const hint = document.getElementById('pos-reservierung-hinweis');
+            if (felder) felder.classList.toggle('hidden', !!aktiv);
+            if (btn) {
+                btn.innerHTML = aktiv
+                    ? '<i class="fa-solid fa-basket-shopping mr-1"></i> Reservierung vollständig abgeben'
+                    : '<i class="fa-solid fa-barcode mr-1"></i> Abgabe buchen & Abgabe-QR generieren';
+            }
+            if (!hint) return;
+            if (!aktiv || !res) {
+                hint.classList.add('hidden');
+                hint.innerHTML = '';
+                return;
+            }
+            const items = Array.isArray(res.items) && res.items.length
+                ? res.items
+                : [{ strain: res.strain, grams: parseReservierungsGramm(res) }];
+            hint.classList.remove('hidden');
+            hint.innerHTML =
+                '<p class="font-black text-[#22ffaa] mb-1">Reservierung geladen</p>' +
+                items.map(it => '<p>' + escapeHtml(it.strain || '') + ' &nbsp; ' + (it.grams || 0) + ' g</p>').join('') +
+                '<p class="font-black text-white mt-1">Gesamt ' + (res.totalGrams || parseReservierungsGramm(res)) + ' g</p>' +
+                '<p class="text-white/70 mt-1">Abholung: ' + escapeHtml(res.date || '—') + ' / ' + escapeHtml(res.timeslot || res.timeframe || '—') + '</p>' +
+                '<p class="mt-1">Status: ' + escapeHtml(res.status || 'Reserviert') + '</p>';
+        }
+
+        function ggLadeReservierungInPos(res) {
+            ggAktivePosReservierungId = res.id;
+            const memberSel = document.getElementById('pos-member-select');
+            if (memberSel && res.memberId) memberSel.value = res.memberId;
+            ggSetzePosReservierungsModus(true, res);
         }
 
         function ggFormatiereZutrittDatum(d) {
@@ -5610,6 +5982,8 @@ select,input,textarea,button{touch-action:manipulation}
             if (!memberId) {
                 if (ggParseSorteQR(raw)) {
                     ggSetzeScanFeedback('✕ Bitte Mitglieder-QR scannen (kein Sorten-QR)', false);
+                } else if (ggParseAbgabeQR(raw) || ggParseReservierungQR(raw)) {
+                    ggSetzeScanFeedback('✕ Bitte den normalen Mitglieder-QR scannen (kein Abgabe-/Reservierungs-QR)', false);
                 } else {
                     ggSetzeScanFeedback('✕ Kein gültiger GreenGen-Mitglieder-QR', false);
                 }
@@ -5851,7 +6225,24 @@ select,input,textarea,button{touch-action:manipulation}
             const s = vereinSorten.find(x => String(x.name) === String(strainName));
             if (!m || !s) { alert('Bitte zuerst im Abgabe-Terminal ein Mitglied und eine Sorte auswählen.'); return; }
             const text = `INFORMATIONSZETTEL\n\nMitglied: ${m.name} (${m.id})\nSorte: ${s.name}\nCharge: ${s.batch}\nErntedatum: ${s.harvestDate || 'nicht hinterlegt'}\nMHD: ${s.bestBefore || 'nicht hinterlegt'}\nTHC: ${s.thc || 'nicht hinterlegt'}\nCBD: ${s.cbd || 'nicht hinterlegt'}\n\nHinweis: Dieser Ausdruck ersetzt keine rechtliche oder medizinische Beratung.`;
-            const blob = new Blob([text], {type:'text/plain;charset=utf-8'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`Informationszettel-${s.batch || 'charge'}.txt`; a.click(); URL.revokeObjectURL(url);
+            const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const timestamp = new Date()
+                .toISOString()
+                .replace(/[-:]/g, '')
+                .replace(/\..+/, '')
+                .replace('T', '-');
+            const safeBatch = String(s.batch || 'charge')
+                .replace(/[^\w\-äöüÄÖÜß]+/gi, '-')
+                .replace(/^-+|-+$/g, '');
+            const filename = `Informationszettel-${safeBatch || 'charge'}-${timestamp}.txt`;
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
         }
 
         function archiviereKassenbons() {
