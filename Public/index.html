@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Green Generation Rostock</title>
-<meta name="gg-build" content="V27-ADMIN-RECOVERY">
+<meta name="gg-build" content="V27-PERF-STABLE-NAV">
 <meta name="gg-build-date" content="2026-08-15">
     
     <!-- PWA & Mobile Web App Meta Tags -->
@@ -2201,6 +2201,8 @@ select,input,textarea,button{touch-action:manipulation}
         let ggFastSyncInFlight = false;
         let ggLetzteSyncSignatur = '';
         let ggLetzteVollRefreshSignatur = '';
+        let ggAktivesAdminKapitel = 'terminal';
+        let ggNavRenderToken = 0;
         let ggBalanceAnzeigeWert = null;
         let ggBalanceAnimFrame = 0;
         let mapInitialized = false;
@@ -2658,6 +2660,7 @@ select,input,textarea,button{touch-action:manipulation}
                 }
                 const finanzenTab = document.getElementById('unterkapitel-buchhaltung');
                 if (finanzenTab && !finanzenTab.classList.contains('hidden')) {
+                    try { rendereFinanzMitgliederListe(); } catch (_) {}
                     try { rendereGuthabenHistorie(); } catch (_) {}
                     try { rendereFinanzzahlen(); } catch (_) {}
                 }
@@ -2702,9 +2705,11 @@ select,input,textarea,button{touch-action:manipulation}
                     ['vereinGuthabenHistorie', vereinGuthabenHistorie]
                 ];
                 const geladen = {};
-                for (const [key, fallback] of keys) {
-                    geladen[key] = await ladeVerschlüsseltenState(key, fallback);
-                }
+                const geladenePaare = await Promise.all(keys.map(async ([key, fallback]) => {
+                    const wert = await ladeVerschlüsseltenState(key, fallback);
+                    return [key, wert];
+                }));
+                for (const [key, wert] of geladenePaare) geladen[key] = wert;
                 if (Array.isArray(geladen.vereinMitglieder)) vereinMitglieder = geladen.vereinMitglieder;
                 if (Array.isArray(geladen.vereinSorten)) vereinSorten = geladen.vereinSorten;
                 if (Array.isArray(geladen.vereinNews)) vereinNews = geladen.vereinNews;
@@ -3032,32 +3037,78 @@ select,input,textarea,button{touch-action:manipulation}
             }
         }
 
+        function ggAktiveHauptansicht() {
+            const el = document.querySelector('.ansatz-bereich.active');
+            if (el && el.id && el.id.indexOf('bereich-') === 0) return el.id.slice('bereich-'.length);
+            return '';
+        }
+
+        function ggSichtbaresAdminKapitel() {
+            const sicht = document.querySelector('#bereich-vorstand .kapitel-inhalt:not(.hidden)');
+            if (sicht && sicht.id && sicht.id.indexOf('unterkapitel-') === 0) {
+                return sicht.id.slice('unterkapitel-'.length);
+            }
+            return ggAktivesAdminKapitel || 'terminal';
+        }
+
+        function ggFuehreAdminTabRenderAus(kapitelId) {
+            const tabRender = {
+                personen: rendereMitgliederListe,
+                beitraege: rendereBeiträgeListe,
+                mitteilungen: rendereMitteilungen,
+                wissen: rendereWissensbasis,
+                mitgliederwissen: rendereAdminMitgliederInfos,
+                compliance: rendereComplianceCenter,
+                qualitaet: rendereQualitaet,
+                rueckruf: rendereRueckrufe,
+                sortiment: rendereSortiment,
+                protokolle: () => { rendereProtokolle(); rendereAuditVerlauf(); },
+                zutritt: ladeUndRendereZutrittsprotokoll,
+                buchhaltung: () => { rendereFinanzMitgliederListe(); rendereFinanzzahlen(); },
+                reservierungen: rendereReservierungen,
+                terminal: befüllePosOptionen,
+                darstellung: () => { aktualisiereSepaAnzeige(); fuelleUiEinstellungFelder(); },
+                berechtigungen: rendereAdminAccounts,
+                passphrase: rendereMasterEinrichtungStatus
+            };
+            const fn = tabRender[kapitelId];
+            if (fn) fn();
+        }
+
         function rendereAlles() {
-            // Jede Ansicht wird isoliert gerendert. Ein Fehler in einem einzelnen
-            // Modul darf niemals verhindern, dass gespeicherte Daten in anderen
-            // Tabs sichtbar werden.
-            const renderJobs = [
-                ['SEPA-Anzeige', aktualisiereSepaAnzeige],
-                ['Mitgliederprofil', rendereMitgliederIdentität],
-                ['News', rendereMitteilungen],
-                ['KI-Wissen', rendereWissensbasis],
-                ['Wissensportal', rendereMitgliederInfos],
-                ['Compliance', rendereComplianceCenter],
-                ['Qualität', rendereQualitaet],
-                ['Rückruf', rendereRueckrufe],
-                ['Sortiment', rendereSortiment],
-                ['Mitglieder', rendereMitgliederListe],
-                ['Beiträge', rendereBeiträgeListe],
-                ['Protokolle', rendereProtokolle, rendereAuditVerlauf],
-                ['Admins', rendereAdminAccounts],
-                ['Master-Einrichtung', rendereMasterEinrichtungStatus],
-                ['Kassenbons', rendereKassenbons],
-                ['Finanzen', rendereFinanzzahlen, rendereAuditVerlauf],
-                ['Reservierungen', rendereReservierungen],
-                ['Abholzeitfenster', rendereAbholzeitfenster],
-                ['POS', befüllePosOptionen]
-            ];
-            renderJobs.forEach(([name, fn]) => {
+            // Nur sichtbare Bereiche aktualisieren. Versteckte Admin-/Mitglieder-
+            // Listen werden beim Öffnen des jeweiligen Tabs frisch gerendert.
+            const jobs = [];
+            jobs.push(['SEPA-Anzeige', aktualisiereSepaAnzeige]);
+            jobs.push(['Mitgliederprofil', rendereMitgliederIdentität]);
+            const haupt = ggAktiveHauptansicht();
+            if (haupt === 'home' || haupt === '') {
+                jobs.push(['News', rendereMitteilungen]);
+            }
+            if (haupt === 'wissen') {
+                jobs.push(['Wissensportal', rendereMitgliederInfos]);
+                jobs.push(['KI-Wissen', rendereWissensbasis]);
+            }
+            if (haupt === 'reservieren') {
+                jobs.push(['Sortiment', rendereSortiment]);
+                jobs.push(['Warenkorb', typeof rendereWarenkorb === 'function' ? rendereWarenkorb : null]);
+                jobs.push(['Abholzeitfenster', rendereAbholzeitfenster]);
+            }
+            if (haupt === 'finanzen') {
+                jobs.push(['Mitglieder-Guthaben', typeof setzeGuthabenAnzeigeTexte === 'function' ? function () {
+                    const m = (typeof mitgliedSession !== 'undefined' && mitgliedSession && Array.isArray(vereinMitglieder))
+                        ? vereinMitglieder.find(x => x && x.id === mitgliedSession.id)
+                        : null;
+                    setzeGuthabenAnzeigeTexte(m ? Number(m.balance || 0) : 0);
+                } : null]);
+            }
+            if (haupt === 'vorstand') {
+                const kapitel = ggSichtbaresAdminKapitel();
+                jobs.push(['Admin-Tab ' + kapitel, function () { ggFuehreAdminTabRenderAus(kapitel); }]);
+            }
+            jobs.push(['Float-Warenkorb', typeof aktualisiereFloatWarenkorb === 'function' ? aktualisiereFloatWarenkorb : null]);
+            jobs.forEach(([name, fn]) => {
+                if (!fn) return;
                 try { fn(); } catch (err) {
                     console.error('Renderfehler in ' + name, err);
                 }
@@ -3282,17 +3333,21 @@ select,input,textarea,button{touch-action:manipulation}
             if (zielNav) zielNav.classList.add('nav-item-active');
 
             if (ansichtId === 'vorstand') {
-                try { wechsleUnterkapitel('terminal'); } catch (err) {
-                    console.error('Admin-Terminal konnte nicht aktiviert werden', err);
-                    try { wechsleUnterkapitel('terminal'); } catch (_) {}
+                const kapitel = ggAktivesAdminKapitel || ggSichtbaresAdminKapitel() || 'terminal';
+                try { wechsleUnterkapitel(kapitel); } catch (err) {
+                    console.error('Admin-Bereich konnte nicht aktiviert werden', err);
+                    try { wechsleUnterkapitel(kapitel || 'terminal'); } catch (_) {}
                 }
                 setTimeout(() => {
                     document.querySelectorAll('[data-gg-global-receipts="true"]').forEach(el => el.remove());
                 }, 0);
             }
 
-            if (ansichtId === 'home') {
-                try { rendereMitgliederIdentität(); } catch (err) { console.error('Home-Identität konnte nicht aktualisiert werden', err); }
+            if (ansichtId === 'home' || ansichtId === 'finanzen' || ansichtId === 'ausweis') {
+                try { rendereMitgliederIdentität(); } catch (err) { console.error('Ansicht-Identität konnte nicht aktualisiert werden', err); }
+            }
+            if (ansichtId === 'reservieren') {
+                try { rendereSortiment(); } catch (err) { console.error('Sortiment konnte nicht aktualisiert werden', err); }
             }
             if (ansichtId === 'karte') setTimeout(initialisiereKarte, 100);
             if (ansichtId === 'wissen') rendereMitgliederInfos();
@@ -3316,6 +3371,8 @@ select,input,textarea,button{touch-action:manipulation}
             wechsleUnterkapitel(kapitelId);
         }
         function wechsleUnterkapitel(kapitelId) {
+            if (!kapitelId) return;
+            ggAktivesAdminKapitel = kapitelId;
             document.querySelectorAll('.kapitel-inhalt').forEach(el => el.classList.add('hidden'));
             const zielKapitel = document.getElementById(`unterkapitel-${kapitelId}`);
             if (zielKapitel) zielKapitel.classList.remove('hidden');
@@ -3326,35 +3383,19 @@ select,input,textarea,button{touch-action:manipulation}
             const aktiverBtn = document.getElementById(`sub-btn-${kapitelId}`);
             if (aktiverBtn) aktiverBtn.className = "bg-[#22ffaa] text-black font-bold px-3 py-1.5 rounded-lg whitespace-nowrap shadow-sm";
 
-            // Beim Öffnen eines Tabs dessen Liste nochmals direkt aus dem aktuellen
-            // State rendern. Damit ist ein gespeicherter Eintrag sofort sichtbar,
-            // auch wenn zuvor ein anderes Modul einen Renderfehler hatte.
-            const tabRender = {
-                personen: rendereMitgliederListe,
-                beitraege: rendereBeiträgeListe,
-                mitteilungen: rendereMitteilungen,
-                wissen: rendereWissensbasis,
-                mitgliederwissen: rendereAdminMitgliederInfos,
-                compliance: rendereComplianceCenter,
-                qualitaet: rendereQualitaet,
-                rueckruf: rendereRueckrufe,
-                sortiment: rendereSortiment,
-                protokolle: () => { rendereProtokolle(); rendereAuditVerlauf(); },
-                zutritt: ladeUndRendereZutrittsprotokoll,
-                buchhaltung: rendereFinanzzahlen,
-                reservierungen: rendereReservierungen,
-                terminal: befüllePosOptionen,
-                darstellung: () => { aktualisiereSepaAnzeige(); fuelleUiEinstellungFelder(); },
-                berechtigungen: rendereAdminAccounts
-            };
-            try { if (tabRender[kapitelId]) tabRender[kapitelId](); } catch (err) {
-                console.error('Tab-Renderfehler in ' + kapitelId, err);
-            }
             schliesseAdminDrawer();
-
-            if (kapitelId === 'standort') {
-                setTimeout(initialisiereAdminKarte, 100);
-            }
+            const token = ++ggNavRenderToken;
+            const run = () => {
+                if (token !== ggNavRenderToken) return;
+                try { ggFuehreAdminTabRenderAus(kapitelId); } catch (err) {
+                    console.error('Tab-Renderfehler in ' + kapitelId, err);
+                }
+                if (kapitelId === 'standort') {
+                    setTimeout(initialisiereAdminKarte, 100);
+                }
+            };
+            if (typeof requestAnimationFrame === 'function') requestAnimationFrame(run);
+            else run();
         }
 
         function aktualisiereSepaAnzeige() {
@@ -4824,9 +4865,7 @@ select,input,textarea,button{touch-action:manipulation}
 
         async function rendereMitgliederListe() {
             const adminList = document.getElementById('admin-members-list');
-            const financesList = document.getElementById('admin-finances-list');
             if (adminList) adminList.innerHTML = '';
-            if (financesList) financesList.innerHTML = '';
 
             // Immer den aktuellsten gespeicherten Stand verwenden, ohne den laufenden State zu verlieren.
             if (!Array.isArray(vereinMitglieder)) vereinMitglieder = [];
@@ -4883,26 +4922,6 @@ select,input,textarea,button{touch-action:manipulation}
                     </div>`;
                 if (adminList) adminList.appendChild(row);
 
-                if (financesList && m.financeEntryActive !== false) {
-                    const financeRow = document.createElement('div');
-                    financeRow.className = "finance-swipe";
-                    financeRow.dataset.memberIndex = String(idx);
-                    financeRow.innerHTML = `
-                        <div class="finance-swipe-actions" aria-hidden="true">
-                            <button type="button" class="swipe-delete" onclick="loescheFinanzMitglied(${idx})"><i class="fa-solid fa-trash-can mr-1"></i>Löschen</button>
-                            <button type="button" class="swipe-back" onclick="schliesseFinanzSwipe(this)">Zurück</button>
-                        </div>
-                        <div class="finance-swipe-main bg-zinc-900/90 p-2.5 rounded-xl border border-white/5 flex justify-between items-center gap-2">
-                            <div class="min-w-0">
-                                <p class="font-bold text-xs text-white truncate">${escapeHtml(m.name || '—')} <span class="text-white/40 font-mono">(${escapeHtml(m.id || '—')})</span></p>
-                                <p class="text-[10px] text-white/50">${m.feePaid ? 'Bezahlt' : 'Ausstehend'} • ${Number(m.feeAmount || 0).toFixed(2).replace('.', ',')} €</p>
-                            </div>
-                            <span class="text-[10px] font-bold text-[#22ffaa] shrink-0">${Number(m.balance || 0).toFixed(2).replace('.', ',')} €</span>
-                        </div>`;
-                    financesList.appendChild(financeRow);
-                    aktiviereFinanzSwipe(financeRow);
-                }
-
                 // QR-Code für JEDE Mitgliederkarte nach dem Einfügen in den DOM erzeugen.
                 const qrBox = document.getElementById(qrId);
                 if (qrBox) {
@@ -4936,13 +4955,18 @@ select,input,textarea,button{touch-action:manipulation}
             m.feePaid = false;
             m.feeAmount = 0;
             await speichereVerschlüsseltenState('vereinMitglieder', vereinMitglieder);
-            rendereMitgliederListe();
+            if (ggSichtbaresAdminKapitel() === 'personen') {
+                try { rendereMitgliederListe(); } catch (_) {}
+            }
+            rendereFinanzMitgliederListe();
             rendereFinanzzahlen();
             rendereAuditVerlauf();
             rendereFinanceAuditPreview();
         }
 
         function aktiviereFinanzSwipe(row) {
+            if (!row || row.dataset.ggSwipeBound === '1') return;
+            row.dataset.ggSwipeBound = '1';
             let startX = 0, startY = 0, lastX = 0, longPressTimer = null, dragging = false;
             const open = () => row.classList.add('is-open');
             const close = () => row.classList.remove('is-open');
@@ -5974,6 +5998,8 @@ select,input,textarea,button{touch-action:manipulation}
         function befüllePosOptionen() {
             const memberSel = document.getElementById('pos-member-select');
             const strainSel = document.getElementById('pos-strain-select');
+            const prevMember = memberSel ? memberSel.value : '';
+            const prevStrain = strainSel ? strainSel.value : '';
 
             if (memberSel) {
                 memberSel.innerHTML = '';
@@ -5983,6 +6009,9 @@ select,input,textarea,button{touch-action:manipulation}
                     opt.textContent = `${m.name} (${m.id})`;
                     memberSel.appendChild(opt);
                 });
+                if (prevMember && [...memberSel.options].some(o => o.value === prevMember)) {
+                    memberSel.value = prevMember;
+                }
             }
 
             if (strainSel) {
@@ -5993,6 +6022,9 @@ select,input,textarea,button{touch-action:manipulation}
                     opt.textContent = `${s.name} [${s.batch}]`;
                     strainSel.appendChild(opt);
                 });
+                if (prevStrain && [...strainSel.options].some(o => o.value === prevStrain)) {
+                    strainSel.value = prevStrain;
+                }
             }
         }
 
@@ -6182,6 +6214,41 @@ select,input,textarea,button{touch-action:manipulation}
             }
         }
 
+        function rendereFinanzMitgliederListe() {
+            const financesList = document.getElementById('admin-finances-list');
+            if (!financesList) return;
+            financesList.innerHTML = '';
+            if (!Array.isArray(vereinMitglieder) || vereinMitglieder.length === 0) {
+                financesList.innerHTML = '<p class="text-white/40 italic text-center py-3">Keine Finanz-Einträge vorhanden.</p>';
+                return;
+            }
+            let sichtbar = 0;
+            vereinMitglieder.forEach((m, idx) => {
+                if (!m || m.financeEntryActive === false) return;
+                sichtbar++;
+                const financeRow = document.createElement('div');
+                financeRow.className = "finance-swipe";
+                financeRow.dataset.memberIndex = String(idx);
+                financeRow.innerHTML = `
+                        <div class="finance-swipe-actions" aria-hidden="true">
+                            <button type="button" class="swipe-delete" onclick="loescheFinanzMitglied(${idx})"><i class="fa-solid fa-trash-can mr-1"></i>Löschen</button>
+                            <button type="button" class="swipe-back" onclick="schliesseFinanzSwipe(this)">Zurück</button>
+                        </div>
+                        <div class="finance-swipe-main bg-zinc-900/90 p-2.5 rounded-xl border border-white/5 flex justify-between items-center gap-2">
+                            <div class="min-w-0">
+                                <p class="font-bold text-xs text-white truncate">${escapeHtml(m.name || '—')} <span class="text-white/40 font-mono">(${escapeHtml(m.id || '—')})</span></p>
+                                <p class="text-[10px] text-white/50">${m.feePaid ? 'Bezahlt' : 'Ausstehend'} • ${Number(m.feeAmount || 0).toFixed(2).replace('.', ',')} €</p>
+                            </div>
+                            <span class="text-[10px] font-bold text-[#22ffaa] shrink-0">${Number(m.balance || 0).toFixed(2).replace('.', ',')} €</span>
+                        </div>`;
+                financesList.appendChild(financeRow);
+                aktiviereFinanzSwipe(financeRow);
+            });
+            if (!sichtbar) {
+                financesList.innerHTML = '<p class="text-white/40 italic text-center py-3">Keine Finanz-Einträge vorhanden.</p>';
+            }
+        }
+
         function rendereFinanzzahlen() {
             const revenueDisplay = document.getElementById('admin-total-revenue-display');
             const openFeesDisplay = document.getElementById('admin-open-fees-display');
@@ -6251,9 +6318,11 @@ select,input,textarea,button{touch-action:manipulation}
             await speichereVerschlüsseltenState('vereinReservierungen', vereinReservierungen);
             await speichereVerschlüsseltenState('vereinUmsatz', vereinUmsatz);
             await protokolliereAudit('umsatz_eintrag_geloescht', `Mitglied: ${referenz}; Betrag: ${preis.toFixed(2)} €`);
+            if (ggSichtbaresAdminKapitel() === 'reservierungen') {
+                try { rendereReservierungen(); } catch (_) {}
+            }
+            try { rendereFinanzMitgliederListe(); } catch (_) {}
             rendereFinanzzahlen();
-            rendereReservierungen();
-            rendereAlles();
         }
 
         async function löscheUmsatz() {
