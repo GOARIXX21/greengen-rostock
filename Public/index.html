@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Green Generation Rostock</title>
-<meta name="gg-build" content="V27-PERF-STABLE-NAV">
+<meta name="gg-build" content="V27-FINANZ-TAB-PERF">
 <meta name="gg-build-date" content="2026-08-15">
     
     <!-- PWA & Mobile Web App Meta Tags -->
@@ -2203,6 +2203,15 @@ select,input,textarea,button{touch-action:manipulation}
         let ggLetzteVollRefreshSignatur = '';
         let ggAktivesAdminKapitel = 'terminal';
         let ggNavRenderToken = 0;
+        let ggFinanzRenderToken = 0;
+        let ggFinanzHistorieToken = 0;
+        let ggFinanzMitgliederToken = 0;
+        const GG_FINANZ_UMSATZ_START = 20;
+        const GG_FINANZ_UMSATZ_PAGE = 20;
+        let ggFinanzUmsatzLimit = 20;
+        let ggLetzteFinanzMitgliederSig = '';
+        let ggLetzteFinanzUmsatzSig = '';
+        let ggLetzteFinanzHistorieSig = '';
         let ggBalanceAnzeigeWert = null;
         let ggBalanceAnimFrame = 0;
         let mapInitialized = false;
@@ -2660,9 +2669,7 @@ select,input,textarea,button{touch-action:manipulation}
                 }
                 const finanzenTab = document.getElementById('unterkapitel-buchhaltung');
                 if (finanzenTab && !finanzenTab.classList.contains('hidden')) {
-                    try { rendereFinanzMitgliederListe(); } catch (_) {}
-                    try { rendereGuthabenHistorie(); } catch (_) {}
-                    try { rendereFinanzzahlen(); } catch (_) {}
+                    try { starteFinanzTabRender(false); } catch (_) {}
                 }
                 if (nachher !== ggLetzteIdAnzeigeSig) {
                     ggLetzteIdAnzeigeSig = nachher;
@@ -3064,7 +3071,7 @@ select,input,textarea,button{touch-action:manipulation}
                 sortiment: rendereSortiment,
                 protokolle: () => { rendereProtokolle(); rendereAuditVerlauf(); },
                 zutritt: ladeUndRendereZutrittsprotokoll,
-                buchhaltung: () => { rendereFinanzMitgliederListe(); rendereFinanzzahlen(); },
+                buchhaltung: () => { starteFinanzTabRender(false, true); },
                 reservierungen: rendereReservierungen,
                 terminal: befüllePosOptionen,
                 darstellung: () => { aktualisiereSepaAnzeige(); fuelleUiEinstellungFelder(); },
@@ -3946,15 +3953,22 @@ select,input,textarea,button{touch-action:manipulation}
         }
 
         function rendereGuthabenHistorie() {
+            const force = arguments.length ? !!arguments[0] : true;
             const list = document.getElementById('admin-balance-history-list');
             if (!list) return;
             const entries = Array.isArray(vereinGuthabenHistorie) ? vereinGuthabenHistorie.slice(0, 100) : [];
+            const sig = entries.length + ':' + (entries[0] && entries[0].id || '') + ':' + (entries[entries.length - 1] && entries[entries.length - 1].id || '') + ':' + (entries[0] && entries[0].after || '');
+            if (!force && sig === ggLetzteFinanzHistorieSig && list.dataset.ggFilled === '1') return;
+            ggLetzteFinanzHistorieSig = sig;
+            const token = ++ggFinanzHistorieToken;
             list.innerHTML = '';
+            list.dataset.ggFilled = '0';
             if (!entries.length) {
                 list.innerHTML = '<p class="text-white/40 italic text-center py-3">Noch keine Guthabenbewegungen protokolliert.</p>';
+                list.dataset.ggFilled = '1';
                 return;
             }
-            entries.forEach(e => {
+            const baueKarte = (e) => {
                 const plus = e.direction === 'PLUS';
                 const amount = Number(e.amount || 0).toFixed(2).replace('.', ',');
                 const before = Number(e.before || 0).toFixed(2).replace('.', ',');
@@ -3974,8 +3988,23 @@ select,input,textarea,button{touch-action:manipulation}
                     <p class="text-[9px] text-white/40 mt-1">Stand: ${before} € → ${after} €${e.reason ? ' · Grund: ' + escapeHtml(e.reason) : ''}</p>
                     <p class="text-[9px] text-white/30 mt-1">Durchgeführt von: ${escapeHtml(e.actor || 'SYSTEM')} · ID: ${escapeHtml(e.id || '')}</p>
                 `;
-                list.appendChild(card);
-            });
+                return card;
+            };
+            const CHUNK = 20;
+            const renderSlice = (start) => {
+                if (token !== ggFinanzHistorieToken) return;
+                const end = Math.min(start + CHUNK, entries.length);
+                const frag = document.createDocumentFragment();
+                for (let i = start; i < end; i++) frag.appendChild(baueKarte(entries[i]));
+                list.appendChild(frag);
+                if (end < entries.length) {
+                    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => renderSlice(end));
+                    else setTimeout(() => renderSlice(end), 0);
+                } else {
+                    list.dataset.ggFilled = '1';
+                }
+            };
+            renderSlice(0);
         }
 
         async function adminGuthabenAnpassen(index) {
@@ -6214,22 +6243,139 @@ select,input,textarea,button{touch-action:manipulation}
             }
         }
 
+        function aktualisiereFinanzKennzahlen() {
+            const revenueDisplay = document.getElementById('admin-total-revenue-display');
+            const openFeesDisplay = document.getElementById('admin-open-fees-display');
+            if (revenueDisplay) revenueDisplay.textContent = Number(vereinUmsatz || 0).toFixed(2).replace('.', ',') + ' €';
+            let offene = 0;
+            if (Array.isArray(vereinMitglieder)) {
+                for (let i = 0; i < vereinMitglieder.length; i++) {
+                    const m = vereinMitglieder[i];
+                    if (!m) continue;
+                    if (m.financeEntryActive !== false && !m.feePaid) offene += Number(m.feeAmount || 0);
+                }
+            }
+            if (openFeesDisplay) openFeesDisplay.textContent = offene.toFixed(2).replace('.', ',') + ' €';
+        }
+
+        function starteFinanzTabRender(force, resetUmsatzLimit) {
+            const token = ++ggFinanzRenderToken;
+            if (resetUmsatzLimit) ggFinanzUmsatzLimit = GG_FINANZ_UMSATZ_START;
+            aktualisiereFinanzKennzahlen();
+            const nachKennzahl = () => {
+                if (token !== ggFinanzRenderToken) return;
+                rendereFinanzMitgliederListe(!!force);
+                const nachMitglieder = () => {
+                    if (token !== ggFinanzRenderToken) return;
+                    rendereGuthabenHistorie(!!force);
+                    const nachHistorie = () => {
+                        if (token !== ggFinanzRenderToken) return;
+                        rendereFinanzUmsatzListe(!!force);
+                        rendereFinanceAuditPreview();
+                    };
+                    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(nachHistorie);
+                    else setTimeout(nachHistorie, 0);
+                };
+                if (typeof requestAnimationFrame === 'function') requestAnimationFrame(nachMitglieder);
+                else setTimeout(nachMitglieder, 0);
+            };
+            if (typeof requestAnimationFrame === 'function') requestAnimationFrame(nachKennzahl);
+            else setTimeout(nachKennzahl, 0);
+        }
+
+        function ggWeitereFinanzUmsaetzeAnzeigen() {
+            const total = Array.isArray(vereinReservierungen) ? vereinReservierungen.length : 0;
+            ggFinanzUmsatzLimit = Math.min(total, Math.max(GG_FINANZ_UMSATZ_START, ggFinanzUmsatzLimit) + GG_FINANZ_UMSATZ_PAGE);
+            rendereFinanzUmsatzListe(true);
+        }
+
+        function rendereFinanzUmsatzListe(force) {
+            const revenueList = document.getElementById('admin-revenue-entries-list');
+            if (!revenueList) return;
+            if (!Array.isArray(vereinReservierungen) || vereinReservierungen.length === 0) {
+                ggFinanzUmsatzLimit = GG_FINANZ_UMSATZ_START;
+                ggLetzteFinanzUmsatzSig = '0';
+                revenueList.innerHTML = '<p class="text-white/40 italic text-center py-3">Keine Umsatz-Einträge vorhanden.</p>';
+                return;
+            }
+            const total = vereinReservierungen.length;
+            if (!ggFinanzUmsatzLimit || ggFinanzUmsatzLimit < GG_FINANZ_UMSATZ_START) ggFinanzUmsatzLimit = GG_FINANZ_UMSATZ_START;
+            const limit = Math.min(ggFinanzUmsatzLimit, total);
+            const first = vereinReservierungen[0] || {};
+            const last = vereinReservierungen[limit - 1] || {};
+            const sig = total + ':' + limit + ':' + (first.id || first.timestamp || '') + ':' + (last.id || last.timestamp || '') + ':' + Number(vereinUmsatz || 0);
+            if (!force && sig === ggLetzteFinanzUmsatzSig && revenueList.dataset.ggFilled === '1') return;
+            ggLetzteFinanzUmsatzSig = sig;
+            const frag = document.createDocumentFragment();
+            for (let idx = 0; idx < limit; idx++) {
+                const r = vereinReservierungen[idx];
+                if (!r) continue;
+                const row = document.createElement('div');
+                row.className = 'bg-zinc-900/90 p-2.5 rounded-xl border border-white/5 flex items-center justify-between gap-2';
+                row.innerHTML = `
+                            <div class="min-w-0">
+                                <p class="font-bold text-xs text-white truncate">${escapeHtml(r.member || 'Unbekannt')}</p>
+                                <p class="text-[10px] text-white/45">${escapeHtml(r.strain || '—')} • ${escapeHtml(r.amount || '—')} • ${Number(r.price || 0).toFixed(2).replace('.', ',')} €</p>
+                                <p class="text-[9px] text-white/30">${escapeHtml(r.timestamp || r.date || '')}</p>
+                            </div>
+                            <button type="button" onclick="löscheUmsatzEintrag(${idx})" class="text-red-400 hover:text-red-300 px-2 py-1.5 rounded-lg text-[10px] shrink-0">Löschen</button>`;
+                frag.appendChild(row);
+            }
+            if (limit < total) {
+                const more = document.createElement('button');
+                more.type = 'button';
+                more.className = 'w-full bg-white/10 hover:bg-white/15 text-white font-bold py-2 rounded-xl text-[10px]';
+                more.textContent = 'Weitere anzeigen (' + limit + ' von ' + total + ')';
+                more.onclick = ggWeitereFinanzUmsaetzeAnzeigen;
+                frag.appendChild(more);
+            }
+            revenueList.innerHTML = '';
+            revenueList.appendChild(frag);
+            revenueList.dataset.ggFilled = '1';
+        }
+
         function rendereFinanzMitgliederListe() {
+            const force = arguments.length ? !!arguments[0] : true;
             const financesList = document.getElementById('admin-finances-list');
             if (!financesList) return;
-            financesList.innerHTML = '';
             if (!Array.isArray(vereinMitglieder) || vereinMitglieder.length === 0) {
+                ggLetzteFinanzMitgliederSig = '0';
                 financesList.innerHTML = '<p class="text-white/40 italic text-center py-3">Keine Finanz-Einträge vorhanden.</p>';
                 return;
             }
-            let sichtbar = 0;
-            vereinMitglieder.forEach((m, idx) => {
-                if (!m || m.financeEntryActive === false) return;
-                sichtbar++;
-                const financeRow = document.createElement('div');
-                financeRow.className = "finance-swipe";
-                financeRow.dataset.memberIndex = String(idx);
-                financeRow.innerHTML = `
+            const aktive = [];
+            for (let idx = 0; idx < vereinMitglieder.length; idx++) {
+                const m = vereinMitglieder[idx];
+                if (!m || m.financeEntryActive === false) continue;
+                aktive.push(idx);
+            }
+            const sig = aktive.map((idx) => {
+                const m = vereinMitglieder[idx];
+                return [m.id, m.feePaid, m.feeAmount, m.balance, m.name].join(',');
+            }).join('|');
+            if (!force && sig === ggLetzteFinanzMitgliederSig && financesList.dataset.ggFilled === '1') return;
+            ggLetzteFinanzMitgliederSig = sig;
+            const token = ++ggFinanzMitgliederToken;
+            financesList.innerHTML = '';
+            financesList.dataset.ggFilled = '0';
+            if (!aktive.length) {
+                financesList.innerHTML = '<p class="text-white/40 italic text-center py-3">Keine Finanz-Einträge vorhanden.</p>';
+                financesList.dataset.ggFilled = '1';
+                return;
+            }
+            const CHUNK = 40;
+            const renderSlice = (start) => {
+                if (token !== ggFinanzMitgliederToken) return;
+                const end = Math.min(start + CHUNK, aktive.length);
+                const frag = document.createDocumentFragment();
+                for (let i = start; i < end; i++) {
+                    const idx = aktive[i];
+                    const m = vereinMitglieder[idx];
+                    if (!m) continue;
+                    const financeRow = document.createElement('div');
+                    financeRow.className = "finance-swipe";
+                    financeRow.dataset.memberIndex = String(idx);
+                    financeRow.innerHTML = `
                         <div class="finance-swipe-actions" aria-hidden="true">
                             <button type="button" class="swipe-delete" onclick="loescheFinanzMitglied(${idx})"><i class="fa-solid fa-trash-can mr-1"></i>Löschen</button>
                             <button type="button" class="swipe-back" onclick="schliesseFinanzSwipe(this)">Zurück</button>
@@ -6241,53 +6387,25 @@ select,input,textarea,button{touch-action:manipulation}
                             </div>
                             <span class="text-[10px] font-bold text-[#22ffaa] shrink-0">${Number(m.balance || 0).toFixed(2).replace('.', ',')} €</span>
                         </div>`;
-                financesList.appendChild(financeRow);
-                aktiviereFinanzSwipe(financeRow);
-            });
-            if (!sichtbar) {
-                financesList.innerHTML = '<p class="text-white/40 italic text-center py-3">Keine Finanz-Einträge vorhanden.</p>';
-            }
+                    frag.appendChild(financeRow);
+                    aktiviereFinanzSwipe(financeRow);
+                }
+                financesList.appendChild(frag);
+                if (end < aktive.length) {
+                    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => renderSlice(end));
+                    else setTimeout(() => renderSlice(end), 0);
+                } else {
+                    financesList.dataset.ggFilled = '1';
+                }
+            };
+            renderSlice(0);
         }
 
         function rendereFinanzzahlen() {
-            const revenueDisplay = document.getElementById('admin-total-revenue-display');
-            const openFeesDisplay = document.getElementById('admin-open-fees-display');
-
-            if (revenueDisplay) revenueDisplay.textContent = vereinUmsatz.toFixed(2).replace('.', ',') + ' €';
-
-            // Offene Beiträge zählen nur aktive Finanz-/Beitragsdatensätze.
-            // Wird ein Finanz-Eintrag gelöscht (financeEntryActive === false),
-            // darf sein Betrag nicht weiterhin als offener Beitrag erscheinen.
-            let offene = 0;
-            vereinMitglieder.forEach(m => {
-                const finanzAktiv = m.financeEntryActive !== false;
-                if (finanzAktiv && !m.feePaid) offene += Number(m.feeAmount || 0);
-            });
-
-            if (openFeesDisplay) openFeesDisplay.textContent = offene.toFixed(2).replace('.', ',') + ' €';
-
-            const revenueList = document.getElementById('admin-revenue-entries-list');
-            if (revenueList) {
-                revenueList.innerHTML = '';
-                if (!Array.isArray(vereinReservierungen) || vereinReservierungen.length === 0) {
-                    revenueList.innerHTML = '<p class="text-white/40 italic text-center py-3">Keine Umsatz-Einträge vorhanden.</p>';
-                } else {
-                    vereinReservierungen.forEach((r, idx) => {
-                        const row = document.createElement('div');
-                        row.className = 'bg-zinc-900/90 p-2.5 rounded-xl border border-white/5 flex items-center justify-between gap-2';
-                        row.innerHTML = `
-                            <div class="min-w-0">
-                                <p class="font-bold text-xs text-white truncate">${escapeHtml(r.member || 'Unbekannt')}</p>
-                                <p class="text-[10px] text-white/45">${escapeHtml(r.strain || '—')} • ${escapeHtml(r.amount || '—')} • ${Number(r.price || 0).toFixed(2).replace('.', ',')} €</p>
-                                <p class="text-[9px] text-white/30">${escapeHtml(r.timestamp || r.date || '')}</p>
-                            </div>
-`;
-                        revenueList.appendChild(row);
-                    });
-                }
-            }
+            aktualisiereFinanzKennzahlen();
+            rendereFinanzUmsatzListe(true);
+            rendereGuthabenHistorie(true);
             rendereFinanceAuditPreview();
-            rendereGuthabenHistorie();
         }
 
         function rendereFinanceAuditPreview() {
