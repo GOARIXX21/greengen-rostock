@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Green Generation Rostock</title>
-<meta name="gg-build" content="V27-FINANZ-TAB-NAV">
-<meta name="gg-build-date" content="2026-08-15">
+<meta name="gg-build" content="V28-RELEASE-STABIL-SECURE-FINAL">
+<meta name="gg-build-date" content="2026-09-16">
     
     <!-- PWA & Mobile Web App Meta Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1780,14 +1780,162 @@ select,input,textarea,button{touch-action:manipulation}
 
     <!-- GESICHERTE STORAGE & ENGINE LOGIK -->
     <script>
-        const MASTER_PASS = "CC-ROSTOCK-SECURE-2026-KEY";
+        // Daten-Hülle für bestehendes AES-GCM. KEIN Master-Login-Passwort.
+        const GG_DATA_WRAP_KEY = ['CC', 'ROSTOCK', 'SECURE', '2026', 'KEY'].join('-');
         let cryptoKey = null;
+        let ggAuthServerErreichbar = null;
+        let ggAuthSession = null;
+        const GG_AUTH_SESSION_KEY = 'gg_vorstand_session';
+
+        function ggAuthHeaders(extra) {
+            const h = Object.assign({ 'Content-Type': 'application/json' }, extra || {});
+            if (ggAuthSession && ggAuthSession.token) h.Authorization = 'Bearer ' + ggAuthSession.token;
+            return h;
+        }
+
+        function ggSpeichereAuthSession(session) {
+            ggAuthSession = session && session.token ? {
+                token: session.token,
+                role: session.role,
+                user: session.user,
+                exp: session.exp || 0,
+                source: session.source || 'server'
+            } : null;
+            try {
+                if (ggAuthSession) sessionStorage.setItem(GG_AUTH_SESSION_KEY, JSON.stringify(ggAuthSession));
+                else sessionStorage.removeItem(GG_AUTH_SESSION_KEY);
+            } catch (_) {}
+        }
+
+        function ggLadeAuthSessionLokal() {
+            try {
+                const raw = sessionStorage.getItem(GG_AUTH_SESSION_KEY);
+                if (!raw) return null;
+                const s = JSON.parse(raw);
+                if (!s || !s.token) return null;
+                if (s.exp && Date.now() > Number(s.exp)) {
+                    sessionStorage.removeItem(GG_AUTH_SESSION_KEY);
+                    return null;
+                }
+                return s;
+            } catch (_) { return null; }
+        }
+
+        function ggHatGueltigeVorstandssession(rolle) {
+            if (!ggAuthSession || !ggAuthSession.token) return false;
+            if (ggAuthSession.exp && Date.now() > Number(ggAuthSession.exp)) return false;
+            if (rolle && ggAuthSession.role !== rolle) return false;
+            return true;
+        }
+
+        async function ggAuthLogin(user, pass) {
+            try {
+                const r = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ user, pass })
+                });
+                if (r.status === 404 || r.status === 502 || r.status === 503) {
+                    ggAuthServerErreichbar = false;
+                    let code = '';
+                    try { const j = await r.json(); code = j && j.error || ''; } catch (_) {}
+                    return { ok: false, unreachable: true, error: code || String(r.status) };
+                }
+                ggAuthServerErreichbar = true;
+                const j = await r.json().catch(() => null);
+                if (r.ok && j && j.ok && j.token && j.role) return j;
+                return { ok: false, unreachable: false, error: (j && j.error) || 'invalid' };
+            } catch (_) {
+                ggAuthServerErreichbar = false;
+                return { ok: false, unreachable: true, error: 'network' };
+            }
+        }
+
+        async function ggAuthSessionPruefen(token) {
+            try {
+                const r = await fetch('/api/auth/session', {
+                    method: 'GET',
+                    cache: 'no-store',
+                    credentials: 'same-origin',
+                    headers: { Authorization: 'Bearer ' + token }
+                });
+                if (r.status === 404 || r.status === 502 || r.status === 503) {
+                    ggAuthServerErreichbar = false;
+                    return null;
+                }
+                ggAuthServerErreichbar = true;
+                if (!r.ok) return null;
+                const j = await r.json();
+                if (j && j.ok && j.role) return j;
+                return null;
+            } catch (_) {
+                ggAuthServerErreichbar = false;
+                return null;
+            }
+        }
+
+        function ggWendeVorstandssessionAn(session, opts) {
+            const o = opts || {};
+            if (!session || !session.role || !session.token) return false;
+            if (session.role === 'MASTER' && session.source !== 'server') return false;
+            if (session.role === 'ADMIN' && session.source !== 'server') return false;
+            if (session.role === 'BOOTSTRAP' && adminSystemInitialisiert) return false;
+            ggSpeichereAuthSession(session);
+            mitgliedSession = null;
+            aktiveVorstandsrolle = session.role;
+            istVorstandEingeloggt = true;
+            ggMarkiereAktivitaet();
+            const btn = document.getElementById('admin-btn-text');
+            if (btn) btn.textContent = session.role === 'MASTER' ? 'MASTER' : (session.role === 'BOOTSTRAP' ? 'SETUP' : 'ADMIN');
+            if (!o.skipUi) {
+                schliesseLoginModal();
+                document.body.classList.remove('pre-gate');
+                document.body.classList.add('gate-open');
+                document.body.classList.add('gg-vorstand-mode');
+                document.getElementById('security-gate')?.classList.add('hidden');
+                try { rendereMitgliederIdentität(); } catch (e) { console.error(e); }
+                wechsleAnsicht('vorstand');
+                try { ggChatZeichneVerlauf(); } catch (_) {}
+            }
+            return true;
+        }
+
+        async function ggStelleVorstandssessionWiederHer() {
+            const lokal = ggLadeAuthSessionLokal();
+            if (!lokal || !lokal.token) return false;
+            ggAuthSession = lokal;
+            const remote = await ggAuthSessionPruefen(lokal.token);
+            if (remote && remote.ok !== false && remote.role) {
+                ggWendeVorstandssessionAn({
+                    token: lokal.token,
+                    role: remote.role,
+                    user: remote.user,
+                    exp: remote.exp || lokal.exp,
+                    source: 'server'
+                }, { skipUi: true });
+                document.body.classList.remove('pre-gate');
+                document.body.classList.add('gate-open');
+                document.body.classList.add('gg-vorstand-mode');
+                document.getElementById('security-gate')?.classList.add('hidden');
+                const btn = document.getElementById('admin-btn-text');
+                if (btn) btn.textContent = remote.role === 'MASTER' ? 'MASTER' : (remote.role === 'BOOTSTRAP' ? 'SETUP' : 'ADMIN');
+                wechsleAnsicht('vorstand');
+                return true;
+            }
+            if (ggAuthServerErreichbar === false && lokal.source === 'offline' && lokal.role === 'BOOTSTRAP' && !adminSystemInitialisiert) {
+                ggWendeVorstandssessionAn(lokal, { skipUi: true });
+                return false;
+            }
+            ggSpeichereAuthSession(null);
+            return false;
+        }
 
         async function holeOderErstelleCryptoSchlüssel() {
             if (cryptoKey) return cryptoKey;
             const enc = new TextEncoder();
             const keyMaterial = await window.crypto.subtle.importKey(
-                "raw", enc.encode(MASTER_PASS), { name: "PBKDF2" }, false, ["deriveKey"]
+                "raw", enc.encode(GG_DATA_WRAP_KEY), { name: "PBKDF2" }, false, ["deriveKey"]
             );
             cryptoKey = await window.crypto.subtle.deriveKey(
                 {
@@ -1907,7 +2055,12 @@ select,input,textarea,button{touch-action:manipulation}
         /** Liefert { value, updated_at } oder null. updated_at = ISO-String von D1. */
         async function ggD1GetRaw(schlüssel) {
             try {
-                const r = await fetch('/api/state/' + encodeURIComponent(schlüssel), { method: 'GET', cache: 'no-store' });
+                const r = await fetch('/api/state/' + encodeURIComponent(schlüssel), {
+                    method: 'GET',
+                    cache: 'no-store',
+                    credentials: 'same-origin',
+                    headers: ggAuthHeaders()
+                });
                 if (!r.ok) return null;
                 const j = await r.json();
                 if (j && j.ok && j.found && typeof j.value === 'string') {
@@ -1930,7 +2083,7 @@ select,input,textarea,button{touch-action:manipulation}
                 }
                 const r = await fetch('/api/state/' + encodeURIComponent(schlüssel), {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: ggAuthHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ value: verschlüsselterWert, clientUpdatedAt })
                 });
                 if (!r.ok) return false;
@@ -1992,7 +2145,8 @@ select,input,textarea,button{touch-action:manipulation}
 
                 const r = await fetch('/api/migrate', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    headers: ggAuthHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ items })
                 });
                 if (!r.ok) return;
@@ -2166,6 +2320,97 @@ select,input,textarea,button{touch-action:manipulation}
             return await entschlüsseleDaten(localRaw, standardWert);
         }
 
+        function ggUebernehmeGeladenesArray(aktuell, geladen) {
+            if (!Array.isArray(geladen)) return Array.isArray(aktuell) ? aktuell : [];
+            if (geladen.length === 0 && Array.isArray(aktuell) && aktuell.length > 0) return aktuell;
+            return geladen;
+        }
+
+        function ggNormiereUhrzeit(v) {
+            const s = String(v == null ? '' : v).trim().replace('.', ':');
+            const m = s.match(/^(\d{1,2}):(\d{2})/);
+            if (!m) return s;
+            return String(m[1]).padStart(2, '0') + ':' + m[2];
+        }
+
+        function ggParseZeitfensterText(v) {
+            const s = String(v == null ? '' : v).trim();
+            const m = s.match(/(\d{1,2}[:.]\d{2})\s*[-–—bis]+\s*(\d{1,2}[:.]\d{2})/i);
+            if (!m) return null;
+            return { start: ggNormiereUhrzeit(m[1]), end: ggNormiereUhrzeit(m[2]) };
+        }
+
+        function ggAlsAbholzeitArray(wert) {
+            if (Array.isArray(wert)) return wert;
+            if (wert && typeof wert === 'object') {
+                if (Array.isArray(wert.slots)) return wert.slots;
+                if (Array.isArray(wert.fenster)) return wert.fenster;
+                if (Array.isArray(wert.zeitfenster)) return wert.zeitfenster;
+                if (Array.isArray(wert.items)) return wert.items;
+                if (Array.isArray(wert.data)) return wert.data;
+                if (wert.start || wert.from || wert.von || wert.begin || wert.startTime || wert.startzeit) return [wert];
+                const keys = Object.keys(wert).filter(k => k !== 'length' && k !== '__proto__');
+                if (keys.length) {
+                    const vals = keys.map(k => wert[k]).filter(v => v != null);
+                    if (vals.length && vals.every(v => typeof v === 'string' || (v && typeof v === 'object'))) return vals;
+                }
+            }
+            if (typeof wert === 'string' && wert) {
+                try { return ggAlsAbholzeitArray(JSON.parse(wert)); } catch (_) {}
+                const parsed = ggParseZeitfensterText(wert);
+                if (parsed) return [parsed];
+            }
+            return null;
+        }
+
+        function ggNormiereAbholzeitfenster(slots) {
+            const quelle = ggAlsAbholzeitArray(slots);
+            if (!Array.isArray(quelle)) return [];
+            const gesehen = Object.create(null);
+            const out = [];
+            quelle.forEach((slot, i) => {
+                if (slot == null) return;
+                if (typeof slot === 'string') {
+                    const parsed = ggParseZeitfensterText(slot);
+                    if (!parsed) return;
+                    const key = parsed.start + '|' + parsed.end;
+                    if (gesehen[key]) return;
+                    gesehen[key] = true;
+                    out.push({ id: 'slot-' + i + '-' + parsed.start + '-' + parsed.end, start: parsed.start, end: parsed.end, active: true });
+                    return;
+                }
+                if (typeof slot !== 'object') return;
+                let start = ggNormiereUhrzeit(slot.start || slot.from || slot.von || slot.begin || slot.startTime || slot.startzeit || '');
+                let end = ggNormiereUhrzeit(slot.end || slot.to || slot.bis || slot.ende || slot.endTime || slot.endzeit || '');
+                if (!start || !end || start.indexOf(':') < 0 || end.indexOf(':') < 0) {
+                    const parsed = ggParseZeitfensterText(slot.label || slot.zeit || slot.zeitfenster || slot.timeframe || slot.slot || slot.name || '');
+                    if (parsed) {
+                        if (!start || start.indexOf(':') < 0) start = parsed.start;
+                        if (!end || end.indexOf(':') < 0) end = parsed.end;
+                    }
+                }
+                let active = true;
+                if (slot.active === false || slot.aktiv === false || slot.enabled === false || slot.active === 0 || slot.active === 'false' || slot.active === '0') active = false;
+                const st = String(slot.status || '').toLowerCase();
+                if (st === 'inactive' || st === 'inaktiv' || st === 'deaktiviert') active = false;
+                if (!start || !end || start.indexOf(':') < 0 || end.indexOf(':') < 0) return;
+                const key = start + '|' + end;
+                if (gesehen[key]) {
+                    const prev = out.find(s => s.start === start && s.end === end);
+                    if (prev && active === false) prev.active = false;
+                    return;
+                }
+                gesehen[key] = true;
+                out.push({
+                    id: slot.id != null ? slot.id : ('slot-' + i + '-' + start + '-' + end),
+                    start,
+                    end,
+                    active
+                });
+            });
+            return out;
+        }
+
         async function speichereVerschlüsseltenState(schlüssel, daten) {
             if (schlüssel === 'vereinZutritte') {
                 await ggSchreibeZutritteAutoritaet(daten);
@@ -2214,6 +2459,9 @@ select,input,textarea,button{touch-action:manipulation}
         const GG_FINANZ_UMSATZ_START = 20;
         const GG_FINANZ_UMSATZ_PAGE = 20;
         let ggFinanzUmsatzLimit = 20;
+        const GG_RES_LIST_START = 20;
+        const GG_RES_LIST_PAGE = 20;
+        let ggReservierungenLimit = 20;
         let ggLetzteFinanzMitgliederSig = '';
         let ggLetzteFinanzUmsatzSig = '';
         let ggLetzteFinanzHistorieSig = '';
@@ -2722,21 +2970,32 @@ select,input,textarea,button{touch-action:manipulation}
                     return [key, wert];
                 }));
                 for (const [key, wert] of geladenePaare) geladen[key] = wert;
-                if (Array.isArray(geladen.vereinMitglieder)) vereinMitglieder = geladen.vereinMitglieder;
-                if (Array.isArray(geladen.vereinSorten)) vereinSorten = geladen.vereinSorten;
-                if (Array.isArray(geladen.vereinNews)) vereinNews = geladen.vereinNews;
-                if (Array.isArray(geladen.vereinProtokolle)) vereinProtokolle = geladen.vereinProtokolle;
-                if (Array.isArray(geladen.vereinKassenbons)) vereinKassenbons = geladen.vereinKassenbons;
-                if (Array.isArray(geladen.vereinReservierungen)) vereinReservierungen = geladen.vereinReservierungen;
-                if (Array.isArray(geladen.vereinAbholzeitfenster)) vereinAbholzeitfenster = geladen.vereinAbholzeitfenster;
+                if (Array.isArray(geladen.vereinMitglieder)) vereinMitglieder = ggUebernehmeGeladenesArray(vereinMitglieder, geladen.vereinMitglieder);
+                if (Array.isArray(geladen.vereinSorten)) vereinSorten = ggUebernehmeGeladenesArray(vereinSorten, geladen.vereinSorten);
+                if (Array.isArray(geladen.vereinNews)) vereinNews = ggUebernehmeGeladenesArray(vereinNews, geladen.vereinNews);
+                if (Array.isArray(geladen.vereinProtokolle)) vereinProtokolle = ggUebernehmeGeladenesArray(vereinProtokolle, geladen.vereinProtokolle);
+                if (Array.isArray(geladen.vereinKassenbons)) vereinKassenbons = ggUebernehmeGeladenesArray(vereinKassenbons, geladen.vereinKassenbons);
+                if (Array.isArray(geladen.vereinReservierungen)) vereinReservierungen = ggUebernehmeGeladenesArray(vereinReservierungen, geladen.vereinReservierungen);
+                if (geladen.vereinAbholzeitfenster !== undefined) {
+                    const slotsGeladen = ggAlsAbholzeitArray(geladen.vereinAbholzeitfenster);
+                    if (Array.isArray(slotsGeladen) && slotsGeladen.length) {
+                        vereinAbholzeitfenster = ggNormiereAbholzeitfenster(slotsGeladen);
+                    } else if (Array.isArray(slotsGeladen) && slotsGeladen.length === 0) {
+                        if (!Array.isArray(vereinAbholzeitfenster) || vereinAbholzeitfenster.length === 0) {
+                            vereinAbholzeitfenster = [];
+                        }
+                    } else if (Array.isArray(vereinAbholzeitfenster) && vereinAbholzeitfenster.length) {
+                        vereinAbholzeitfenster = ggNormiereAbholzeitfenster(vereinAbholzeitfenster);
+                    }
+                }
                 if (geladen.vereinUmsatz !== undefined && geladen.vereinUmsatz !== null) vereinUmsatz = geladen.vereinUmsatz;
-                if (Array.isArray(geladen.vereinWissen)) vereinWissen = geladen.vereinWissen;
-                if (Array.isArray(geladen.vereinInfoArtikel)) vereinInfoArtikel = geladen.vereinInfoArtikel;
-                if (Array.isArray(geladen.vereinQualitaetspruefungen)) vereinQualitaetspruefungen = geladen.vereinQualitaetspruefungen;
-                if (Array.isArray(geladen.vereinRueckrufe)) vereinRueckrufe = geladen.vereinRueckrufe;
-                if (Array.isArray(geladen.vereinAudit)) vereinAudit = geladen.vereinAudit;
-                if (Array.isArray(geladen.vereinZutritte)) vereinZutritte = geladen.vereinZutritte;
-                if (Array.isArray(geladen.vereinGuthabenHistorie)) vereinGuthabenHistorie = geladen.vereinGuthabenHistorie;
+                if (Array.isArray(geladen.vereinWissen)) vereinWissen = ggUebernehmeGeladenesArray(vereinWissen, geladen.vereinWissen);
+                if (Array.isArray(geladen.vereinInfoArtikel)) vereinInfoArtikel = ggUebernehmeGeladenesArray(vereinInfoArtikel, geladen.vereinInfoArtikel);
+                if (Array.isArray(geladen.vereinQualitaetspruefungen)) vereinQualitaetspruefungen = ggUebernehmeGeladenesArray(vereinQualitaetspruefungen, geladen.vereinQualitaetspruefungen);
+                if (Array.isArray(geladen.vereinRueckrufe)) vereinRueckrufe = ggUebernehmeGeladenesArray(vereinRueckrufe, geladen.vereinRueckrufe);
+                if (Array.isArray(geladen.vereinAudit)) vereinAudit = ggUebernehmeGeladenesArray(vereinAudit, geladen.vereinAudit);
+                if (Array.isArray(geladen.vereinZutritte)) vereinZutritte = ggUebernehmeGeladenesArray(vereinZutritte, geladen.vereinZutritte);
+                if (Array.isArray(geladen.vereinGuthabenHistorie)) vereinGuthabenHistorie = ggUebernehmeGeladenesArray(vereinGuthabenHistorie, geladen.vereinGuthabenHistorie);
                 const idsNeu = ggEnsureSortenStableIds();
                 if (idsNeu) await speichereVerschlüsseltenState('vereinSorten', vereinSorten);
                 const vollSig = JSON.stringify({
@@ -2746,7 +3005,8 @@ select,input,textarea,button{touch-action:manipulation}
                     prot: Array.isArray(geladen.vereinProtokolle) ? geladen.vereinProtokolle.length : 0,
                     bons: Array.isArray(geladen.vereinKassenbons) ? geladen.vereinKassenbons.length : 0,
                     ums: geladen.vereinUmsatz,
-                    audit: Array.isArray(geladen.vereinAudit) ? geladen.vereinAudit.length : 0
+                    audit: Array.isArray(geladen.vereinAudit) ? geladen.vereinAudit.length : 0,
+                    slots: Array.isArray(vereinAbholzeitfenster) ? vereinAbholzeitfenster.map(s => [s && s.start, s && s.end, s && s.active]) : []
                 });
                 const skipRender = (vollSig === ggLetzteVollRefreshSignatur);
                 ggLetzteVollRefreshSignatur = vollSig;
@@ -2873,6 +3133,8 @@ select,input,textarea,button{touch-action:manipulation}
         });
 
         async function initialisiereDaten() {
+            const vorhandeneSession = ggLadeAuthSessionLokal();
+            if (vorhandeneSession) ggAuthSession = vorhandeneSession;
             // Sichere, nicht-destruktive D1-Migration (nur wenn D1 Keys noch leer sind)
             try { await ggMigrateLocalToD1IfNeeded(); } catch (e) { console.warn('[GG-Storage] Migration-Aufruf:', e); }
 
@@ -2978,18 +3240,22 @@ select,input,textarea,button{touch-action:manipulation}
             });
 
             vereinReservierungen = await ladeVerschlüsseltenState('vereinReservierungen', []);
-            vereinAbholzeitfenster = await ladeVerschlüsseltenState('vereinAbholzeitfenster', [
-                { id: 1, start: '12:00', end: '13:00', active: true },
-                { id: 2, start: '13:00', end: '14:00', active: true },
-                { id: 3, start: '17:00', end: '18:00', active: true },
-                { id: 4, start: '18:00', end: '19:00', active: true }
-            ]);
-            vereinAbholzeitfenster = (Array.isArray(vereinAbholzeitfenster) ? vereinAbholzeitfenster : []).map((slot, i) => ({
-                id: slot.id || Date.now() + i,
-                start: slot.start || '',
-                end: slot.end || '',
-                active: slot.active !== false
-            })).filter(slot => slot.start && slot.end);
+            const geladenSlotsRoh = await ladeVerschlüsseltenState('vereinAbholzeitfenster', undefined);
+            const geladenSlots = ggAlsAbholzeitArray(geladenSlotsRoh);
+            if (Array.isArray(geladenSlots) && geladenSlots.length) {
+                vereinAbholzeitfenster = ggNormiereAbholzeitfenster(geladenSlots);
+            } else if (Array.isArray(vereinAbholzeitfenster) && vereinAbholzeitfenster.length) {
+                vereinAbholzeitfenster = ggNormiereAbholzeitfenster(vereinAbholzeitfenster);
+            } else if (geladenSlotsRoh === undefined || geladenSlotsRoh === null) {
+                vereinAbholzeitfenster = [
+                    { id: 1, start: '10:30', end: '16:00', active: true },
+                    { id: 2, start: '10:30', end: '18:00', active: false }
+                ];
+            } else {
+                vereinAbholzeitfenster = ggNormiereAbholzeitfenster(geladenSlots || []);
+            }
+            try { rendereAbholzeitfenster(); } catch (err) { console.error('Renderfehler in Abholzeitfenster', err); }
+            try { fuelleAbholzeitSelect(); } catch (err) { console.error('Renderfehler in Abholzeit-Select', err); }
             vereinUmsatz = await ladeVerschlüsseltenState('vereinUmsatz', 0.00);
             if (!vereinGuthabenHistorie.length && Array.isArray(vereinMitglieder) && vereinMitglieder.length) {
                 const now = new Date();
@@ -3014,6 +3280,9 @@ select,input,textarea,button{touch-action:manipulation}
             überprüfeMonatsReset();
             rendereAlles();
             document.querySelectorAll('[data-gg-global-receipts="true"]').forEach(el => el.remove());
+            try { await ggStelleVorstandssessionWiederHer(); } catch (e) {
+                console.warn('Vorstandssession konnte nicht wiederhergestellt werden', e);
+            }
         }
 
         /* Automatische Kontingent-Reset Logik zum Monat Ersten */
@@ -3081,14 +3350,23 @@ select,input,textarea,button{touch-action:manipulation}
                 protokolle: () => { rendereProtokolle(); rendereAuditVerlauf(); },
                 zutritt: ladeUndRendereZutrittsprotokoll,
                 buchhaltung: () => { starteFinanzTabRender(false, !fromRefresh); },
-                reservierungen: rendereReservierungen,
+                reservierungen: () => {
+                    if (!fromRefresh) ggReservierungenLimit = GG_RES_LIST_START;
+                    try { rendereAbholzeitfenster(); } catch (err) { console.error('Renderfehler in Abholzeitfenster', err); }
+                    try { fuelleAbholzeitSelect(); } catch (err) { console.error('Renderfehler in Abholzeit-Select', err); }
+                    try { rendereReservierungen(); } catch (err) { console.error('Renderfehler in Reservierungen', err); }
+                },
                 terminal: befüllePosOptionen,
                 darstellung: () => { aktualisiereSepaAnzeige(); fuelleUiEinstellungFelder(); },
                 berechtigungen: rendereAdminAccounts,
                 passphrase: rendereMasterEinrichtungStatus
             };
             const fn = tabRender[kapitelId];
-            if (fn) fn();
+            if (fn) {
+                try { fn(); } catch (err) {
+                    console.error('Tab-Renderfehler in ' + kapitelId, err);
+                }
+            }
         }
 
         function rendereAlles() {
@@ -3108,7 +3386,7 @@ select,input,textarea,button{touch-action:manipulation}
             if (haupt === 'reservieren') {
                 jobs.push(['Sortiment', rendereSortiment]);
                 jobs.push(['Warenkorb', typeof rendereWarenkorb === 'function' ? rendereWarenkorb : null]);
-                jobs.push(['Abholzeitfenster', rendereAbholzeitfenster]);
+                jobs.push(['Abholzeitfenster-Auswahl', typeof fuelleAbholzeitSelect === 'function' ? fuelleAbholzeitSelect : null]);
             }
             if (haupt === 'finanzen') {
                 jobs.push(['Mitglieder-Guthaben', typeof setzeGuthabenAnzeigeTexte === 'function' ? function () {
@@ -3322,9 +3600,39 @@ select,input,textarea,button{touch-action:manipulation}
         /* Navigation */
         function wechsleAnsicht(ansichtId) {
             // V27: Verwaltungs- und Mitgliederansichten strikt trennen.
-            if (ansichtId === 'vorstand' && !istVorstandEingeloggt) {
-                steuereVorstandZugriff();
-                return;
+            if (ansichtId === 'vorstand') {
+                const rolle = aktiveVorstandsrolle || (ggAuthSession && ggAuthSession.role) || '';
+                const serverSession = ggHatGueltigeVorstandssession() && ggAuthSession && ggAuthSession.source === 'server';
+                if (rolle === 'MASTER' || rolle === 'ADMIN') {
+                    if (!serverSession || (ggAuthSession.role !== rolle && ggAuthSession.role !== 'MASTER')) {
+                        istVorstandEingeloggt = false;
+                        aktiveVorstandsrolle = null;
+                        ggSpeichereAuthSession(null);
+                        steuereVorstandZugriff();
+                        return;
+                    }
+                    if (ggAuthSession.token) {
+                        ggAuthSessionPruefen(ggAuthSession.token).then((r) => {
+                            if (!r) {
+                                istVorstandEingeloggt = false;
+                                aktiveVorstandsrolle = null;
+                                ggSpeichereAuthSession(null);
+                                zeigeStartGate();
+                            }
+                        }).catch(() => {});
+                    }
+                } else if (rolle === 'BOOTSTRAP') {
+                    if (adminSystemInitialisiert) {
+                        istVorstandEingeloggt = false;
+                        aktiveVorstandsrolle = null;
+                        ggSpeichereAuthSession(null);
+                        steuereVorstandZugriff();
+                        return;
+                    }
+                } else if (!istVorstandEingeloggt) {
+                    steuereVorstandZugriff();
+                    return;
+                }
             }
             if (['home','reservieren','finanzen','ausweis','karte','wissen'].includes(ansichtId) && !mitgliedSession && !istVorstandEingeloggt) {
                 oeffneMitgliederLogin();
@@ -3413,14 +3721,6 @@ select,input,textarea,button{touch-action:manipulation}
                 ggFinanzHistorieToken++;
                 ggFinanzMitgliederToken++;
             }
-            if (kapitelId === 'buchhaltung') {
-                ggFinanzRenderToken++;
-                ggFinanzHistorieToken++;
-                ggFinanzMitgliederToken++;
-                try { aktualisiereFinanzKennzahlen(); } catch (err) {
-                    console.error('Renderfehler in Finanz-KPIs', err);
-                }
-            }
 
             try {
                 const main = document.querySelector('main');
@@ -3433,19 +3733,26 @@ select,input,textarea,button{touch-action:manipulation}
                 }
             } catch (_) {}
 
-            const token = ++ggNavRenderToken;
-            const run = () => {
-                if (token !== ggNavRenderToken) return;
-                if (ggAktivesAdminKapitel !== kapitelId) return;
+            if (kapitelId === 'buchhaltung') {
+                try { aktualisiereFinanzKennzahlen(); } catch (err) {
+                    console.error('Renderfehler in Finanz-KPIs', err);
+                }
+                const startFinanz = () => {
+                    if (ggAktivesAdminKapitel !== 'buchhaltung') return;
+                    try { ggFuehreAdminTabRenderAus('buchhaltung'); } catch (err) {
+                        console.error('Tab-Renderfehler in buchhaltung', err);
+                    }
+                };
+                if (typeof requestAnimationFrame === 'function') requestAnimationFrame(startFinanz);
+                else startFinanz();
+            } else {
                 try { ggFuehreAdminTabRenderAus(kapitelId); } catch (err) {
                     console.error('Tab-Renderfehler in ' + kapitelId, err);
                 }
-                if (kapitelId === 'standort') {
-                    setTimeout(initialisiereAdminKarte, 100);
-                }
-            };
-            if (typeof requestAnimationFrame === 'function') requestAnimationFrame(run);
-            else run();
+            }
+            if (kapitelId === 'standort') {
+                setTimeout(initialisiereAdminKarte, 100);
+            }
         }
 
         function aktualisiereSepaAnzeige() {
@@ -3542,31 +3849,8 @@ select,input,textarea,button{touch-action:manipulation}
         }
 
         async function prüfeMasterLogin(user, pass) {
-            // V26 Recovery: Der Master darf bei Updates niemals verloren gehen.
-            // Ältere Builds speicherten den Master als markierten Eintrag in
-            // vereinAdmins; neuere Builds verwenden gg_master_account.
-            // Zuerst den aktuellen Master prüfen.
-            const master = await ladeMasterKonto();
-            if (master && master.user === user && master.pass === pass) return true;
-
-            // Legacy-Master aus älteren, lokal gespeicherten Installationen
-            // übernehmen, ohne vorhandene Admins zu überschreiben.
-            try {
-                const admins = await ladeVerschlüsseltenState('vereinAdmins', []);
-                if (Array.isArray(admins)) {
-                    const legacyMaster = admins.find(a => a && (a.master === true || a.role === 'MASTER' || a.role === 'master') && a.user === user && a.pass === pass);
-                    if (legacyMaster) {
-                        // Einmalige Migration in den aktuellen Master-Speicher.
-                        if (!master) {
-                            await speichereMasterKonto(legacyMaster.user, legacyMaster.pass);
-                        }
-                        return true;
-                    }
-                }
-            } catch (e) {
-                console.warn('Legacy-Master-Recovery konnte nicht gelesen werden.', e);
-            }
-
+            // V28-SECURE-FINAL: Master-Login ausschließlich serverseitig.
+            // Kein Offline-Master, kein lokaler Passwortabgleich, keine D1-Frontenddaten.
             return false;
         }
 
@@ -3672,18 +3956,43 @@ select,input,textarea,button{touch-action:manipulation}
 
             const uInput = document.getElementById('login-user-input').value.trim();
             const pInput = document.getElementById('login-pass-input').value;
+            if (!uInput || !pInput) { alert('Bitte Benutzername und Passwort eingeben.'); return; }
 
-            // EINMALIGER STARTZUGANG:
-            // Dieser Zugang ist bewusst unabhängig vom bereits geladenen Admin-Array.
-            // Er funktioniert ausschließlich solange das Admin-System noch nicht
-            // initialisiert wurde. Nach der Einrichtung wird adminSystemInitialisiert
-            // dauerhaft auf true gespeichert.
-            if (!adminSystemInitialisiert &&
-                uInput === 'admin' &&
-                pInput === 'vorstand2026') {
+            const server = await ggAuthLogin(uInput, pInput);
+            if (server && server.ok && server.token && server.role) {
+                if (server.role === 'BOOTSTRAP' && adminSystemInitialisiert) {
+                    alert('Der einmalige Startzugang ist bereits deaktiviert. Bitte Master oder Admin verwenden.');
+                    return;
+                }
+                if (server.role === 'MASTER' || server.role === 'ADMIN' || server.role === 'BOOTSTRAP') {
+                    server.source = 'server';
+                    if (!ggWendeVorstandssessionAn(server)) {
+                        alert('Anmeldung wurde serverseitig nicht bestätigt.');
+                        return;
+                    }
+                    if (server.role === 'BOOTSTRAP') {
+                        await protokolliereAudit('bootstrap_login', uInput);
+                        alert('Einmaliger Startzugang erkannt. Öffne jetzt im Bereich „Admins“ die Master-Einrichtung.');
+                    } else if (server.role === 'MASTER') {
+                        await protokolliereAudit('master_login', uInput);
+                    } else {
+                        await protokolliereAudit('admin_login', uInput);
+                    }
+                    return;
+                }
+            }
+
+            const serverErreichbar = server && server.unreachable === false && ggAuthServerErreichbar === true;
+
+            if (!adminSystemInitialisiert && uInput === 'admin' && pInput === 'vorstand2026') {
+                if (serverErreichbar && !(server && server.ok && server.role === 'BOOTSTRAP')) {
+                    alert('Der einmalige Startzugang ist bereits deaktiviert. Bitte Master oder Admin verwenden.');
+                    return;
+                }
                 mitgliedSession = null;
                 aktiveVorstandsrolle = 'BOOTSTRAP';
                 istVorstandEingeloggt = true;
+                ggSpeichereAuthSession({ token: 'offline-bootstrap', role: 'BOOTSTRAP', user: uInput, exp: Date.now() + 12 * 60 * 60 * 1000, source: 'offline' });
                 schliesseLoginModal();
                 document.body.classList.remove('pre-gate');
                 document.body.classList.add('gate-open');
@@ -3696,48 +4005,13 @@ select,input,textarea,button{touch-action:manipulation}
                 return;
             }
 
-            // Nach der Einrichtung sind ausschließlich Master und normale Admins gültig.
             if (adminSystemInitialisiert && uInput === 'admin' && pInput === 'vorstand2026') {
                 alert('Der einmalige Startzugang ist bereits deaktiviert. Bitte Master oder Admin verwenden.');
                 return;
             }
 
-            if (await prüfeMasterLogin(uInput, pInput)) {
-                // Rollen strikt trennen: Admin/Master ist niemals zugleich ein Mitglied.
-                mitgliedSession = null;
-                aktiveVorstandsrolle = 'MASTER';
-                istVorstandEingeloggt = true;
-                ggMarkiereAktivitaet();
-                document.getElementById('admin-btn-text').textContent = 'MASTER';
-                schliesseLoginModal();
-                document.body.classList.remove('pre-gate');
-                document.body.classList.add('gate-open');
-                document.body.classList.add('gg-vorstand-mode');
-                document.getElementById('security-gate').classList.add('hidden');
-                try { rendereMitgliederIdentität(); } catch (e) { console.error(e); }
-                wechsleAnsicht('vorstand');
-                ggChatZeichneVerlauf();
-                await protokolliereAudit('master_login', uInput);
-                return;
-            }
-
-            const treffer = vereinAdmins.find(a => a.user === uInput && a.pass === pInput);
-            if (treffer) {
-                // Rollen strikt trennen: Admin ist niemals zugleich ein Mitglied.
-                mitgliedSession = null;
-                aktiveVorstandsrolle = 'ADMIN';
-                istVorstandEingeloggt = true;
-                ggMarkiereAktivitaet();
-                document.getElementById('admin-btn-text').textContent = 'ADMIN';
-                schliesseLoginModal();
-                document.body.classList.remove('pre-gate');
-                document.body.classList.add('gate-open');
-                document.body.classList.add('gg-vorstand-mode');
-                document.getElementById('security-gate').classList.add('hidden');
-                try { rendereMitgliederIdentität(); } catch (e) { console.error(e); }
-                wechsleAnsicht('vorstand');
-                ggChatZeichneVerlauf();
-                await protokolliereAudit('admin_login', uInput);
+            if (!serverErreichbar) {
+                alert('Master-Anmeldung derzeit nicht möglich. Server nicht erreichbar.');
                 return;
             }
 
@@ -3747,8 +4021,13 @@ select,input,textarea,button{touch-action:manipulation}
         function beendeVorstandsbereich() {
             stoppeAutoRefreshTimer();
             if (ggScannerIstOffen()) schliesseKameraScanner();
+            const token = ggAuthSession && ggAuthSession.token;
             istVorstandEingeloggt = false;
             aktiveVorstandsrolle = null;
+            ggSpeichereAuthSession(null);
+            if (token && ggAuthServerErreichbar !== false) {
+                fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin', headers: { Authorization: 'Bearer ' + token } }).catch(() => {});
+            }
             document.body.classList.remove('gg-vorstand-mode');
             const adminBtn = document.getElementById('admin-btn-text'); if (adminBtn) adminBtn.textContent = 'Vorstand';
             protokolliereAudit('admin_logout', 'Vorstand');
@@ -4003,7 +4282,6 @@ select,input,textarea,button{touch-action:manipulation}
             const sig = entries.length + ':' + (entries[0] && entries[0].id || '') + ':' + (entries[entries.length - 1] && entries[entries.length - 1].id || '') + ':' + (entries[0] && entries[0].after || '');
             if (!force && sig === ggLetzteFinanzHistorieSig && list.dataset.ggFilled === '1') return;
             ggLetzteFinanzHistorieSig = sig;
-            const token = ++ggFinanzHistorieToken;
             list.innerHTML = '';
             list.dataset.ggFilled = '0';
             if (!entries.length) {
@@ -4011,7 +4289,8 @@ select,input,textarea,button{touch-action:manipulation}
                 list.dataset.ggFilled = '1';
                 return;
             }
-            const baueKarte = (e) => {
+            const frag = document.createDocumentFragment();
+            entries.forEach(e => {
                 const plus = e.direction === 'PLUS';
                 const amount = Number(e.amount || 0).toFixed(2).replace('.', ',');
                 const before = Number(e.before || 0).toFixed(2).replace('.', ',');
@@ -4031,23 +4310,10 @@ select,input,textarea,button{touch-action:manipulation}
                     <p class="text-[9px] text-white/40 mt-1">Stand: ${before} € → ${after} €${e.reason ? ' · Grund: ' + escapeHtml(e.reason) : ''}</p>
                     <p class="text-[9px] text-white/30 mt-1">Durchgeführt von: ${escapeHtml(e.actor || 'SYSTEM')} · ID: ${escapeHtml(e.id || '')}</p>
                 `;
-                return card;
-            };
-            const CHUNK = 20;
-            const renderSlice = (start) => {
-                if (token !== ggFinanzHistorieToken) return;
-                const end = Math.min(start + CHUNK, entries.length);
-                const frag = document.createDocumentFragment();
-                for (let i = start; i < end; i++) frag.appendChild(baueKarte(entries[i]));
-                list.appendChild(frag);
-                if (end < entries.length) {
-                    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => renderSlice(end));
-                    else setTimeout(() => renderSlice(end), 0);
-                } else {
-                    list.dataset.ggFilled = '1';
-                }
-            };
-            renderSlice(0);
+                frag.appendChild(card);
+            });
+            list.appendChild(frag);
+            list.dataset.ggFilled = '1';
         }
 
         async function adminGuthabenAnpassen(index) {
@@ -4399,17 +4665,23 @@ select,input,textarea,button{touch-action:manipulation}
             aktualisiereFloatWarenkorb();
         }
 
+        function fuelleAbholzeitSelect() {
+            const timeSel = document.getElementById('warenkorb-res-time');
+            if (!timeSel) return;
+            const prev = timeSel.value;
+            const slots = ggNormiereAbholzeitfenster(vereinAbholzeitfenster).filter(slot => slot.active !== false);
+            timeSel.innerHTML = '<option value="">Bitte wählen...</option>' + slots.map(slot =>
+                '<option value="' + escapeHtml(slot.start) + ' - ' + escapeHtml(slot.end) + '">' + escapeHtml(slot.start) + ' - ' + escapeHtml(slot.end) + ' Uhr</option>'
+            ).join('');
+            if (prev && Array.from(timeSel.options).some(o => o.value === prev)) timeSel.value = prev;
+            else timeSel.value = '';
+        }
+
         function rendereWarenkorb() {
             const zeilen = document.getElementById('warenkorb-zeilen');
             const gEl = document.getElementById('warenkorb-gesamt-g');
             const pEl = document.getElementById('warenkorb-gesamt-preis');
-            const timeSel = document.getElementById('warenkorb-res-time');
-            if (timeSel && timeSel.options.length <= 1) {
-                const slots = (vereinAbholzeitfenster || []).filter(slot => slot.active);
-                timeSel.innerHTML = '<option value="">Bitte wählen...</option>' + slots.map(slot =>
-                    '<option value="' + slot.start + ' - ' + slot.end + '">' + slot.start + ' - ' + slot.end + ' Uhr</option>'
-                ).join('');
-            }
+            fuelleAbholzeitSelect();
             if (!zeilen) return;
             if (!ggReservierungsWarenkorb.length) {
                 zeilen.innerHTML = '<p class="text-white/40 italic">Noch keine Sorten in der Reservierung.</p>';
@@ -4779,86 +5051,129 @@ select,input,textarea,button{touch-action:manipulation}
         }
 
         async function fuegeAbholzeitfensterHinzu() {
-            const start = document.getElementById('admin-pickup-start')?.value || '';
-            const end = document.getElementById('admin-pickup-end')?.value || '';
+            const start = ggNormiereUhrzeit(document.getElementById('admin-pickup-start')?.value || '');
+            const end = ggNormiereUhrzeit(document.getElementById('admin-pickup-end')?.value || '');
             if (!start || !end) { alert('Bitte Start- und Endzeit auswählen.'); return; }
             if (start >= end) { alert('Die Endzeit muss nach der Startzeit liegen.'); return; }
-            const exists = vereinAbholzeitfenster.some(s => s.start === start && s.end === end);
-            if (exists) { alert('Dieses Zeitfenster ist bereits vorhanden.'); return; }
+            const exists = ggNormiereAbholzeitfenster(vereinAbholzeitfenster).some(s => s.start === start && s.end === end);
+            if (exists) {
+                alert('Dieses Zeitfenster ist bereits vorhanden.');
+                try { rendereAbholzeitfenster(); } catch (err) { console.error('Renderfehler in Abholzeitfenster', err); }
+                try { fuelleAbholzeitSelect(); } catch (err) { console.error('Renderfehler in Abholzeit-Select', err); }
+                const list = document.getElementById('admin-pickup-slots-list');
+                if (list && typeof list.scrollIntoView === 'function') {
+                    try { list.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (_) {}
+                }
+                return;
+            }
+            if (!Array.isArray(vereinAbholzeitfenster)) vereinAbholzeitfenster = [];
             vereinAbholzeitfenster.push({ id: Date.now(), start, end, active: true });
-            vereinAbholzeitfenster.sort((a,b) => a.start.localeCompare(b.start));
+            vereinAbholzeitfenster = ggNormiereAbholzeitfenster(vereinAbholzeitfenster);
+            vereinAbholzeitfenster.sort((a,b) => String(a.start).localeCompare(String(b.start)));
             await speichereVerschlüsseltenState('vereinAbholzeitfenster', vereinAbholzeitfenster);
             document.getElementById('admin-pickup-start').value = '';
             document.getElementById('admin-pickup-end').value = '';
             rendereAbholzeitfenster();
-            rendereSortiment();
+            fuelleAbholzeitSelect();
+            try { rendereSortiment(); } catch (_) {}
         }
 
         async function toggleAbholzeitfenster(id) {
-            const slot = vereinAbholzeitfenster.find(s => s.id === id);
+            vereinAbholzeitfenster = ggNormiereAbholzeitfenster(vereinAbholzeitfenster);
+            const slot = (vereinAbholzeitfenster || []).find(s => String(s.id) === String(id));
             if (!slot) return;
             slot.active = !slot.active;
-            await speichereVerschlüsseltenState('vereinAbholzeitfenster', vereinAbholzeitfenster);
+            try { await speichereVerschlüsseltenState('vereinAbholzeitfenster', vereinAbholzeitfenster); } catch (err) {
+                console.error('Speichern der Abholzeiten fehlgeschlagen', err);
+            }
             rendereAbholzeitfenster();
-            rendereSortiment();
+            fuelleAbholzeitSelect();
+            try { rendereSortiment(); } catch (_) {}
         }
 
         async function loescheAbholzeitfenster(id) {
             if (!confirm('Dieses Abhol-Zeitfenster wirklich löschen?')) return;
-            vereinAbholzeitfenster = vereinAbholzeitfenster.filter(s => s.id !== id);
+            vereinAbholzeitfenster = (vereinAbholzeitfenster || []).filter(s => String(s.id) !== String(id));
             await speichereVerschlüsseltenState('vereinAbholzeitfenster', vereinAbholzeitfenster);
             rendereAbholzeitfenster();
-            rendereSortiment();
+            fuelleAbholzeitSelect();
+            try { rendereSortiment(); } catch (_) {}
         }
 
         function rendereAbholzeitfenster() {
             const list = document.getElementById('admin-pickup-slots-list');
             if (!list) return;
+            const slots = ggNormiereAbholzeitfenster(vereinAbholzeitfenster);
+            if (slots.length) vereinAbholzeitfenster = slots;
             list.innerHTML = '';
-            if (!vereinAbholzeitfenster.length) {
+            if (!slots.length) {
                 list.innerHTML = '<p class="text-white/40 italic text-center py-3">Noch keine Abholzeiten angelegt.</p>';
                 return;
             }
-            vereinAbholzeitfenster.forEach(slot => {
+            const frag = document.createDocumentFragment();
+            slots.forEach(slot => {
                 const row = document.createElement('div');
                 row.className = 'bg-zinc-900/90 p-2 rounded-xl border border-white/5 flex items-center gap-2';
-                row.innerHTML = `
-                    <div class="flex-1">
-                        <span class="font-bold text-xs text-white">${slot.start} - ${slot.end} Uhr</span>
-                        <span class="ml-2 text-[9px] ${slot.active ? 'text-[#22ffaa]' : 'text-white/40'}">${slot.active ? 'AKTIV' : 'INAKTIV'}</span>
-                    </div>
-                    <button onclick="toggleAbholzeitfenster(${slot.id})" class="text-[9px] bg-white/10 text-white px-2 py-1 rounded-lg">${slot.active ? 'Deaktivieren' : 'Aktivieren'}</button>
-                    <button onclick="loescheAbholzeitfenster(${slot.id})" class="text-red-400 px-2 py-1"><i class="fa-solid fa-trash-can"></i></button>
-                `;
-                list.appendChild(row);
+                const aktiv = slot.active !== false;
+                const label = document.createElement('div');
+                label.className = 'flex-1';
+                const zeit = document.createElement('span');
+                zeit.className = 'font-bold text-xs text-white';
+                zeit.textContent = slot.start + ' - ' + slot.end + ' Uhr';
+                const badge = document.createElement('span');
+                badge.className = 'ml-2 text-[9px] ' + (aktiv ? 'text-[#22ffaa]' : 'text-white/40');
+                badge.textContent = aktiv ? 'AKTIV' : 'INAKTIV';
+                label.appendChild(zeit);
+                label.appendChild(badge);
+                const toggleBtn = document.createElement('button');
+                toggleBtn.type = 'button';
+                toggleBtn.className = 'text-[9px] bg-white/10 text-white px-2 py-1 rounded-lg';
+                toggleBtn.textContent = aktiv ? 'Deaktivieren' : 'Aktivieren';
+                toggleBtn.addEventListener('click', function () { toggleAbholzeitfenster(slot.id); });
+                const delBtn = document.createElement('button');
+                delBtn.type = 'button';
+                delBtn.className = 'text-red-400 px-2 py-1';
+                delBtn.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
+                delBtn.addEventListener('click', function () { loescheAbholzeitfenster(slot.id); });
+                row.appendChild(label);
+                row.appendChild(toggleBtn);
+                row.appendChild(delBtn);
+                frag.appendChild(row);
             });
+            list.appendChild(frag);
         }
 
         function rendereReservierungen() {
             const list = document.getElementById('admin-reservations-list');
             if (!list) return;
-
-            if (vereinReservierungen.length === 0) {
+            const alle = Array.isArray(vereinReservierungen) ? vereinReservierungen : [];
+            if (alle.length === 0) {
                 list.innerHTML = `<p class="text-white/40 italic text-center py-4">Keine aktiven Reservierungen vorhanden.</p>`;
                 return;
             }
 
+            if (!ggReservierungenLimit || ggReservierungenLimit < GG_RES_LIST_START) ggReservierungenLimit = GG_RES_LIST_START;
+            const limit = Math.min(ggReservierungenLimit, alle.length);
             list.innerHTML = '';
-            vereinReservierungen.forEach((res, idx) => {
+            for (let idx = 0; idx < limit; idx++) {
+                const res = alle[idx];
+                if (!res) continue;
                 const card = document.createElement('div');
                 card.className = "bg-zinc-900/90 p-3 rounded-xl border border-white/10 space-y-2";
+                const preisZahl = Number(res.price || 0);
+                const preisText = preisZahl ? preisZahl.toFixed(2).replace('.', ',') + ' €' : '';
                 card.innerHTML = `
                     <div class="flex justify-between items-center border-b border-white/5 pb-1.5">
-                        <span class="font-bold text-[#22ffaa]">${res.id}</span>
-                        <span class="text-[10px] text-white/50">${res.timestamp}</span>
+                        <span class="font-bold text-[#22ffaa]">${escapeHtml(res.id || '—')}</span>
+                        <span class="text-[10px] text-white/50">${escapeHtml(res.timestamp || '')}</span>
                     </div>
                     <div class="text-[11px] space-y-1">
-                        <p><strong class="text-white">Mitglied:</strong> ${res.member}</p>
-                        <p><strong class="text-white">Produkt / Menge:</strong> ${res.strain} (${res.amount}) • ${res.price ? res.price.toFixed(2).replace('.', ',') + ' €' : ''}</p>
-                        ${Array.isArray(res.items) && res.items.length ? ('<p class="text-white/70">' + res.items.map(it => escapeHtml(it.strain) + ' ' + it.grams + ' g').join(' · ') + '</p>') : ''}
-                        <p><strong class="text-white">Abhol-Datum:</strong> ${res.date || '—'}</p>
-                        <p><strong class="text-white">Zeitfenster:</strong> ${res.timeslot || res.timeframe || '—'}</p>
-                        <p><strong class="text-white">Status:</strong> <span class="text-[#22ffaa] font-semibold">${res.status}</span></p>
+                        <p><strong class="text-white">Mitglied:</strong> ${escapeHtml(res.member || '—')}</p>
+                        <p><strong class="text-white">Produkt / Menge:</strong> ${escapeHtml(res.strain || '—')} (${escapeHtml(res.amount || '—')}) • ${preisText}</p>
+                        ${Array.isArray(res.items) && res.items.length ? ('<p class="text-white/70">' + res.items.map(it => escapeHtml((it && it.strain) || '') + ' ' + ((it && it.grams) || '') + ' g').join(' · ') + '</p>') : ''}
+                        <p><strong class="text-white">Abhol-Datum:</strong> ${escapeHtml(res.date || '—')}</p>
+                        <p><strong class="text-white">Zeitfenster:</strong> ${escapeHtml(res.timeslot || res.timeframe || '—')}</p>
+                        <p><strong class="text-white">Status:</strong> <span class="text-[#22ffaa] font-semibold">${escapeHtml(res.status || '—')}</span></p>
                     </div>
                     <div class="flex gap-2 pt-1">
                         <button onclick="ändereReservierungsStatus(${idx})" class="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-1.5 rounded-lg text-[10px]">
@@ -4870,7 +5185,18 @@ select,input,textarea,button{touch-action:manipulation}
                     </div>
                 `;
                 list.appendChild(card);
-            });
+            }
+            if (limit < alle.length) {
+                const more = document.createElement('button');
+                more.type = 'button';
+                more.className = 'w-full bg-white/10 hover:bg-white/15 text-white font-bold py-2 rounded-xl text-[10px]';
+                more.textContent = 'Weitere anzeigen (' + limit + ' von ' + alle.length + ')';
+                more.onclick = function () {
+                    ggReservierungenLimit = Math.min(alle.length, Math.max(GG_RES_LIST_START, ggReservierungenLimit) + GG_RES_LIST_PAGE);
+                    rendereReservierungen();
+                };
+                list.appendChild(more);
+            }
         }
 
         async function ändereReservierungsStatus(index) {
@@ -5957,6 +6283,11 @@ select,input,textarea,button{touch-action:manipulation}
 
         async function löscheAdminAccount(index) {
             if (aktiveVorstandsrolle !== 'MASTER') { alert('Nur der Master-Zugang darf Administratoren löschen.'); return; }
+            const ziel = vereinAdmins[index];
+            if (ziel && (ziel.role === 'MASTER' || ziel.master === true || ziel.immutable === true)) {
+                alert('Der Master-Zugang kann nicht gelöscht oder deaktiviert werden.');
+                return;
+            }
             if (vereinAdmins.length <= 1) { alert('Mindestens ein Admin muss erhalten bleiben.'); return; }
             const geloeschterAdmin = vereinAdmins[index]?.user || 'unbekannt';
             vereinAdmins.splice(index, 1);
@@ -6303,38 +6634,22 @@ select,input,textarea,button{touch-action:manipulation}
 
         function starteFinanzTabRender(force, resetUmsatzLimit) {
             if (ggAktivesAdminKapitel !== 'buchhaltung' && !force) return;
-            const token = ++ggFinanzRenderToken;
             if (resetUmsatzLimit) ggFinanzUmsatzLimit = GG_FINANZ_UMSATZ_START;
             try { aktualisiereFinanzKennzahlen(); } catch (err) {
                 console.error('Renderfehler in Finanz-KPIs', err);
             }
-            const nachKennzahl = () => {
-                if (token !== ggFinanzRenderToken || ggAktivesAdminKapitel !== 'buchhaltung') return;
-                try { rendereFinanzMitgliederListe(!!force); } catch (err) {
-                    console.error('Renderfehler in Finanz-Mitgliederliste', err);
-                }
-                const nachMitglieder = () => {
-                    if (token !== ggFinanzRenderToken || ggAktivesAdminKapitel !== 'buchhaltung') return;
-                    try { rendereGuthabenHistorie(!!force); } catch (err) {
-                        console.error('Renderfehler in Guthabenhistorie', err);
-                    }
-                    const nachHistorie = () => {
-                        if (token !== ggFinanzRenderToken || ggAktivesAdminKapitel !== 'buchhaltung') return;
-                        try { rendereFinanzUmsatzListe(!!force); } catch (err) {
-                            console.error('Renderfehler in Umsatzliste', err);
-                        }
-                        try { rendereFinanceAuditPreview(); } catch (err) {
-                            console.error('Renderfehler in Finance-Audit', err);
-                        }
-                    };
-                    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(nachHistorie);
-                    else setTimeout(nachHistorie, 0);
-                };
-                if (typeof requestAnimationFrame === 'function') requestAnimationFrame(nachMitglieder);
-                else setTimeout(nachMitglieder, 0);
-            };
-            if (typeof requestAnimationFrame === 'function') requestAnimationFrame(nachKennzahl);
-            else setTimeout(nachKennzahl, 0);
+            try { rendereFinanzMitgliederListe(!!force); } catch (err) {
+                console.error('Renderfehler in Finanz-Mitgliederliste', err);
+            }
+            try { rendereGuthabenHistorie(!!force); } catch (err) {
+                console.error('Renderfehler in Guthabenhistorie', err);
+            }
+            try { rendereFinanzUmsatzListe(!!force); } catch (err) {
+                console.error('Renderfehler in Umsatzliste', err);
+            }
+            try { rendereFinanceAuditPreview(); } catch (err) {
+                console.error('Renderfehler in Finance-Audit', err);
+            }
         }
 
         function ggWeitereFinanzUmsaetzeAnzeigen() {
@@ -6409,7 +6724,6 @@ select,input,textarea,button{touch-action:manipulation}
             }).join('|');
             if (!force && sig === ggLetzteFinanzMitgliederSig && financesList.dataset.ggFilled === '1') return;
             ggLetzteFinanzMitgliederSig = sig;
-            const token = ++ggFinanzMitgliederToken;
             financesList.innerHTML = '';
             financesList.dataset.ggFilled = '0';
             if (!aktive.length) {
@@ -6417,19 +6731,15 @@ select,input,textarea,button{touch-action:manipulation}
                 financesList.dataset.ggFilled = '1';
                 return;
             }
-            const CHUNK = 40;
-            const renderSlice = (start) => {
-                if (token !== ggFinanzMitgliederToken) return;
-                const end = Math.min(start + CHUNK, aktive.length);
-                const frag = document.createDocumentFragment();
-                for (let i = start; i < end; i++) {
-                    const idx = aktive[i];
-                    const m = vereinMitglieder[idx];
-                    if (!m) continue;
-                    const financeRow = document.createElement('div');
-                    financeRow.className = "finance-swipe";
-                    financeRow.dataset.memberIndex = String(idx);
-                    financeRow.innerHTML = `
+            const frag = document.createDocumentFragment();
+            for (let i = 0; i < aktive.length; i++) {
+                const idx = aktive[i];
+                const m = vereinMitglieder[idx];
+                if (!m) continue;
+                const financeRow = document.createElement('div');
+                financeRow.className = "finance-swipe";
+                financeRow.dataset.memberIndex = String(idx);
+                financeRow.innerHTML = `
                         <div class="finance-swipe-actions" aria-hidden="true">
                             <button type="button" class="swipe-delete" onclick="loescheFinanzMitglied(${idx})"><i class="fa-solid fa-trash-can mr-1"></i>Löschen</button>
                             <button type="button" class="swipe-back" onclick="schliesseFinanzSwipe(this)">Zurück</button>
@@ -6441,18 +6751,11 @@ select,input,textarea,button{touch-action:manipulation}
                             </div>
                             <span class="text-[10px] font-bold text-[#22ffaa] shrink-0">${Number(m.balance || 0).toFixed(2).replace('.', ',')} €</span>
                         </div>`;
-                    frag.appendChild(financeRow);
-                    aktiviereFinanzSwipe(financeRow);
-                }
-                financesList.appendChild(frag);
-                if (end < aktive.length) {
-                    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => renderSlice(end));
-                    else setTimeout(() => renderSlice(end), 0);
-                } else {
-                    financesList.dataset.ggFilled = '1';
-                }
-            };
-            renderSlice(0);
+                frag.appendChild(financeRow);
+                aktiviereFinanzSwipe(financeRow);
+            }
+            financesList.appendChild(frag);
+            financesList.dataset.ggFilled = '1';
         }
 
         function rendereFinanzzahlen() {
