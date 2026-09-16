@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Green Generation Rostock</title>
-<meta name="gg-build" content="V28-RELEASE-STABIL-SECURE-FINAL">
+<meta name="gg-build" content="V28-RELEASE-STABIL-SECURE-FINANZ">
 <meta name="gg-build-date" content="2026-09-16">
     
     <!-- PWA & Mobile Web App Meta Tags -->
@@ -938,16 +938,6 @@ select,input,textarea,button{touch-action:manipulation}
             <div id="unterkapitel-reservierungen" class="kapitel-inhalt hidden space-y-3">
                 <div class="glass-card rounded-2xl p-4 border border-[#22ffaa]/40 green-glow">
                     <h3 class="font-bold text-xs mb-1 text-[#22ffaa] flex items-center gap-x-1.5">
-                        <i class="fa-solid fa-boxes-packing"></i> Reservierungs-Aufträge (Admin-Verwaltung)
-                    </h3>
-                    <p class="text-[11px] text-white/60 mb-3">Übersicht aller eingehenden Mitglieder-Reservierungen inkl. Abholzeitraum, Vorbereitungsstatus &amp; DSGVO-konformer Protokollierung.</p>
-                    <div id="admin-reservations-list" class="space-y-2 text-xs">
-                        <p class="text-white/40 italic text-center py-4">Keine aktiven Reservierungen vorhanden.</p>
-                    </div>
-                </div>
-
-                <div class="glass-card rounded-2xl p-4 border border-[#22ffaa]/40 green-glow">
-                    <h3 class="font-bold text-xs mb-1 text-[#22ffaa] flex items-center gap-x-1.5">
                         <i class="fa-solid fa-clock"></i> Abholzeiten verwalten
                     </h3>
                     <p class="text-[11px] text-white/60 mb-3">Der Vorstand legt hier die verfügbaren Abhol-Zeitfenster fest. Nur aktive Zeitfenster werden Mitgliedern bei Reservierungen angezeigt.</p>
@@ -965,6 +955,16 @@ select,input,textarea,button{touch-action:manipulation}
                         <i class="fa-solid fa-plus mr-1"></i> Zeitfenster hinzufügen
                     </button>
                     <div id="admin-pickup-slots-list" class="space-y-1.5 mt-3"></div>
+                </div>
+
+                <div class="glass-card rounded-2xl p-4 border border-[#22ffaa]/40 green-glow">
+                    <h3 class="font-bold text-xs mb-1 text-[#22ffaa] flex items-center gap-x-1.5">
+                        <i class="fa-solid fa-boxes-packing"></i> Reservierungs-Aufträge (Admin-Verwaltung)
+                    </h3>
+                    <p class="text-[11px] text-white/60 mb-3">Übersicht aller eingehenden Mitglieder-Reservierungen inkl. Abholzeitraum, Vorbereitungsstatus & DSGVO-konformer Protokollierung.</p>
+                    <div id="admin-reservations-list" class="space-y-2 text-xs">
+                        <p class="text-white/40 italic text-center py-4">Keine aktiven Reservierungen vorhanden.</p>
+                    </div>
                 </div>
             </div>
 
@@ -1780,7 +1780,8 @@ select,input,textarea,button{touch-action:manipulation}
 
     <!-- GESICHERTE STORAGE & ENGINE LOGIK -->
     <script>
-        // Daten-Hülle für bestehendes AES-GCM. KEIN Master-Login-Passwort.
+        // Daten-Hülle für bestehendes AES-GCM (D1/localStorage). KEIN Master-Login.
+        // Login-Prüfung erfolgt serverseitig über /api/auth/login.
         const GG_DATA_WRAP_KEY = ['CC', 'ROSTOCK', 'SECURE', '2026', 'KEY'].join('-');
         let cryptoKey = null;
         let ggAuthServerErreichbar = null;
@@ -1877,10 +1878,6 @@ select,input,textarea,button{touch-action:manipulation}
 
         function ggWendeVorstandssessionAn(session, opts) {
             const o = opts || {};
-            if (!session || !session.role || !session.token) return false;
-            if (session.role === 'MASTER' && session.source !== 'server') return false;
-            if (session.role === 'ADMIN' && session.source !== 'server') return false;
-            if (session.role === 'BOOTSTRAP' && adminSystemInitialisiert) return false;
             ggSpeichereAuthSession(session);
             mitgliedSession = null;
             aktiveVorstandsrolle = session.role;
@@ -1898,7 +1895,6 @@ select,input,textarea,button{touch-action:manipulation}
                 wechsleAnsicht('vorstand');
                 try { ggChatZeichneVerlauf(); } catch (_) {}
             }
-            return true;
         }
 
         async function ggStelleVorstandssessionWiederHer() {
@@ -1923,7 +1919,7 @@ select,input,textarea,button{touch-action:manipulation}
                 wechsleAnsicht('vorstand');
                 return true;
             }
-            if (ggAuthServerErreichbar === false && lokal.source === 'offline' && lokal.role === 'BOOTSTRAP' && !adminSystemInitialisiert) {
+            if (ggAuthServerErreichbar === false && lokal.source === 'offline' && lokal.role) {
                 ggWendeVorstandssessionAn(lokal, { skipUi: true });
                 return false;
             }
@@ -2055,12 +2051,7 @@ select,input,textarea,button{touch-action:manipulation}
         /** Liefert { value, updated_at } oder null. updated_at = ISO-String von D1. */
         async function ggD1GetRaw(schlüssel) {
             try {
-                const r = await fetch('/api/state/' + encodeURIComponent(schlüssel), {
-                    method: 'GET',
-                    cache: 'no-store',
-                    credentials: 'same-origin',
-                    headers: ggAuthHeaders()
-                });
+                const r = await fetch('/api/state/' + encodeURIComponent(schlüssel), { method: 'GET', cache: 'no-store' });
                 if (!r.ok) return null;
                 const j = await r.json();
                 if (j && j.ok && j.found && typeof j.value === 'string') {
@@ -2145,8 +2136,7 @@ select,input,textarea,button{touch-action:manipulation}
 
                 const r = await fetch('/api/migrate', {
                     method: 'POST',
-                    credentials: 'same-origin',
-                    headers: ggAuthHeaders({ 'Content-Type': 'application/json' }),
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ items })
                 });
                 if (!r.ok) return;
@@ -2456,6 +2446,9 @@ select,input,textarea,button{touch-action:manipulation}
         let ggFinanzRenderToken = 0;
         let ggFinanzHistorieToken = 0;
         let ggFinanzMitgliederToken = 0;
+        let ggFinanzChunkAktiv = false;
+        const GG_FINANZ_MITGLIEDER_CHUNK = 15;
+        const GG_FINANZ_HISTORIE_CHUNK = 20;
         const GG_FINANZ_UMSATZ_START = 20;
         const GG_FINANZ_UMSATZ_PAGE = 20;
         let ggFinanzUmsatzLimit = 20;
@@ -3133,8 +3126,6 @@ select,input,textarea,button{touch-action:manipulation}
         });
 
         async function initialisiereDaten() {
-            const vorhandeneSession = ggLadeAuthSessionLokal();
-            if (vorhandeneSession) ggAuthSession = vorhandeneSession;
             // Sichere, nicht-destruktive D1-Migration (nur wenn D1 Keys noch leer sind)
             try { await ggMigrateLocalToD1IfNeeded(); } catch (e) { console.warn('[GG-Storage] Migration-Aufruf:', e); }
 
@@ -3601,17 +3592,18 @@ select,input,textarea,button{touch-action:manipulation}
         function wechsleAnsicht(ansichtId) {
             // V27: Verwaltungs- und Mitgliederansichten strikt trennen.
             if (ansichtId === 'vorstand') {
-                const rolle = aktiveVorstandsrolle || (ggAuthSession && ggAuthSession.role) || '';
-                const serverSession = ggHatGueltigeVorstandssession() && ggAuthSession && ggAuthSession.source === 'server';
-                if (rolle === 'MASTER' || rolle === 'ADMIN') {
-                    if (!serverSession || (ggAuthSession.role !== rolle && ggAuthSession.role !== 'MASTER')) {
+                const willMaster = aktiveVorstandsrolle === 'MASTER' || (ggAuthSession && ggAuthSession.role === 'MASTER');
+                if (willMaster) {
+                    const serverSession = ggHatGueltigeVorstandssession('MASTER') && ggAuthSession && ggAuthSession.source === 'server';
+                    const offlineErlaubt = ggAuthServerErreichbar === false && ggHatGueltigeVorstandssession('MASTER') && ggAuthSession && ggAuthSession.source === 'offline';
+                    if (!serverSession && !offlineErlaubt) {
                         istVorstandEingeloggt = false;
                         aktiveVorstandsrolle = null;
                         ggSpeichereAuthSession(null);
                         steuereVorstandZugriff();
                         return;
                     }
-                    if (ggAuthSession.token) {
+                    if (serverSession && ggAuthSession.token) {
                         ggAuthSessionPruefen(ggAuthSession.token).then((r) => {
                             if (!r) {
                                 istVorstandEingeloggt = false;
@@ -3620,14 +3612,6 @@ select,input,textarea,button{touch-action:manipulation}
                                 zeigeStartGate();
                             }
                         }).catch(() => {});
-                    }
-                } else if (rolle === 'BOOTSTRAP') {
-                    if (adminSystemInitialisiert) {
-                        istVorstandEingeloggt = false;
-                        aktiveVorstandsrolle = null;
-                        ggSpeichereAuthSession(null);
-                        steuereVorstandZugriff();
-                        return;
                     }
                 } else if (!istVorstandEingeloggt) {
                     steuereVorstandZugriff();
@@ -3720,6 +3704,7 @@ select,input,textarea,button{touch-action:manipulation}
                 ggFinanzRenderToken++;
                 ggFinanzHistorieToken++;
                 ggFinanzMitgliederToken++;
+                ggFinanzChunkAktiv = false;
             }
 
             try {
@@ -3734,17 +3719,15 @@ select,input,textarea,button{touch-action:manipulation}
             } catch (_) {}
 
             if (kapitelId === 'buchhaltung') {
-                try { aktualisiereFinanzKennzahlen(); } catch (err) {
-                    console.error('Renderfehler in Finanz-KPIs', err);
-                }
-                const startFinanz = () => {
-                    if (ggAktivesAdminKapitel !== 'buchhaltung') return;
-                    try { ggFuehreAdminTabRenderAus('buchhaltung'); } catch (err) {
+                const navToken = ++ggFinanzRenderToken;
+                ggFinanzMitgliederToken++;
+                ggFinanzHistorieToken++;
+                setTimeout(function () {
+                    if (ggAktivesAdminKapitel !== 'buchhaltung' || navToken !== ggFinanzRenderToken) return;
+                    try { starteFinanzTabRender(false, true); } catch (err) {
                         console.error('Tab-Renderfehler in buchhaltung', err);
                     }
-                };
-                if (typeof requestAnimationFrame === 'function') requestAnimationFrame(startFinanz);
-                else startFinanz();
+                }, 0);
             } else {
                 try { ggFuehreAdminTabRenderAus(kapitelId); } catch (err) {
                     console.error('Tab-Renderfehler in ' + kapitelId, err);
@@ -3849,8 +3832,31 @@ select,input,textarea,button{touch-action:manipulation}
         }
 
         async function prüfeMasterLogin(user, pass) {
-            // V28-SECURE-FINAL: Master-Login ausschließlich serverseitig.
-            // Kein Offline-Master, kein lokaler Passwortabgleich, keine D1-Frontenddaten.
+            // V26 Recovery: Der Master darf bei Updates niemals verloren gehen.
+            // Ältere Builds speicherten den Master als markierten Eintrag in
+            // vereinAdmins; neuere Builds verwenden gg_master_account.
+            // Zuerst den aktuellen Master prüfen.
+            const master = await ladeMasterKonto();
+            if (master && master.user === user && master.pass === pass) return true;
+
+            // Legacy-Master aus älteren, lokal gespeicherten Installationen
+            // übernehmen, ohne vorhandene Admins zu überschreiben.
+            try {
+                const admins = await ladeVerschlüsseltenState('vereinAdmins', []);
+                if (Array.isArray(admins)) {
+                    const legacyMaster = admins.find(a => a && (a.master === true || a.role === 'MASTER' || a.role === 'master') && a.user === user && a.pass === pass);
+                    if (legacyMaster) {
+                        // Einmalige Migration in den aktuellen Master-Speicher.
+                        if (!master) {
+                            await speichereMasterKonto(legacyMaster.user, legacyMaster.pass);
+                        }
+                        return true;
+                    }
+                }
+            } catch (e) {
+                console.warn('Legacy-Master-Recovery konnte nicht gelesen werden.', e);
+            }
+
             return false;
         }
 
@@ -3964,31 +3970,25 @@ select,input,textarea,button{touch-action:manipulation}
                     alert('Der einmalige Startzugang ist bereits deaktiviert. Bitte Master oder Admin verwenden.');
                     return;
                 }
-                if (server.role === 'MASTER' || server.role === 'ADMIN' || server.role === 'BOOTSTRAP') {
-                    server.source = 'server';
-                    if (!ggWendeVorstandssessionAn(server)) {
-                        alert('Anmeldung wurde serverseitig nicht bestätigt.');
-                        return;
-                    }
-                    if (server.role === 'BOOTSTRAP') {
-                        await protokolliereAudit('bootstrap_login', uInput);
-                        alert('Einmaliger Startzugang erkannt. Öffne jetzt im Bereich „Admins“ die Master-Einrichtung.');
-                    } else if (server.role === 'MASTER') {
-                        await protokolliereAudit('master_login', uInput);
-                    } else {
-                        await protokolliereAudit('admin_login', uInput);
-                    }
-                    return;
+                ggWendeVorstandssessionAn(server);
+                if (server.role === 'BOOTSTRAP') {
+                    await protokolliereAudit('bootstrap_login', uInput);
+                    alert('Einmaliger Startzugang erkannt. Öffne jetzt im Bereich „Admins“ die Master-Einrichtung.');
+                } else if (server.role === 'MASTER') {
+                    await protokolliereAudit('master_login', uInput);
+                } else {
+                    await protokolliereAudit('admin_login', uInput);
                 }
+                return;
             }
 
             const serverErreichbar = server && server.unreachable === false && ggAuthServerErreichbar === true;
 
-            if (!adminSystemInitialisiert && uInput === 'admin' && pInput === 'vorstand2026') {
-                if (serverErreichbar && !(server && server.ok && server.role === 'BOOTSTRAP')) {
-                    alert('Der einmalige Startzugang ist bereits deaktiviert. Bitte Master oder Admin verwenden.');
-                    return;
-                }
+            // EINMALIGER STARTZUGANG (nur wenn der Auth-Server nicht erreichbar
+            // oder noch nicht konfiguriert ist – sonst gilt die Serverantwort).
+            if (!serverErreichbar && !adminSystemInitialisiert &&
+                uInput === 'admin' &&
+                pInput === 'vorstand2026') {
                 mitgliedSession = null;
                 aktiveVorstandsrolle = 'BOOTSTRAP';
                 istVorstandEingeloggt = true;
@@ -4010,8 +4010,32 @@ select,input,textarea,button{touch-action:manipulation}
                 return;
             }
 
-            if (!serverErreichbar) {
-                alert('Master-Anmeldung derzeit nicht möglich. Server nicht erreichbar.');
+            if (await prüfeMasterLogin(uInput, pInput)) {
+                if (serverErreichbar) {
+                    alert('Master-Anmeldung wurde serverseitig nicht bestätigt.');
+                    return;
+                }
+                ggWendeVorstandssessionAn({
+                    token: 'offline-master',
+                    role: 'MASTER',
+                    user: uInput,
+                    exp: Date.now() + 12 * 60 * 60 * 1000,
+                    source: 'offline'
+                });
+                await protokolliereAudit('master_login', uInput);
+                return;
+            }
+
+            const treffer = vereinAdmins.find(a => a.user === uInput && a.pass === pInput);
+            if (treffer) {
+                ggWendeVorstandssessionAn({
+                    token: 'offline-admin',
+                    role: 'ADMIN',
+                    user: uInput,
+                    exp: Date.now() + 12 * 60 * 60 * 1000,
+                    source: 'offline'
+                });
+                await protokolliereAudit('admin_login', uInput);
                 return;
             }
 
@@ -4276,32 +4300,43 @@ select,input,textarea,button{touch-action:manipulation}
 
         function rendereGuthabenHistorie() {
             const force = arguments.length ? !!arguments[0] : true;
+            const done = typeof arguments[1] === 'function' ? arguments[1] : null;
+            const finish = function () { if (done) done(); };
             const list = document.getElementById('admin-balance-history-list');
-            if (!list) return;
+            if (!list) { finish(); return; }
+            const token = ++ggFinanzHistorieToken;
             const entries = Array.isArray(vereinGuthabenHistorie) ? vereinGuthabenHistorie.slice(0, 100) : [];
             const sig = entries.length + ':' + (entries[0] && entries[0].id || '') + ':' + (entries[entries.length - 1] && entries[entries.length - 1].id || '') + ':' + (entries[0] && entries[0].after || '');
-            if (!force && sig === ggLetzteFinanzHistorieSig && list.dataset.ggFilled === '1') return;
+            if (!force && sig === ggLetzteFinanzHistorieSig && list.dataset.ggFilled === '1') { finish(); return; }
             ggLetzteFinanzHistorieSig = sig;
             list.innerHTML = '';
             list.dataset.ggFilled = '0';
             if (!entries.length) {
                 list.innerHTML = '<p class="text-white/40 italic text-center py-3">Noch keine Guthabenbewegungen protokolliert.</p>';
                 list.dataset.ggFilled = '1';
+                finish();
                 return;
             }
-            const frag = document.createDocumentFragment();
-            entries.forEach(e => {
-                const plus = e.direction === 'PLUS';
-                const amount = Number(e.amount || 0).toFixed(2).replace('.', ',');
-                const before = Number(e.before || 0).toFixed(2).replace('.', ',');
-                const after = Number(e.after || 0).toFixed(2).replace('.', ',');
-                const typ = e.type === 'aufladung' ? 'Guthaben aufgeladen' :
-                            e.type === 'abbuchung' ? 'Guthaben abgebucht' :
-                            e.type === 'rueckbuchung' ? 'Guthaben rückgebucht' :
-                            e.type === 'korrektur' ? 'Guthaben korrigiert' : 'Guthaben geändert';
-                const card = document.createElement('div');
-                card.className = 'bg-zinc-900/90 p-2.5 rounded-xl border border-white/5';
-                card.innerHTML = `
+            let offset = 0;
+            const CHUNK = GG_FINANZ_HISTORIE_CHUNK;
+            const nextChunk = function () {
+                if (token !== ggFinanzHistorieToken) return;
+                if (ggAktivesAdminKapitel !== 'buchhaltung') { ggFinanzChunkAktiv = false; return; }
+                const end = Math.min(offset + CHUNK, entries.length);
+                const frag = document.createDocumentFragment();
+                for (let i = offset; i < end; i++) {
+                    const e = entries[i];
+                    const plus = e.direction === 'PLUS';
+                    const amount = Number(e.amount || 0).toFixed(2).replace('.', ',');
+                    const before = Number(e.before || 0).toFixed(2).replace('.', ',');
+                    const after = Number(e.after || 0).toFixed(2).replace('.', ',');
+                    const typ = e.type === 'aufladung' ? 'Guthaben aufgeladen' :
+                                e.type === 'abbuchung' ? 'Guthaben abgebucht' :
+                                e.type === 'rueckbuchung' ? 'Guthaben rückgebucht' :
+                                e.type === 'korrektur' ? 'Guthaben korrigiert' : 'Guthaben geändert';
+                    const card = document.createElement('div');
+                    card.className = 'bg-zinc-900/90 p-2.5 rounded-xl border border-white/5';
+                    card.innerHTML = `
                     <div class="flex justify-between gap-2">
                         <span class="font-bold ${plus ? 'text-[#22ffaa]' : 'text-amber-400'}">${plus ? '+' : '-'}${amount} € · ${typ}</span>
                         <span class="text-[9px] text-white/35">${escapeHtml(e.date || '')}</span>
@@ -4310,10 +4345,19 @@ select,input,textarea,button{touch-action:manipulation}
                     <p class="text-[9px] text-white/40 mt-1">Stand: ${before} € → ${after} €${e.reason ? ' · Grund: ' + escapeHtml(e.reason) : ''}</p>
                     <p class="text-[9px] text-white/30 mt-1">Durchgeführt von: ${escapeHtml(e.actor || 'SYSTEM')} · ID: ${escapeHtml(e.id || '')}</p>
                 `;
-                frag.appendChild(card);
-            });
-            list.appendChild(frag);
-            list.dataset.ggFilled = '1';
+                    frag.appendChild(card);
+                }
+                list.appendChild(frag);
+                offset = end;
+                if (offset < entries.length) {
+                    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(nextChunk);
+                    else setTimeout(nextChunk, 0);
+                } else {
+                    list.dataset.ggFilled = '1';
+                    finish();
+                }
+            };
+            nextChunk();
         }
 
         async function adminGuthabenAnpassen(index) {
@@ -6632,24 +6676,74 @@ select,input,textarea,button{touch-action:manipulation}
             if (openFeesDisplay) openFeesDisplay.textContent = offene.toFixed(2).replace('.', ',') + ' €';
         }
 
+        function ggFinanzTabIstAktiv() {
+            return ggAktivesAdminKapitel === 'buchhaltung';
+        }
+
+        function ggFinanzRenderIstAktiv(token) {
+            return ggFinanzTabIstAktiv() && token === ggFinanzRenderToken;
+        }
+
+        function ggFinanzNachFrame(fn) {
+            if (typeof requestAnimationFrame === 'function') requestAnimationFrame(fn);
+            else setTimeout(fn, 0);
+        }
+
         function starteFinanzTabRender(force, resetUmsatzLimit) {
-            if (ggAktivesAdminKapitel !== 'buchhaltung' && !force) return;
+            if (!ggFinanzTabIstAktiv() && !force) return;
+            if (ggFinanzChunkAktiv && !force && !resetUmsatzLimit) return;
             if (resetUmsatzLimit) ggFinanzUmsatzLimit = GG_FINANZ_UMSATZ_START;
+            const doForce = !!force;
+            const token = ++ggFinanzRenderToken;
+            ggFinanzMitgliederToken = token;
+            ggFinanzHistorieToken = token;
+            ggFinanzChunkAktiv = true;
+            const abort = function () {
+                if (token === ggFinanzRenderToken) ggFinanzChunkAktiv = false;
+            };
+            const alive = function () {
+                return ggFinanzRenderIstAktiv(token);
+            };
+            const nextFrame = function (fn) {
+                ggFinanzNachFrame(function () {
+                    if (!alive()) { abort(); return; }
+                    fn();
+                });
+            };
             try { aktualisiereFinanzKennzahlen(); } catch (err) {
                 console.error('Renderfehler in Finanz-KPIs', err);
             }
-            try { rendereFinanzMitgliederListe(!!force); } catch (err) {
-                console.error('Renderfehler in Finanz-Mitgliederliste', err);
-            }
-            try { rendereGuthabenHistorie(!!force); } catch (err) {
-                console.error('Renderfehler in Guthabenhistorie', err);
-            }
-            try { rendereFinanzUmsatzListe(!!force); } catch (err) {
-                console.error('Renderfehler in Umsatzliste', err);
-            }
-            try { rendereFinanceAuditPreview(); } catch (err) {
-                console.error('Renderfehler in Finance-Audit', err);
-            }
+            nextFrame(function () {
+                try {
+                    rendereFinanzMitgliederListe(doForce, function () {
+                        if (!alive()) { abort(); return; }
+                        nextFrame(function () {
+                            try {
+                                rendereGuthabenHistorie(doForce, function () {
+                                    if (!alive()) { abort(); return; }
+                                    nextFrame(function () {
+                                        try { rendereFinanzUmsatzListe(doForce); } catch (err) {
+                                            console.error('Renderfehler in Umsatzliste', err);
+                                        }
+                                        nextFrame(function () {
+                                            try { rendereFinanceAuditPreview(); } catch (err) {
+                                                console.error('Renderfehler in Finance-Audit', err);
+                                            }
+                                            abort();
+                                        });
+                                    });
+                                });
+                            } catch (err) {
+                                console.error('Renderfehler in Guthabenhistorie', err);
+                                abort();
+                            }
+                        });
+                    });
+                } catch (err) {
+                    console.error('Renderfehler in Finanz-Mitgliederliste', err);
+                    abort();
+                }
+            });
         }
 
         function ggWeitereFinanzUmsaetzeAnzeigen() {
@@ -6705,11 +6799,15 @@ select,input,textarea,button{touch-action:manipulation}
 
         function rendereFinanzMitgliederListe() {
             const force = arguments.length ? !!arguments[0] : true;
+            const done = typeof arguments[1] === 'function' ? arguments[1] : null;
+            const finish = function () { if (done) done(); };
             const financesList = document.getElementById('admin-finances-list');
-            if (!financesList) return;
+            if (!financesList) { finish(); return; }
+            const token = ++ggFinanzMitgliederToken;
             if (!Array.isArray(vereinMitglieder) || vereinMitglieder.length === 0) {
                 ggLetzteFinanzMitgliederSig = '0';
                 financesList.innerHTML = '<p class="text-white/40 italic text-center py-3">Keine Finanz-Einträge vorhanden.</p>';
+                finish();
                 return;
             }
             const aktive = [];
@@ -6722,24 +6820,34 @@ select,input,textarea,button{touch-action:manipulation}
                 const m = vereinMitglieder[idx];
                 return [m.id, m.feePaid, m.feeAmount, m.balance, m.name].join(',');
             }).join('|');
-            if (!force && sig === ggLetzteFinanzMitgliederSig && financesList.dataset.ggFilled === '1') return;
+            if (!force && sig === ggLetzteFinanzMitgliederSig && financesList.dataset.ggFilled === '1') {
+                finish();
+                return;
+            }
             ggLetzteFinanzMitgliederSig = sig;
             financesList.innerHTML = '';
             financesList.dataset.ggFilled = '0';
             if (!aktive.length) {
                 financesList.innerHTML = '<p class="text-white/40 italic text-center py-3">Keine Finanz-Einträge vorhanden.</p>';
                 financesList.dataset.ggFilled = '1';
+                finish();
                 return;
             }
-            const frag = document.createDocumentFragment();
-            for (let i = 0; i < aktive.length; i++) {
-                const idx = aktive[i];
-                const m = vereinMitglieder[idx];
-                if (!m) continue;
-                const financeRow = document.createElement('div');
-                financeRow.className = "finance-swipe";
-                financeRow.dataset.memberIndex = String(idx);
-                financeRow.innerHTML = `
+            let offset = 0;
+            const CHUNK = GG_FINANZ_MITGLIEDER_CHUNK;
+            const nextChunk = function () {
+                if (token !== ggFinanzMitgliederToken) return;
+                if (ggAktivesAdminKapitel !== 'buchhaltung') { ggFinanzChunkAktiv = false; return; }
+                const end = Math.min(offset + CHUNK, aktive.length);
+                const frag = document.createDocumentFragment();
+                for (let i = offset; i < end; i++) {
+                    const idx = aktive[i];
+                    const m = vereinMitglieder[idx];
+                    if (!m) continue;
+                    const financeRow = document.createElement('div');
+                    financeRow.className = "finance-swipe";
+                    financeRow.dataset.memberIndex = String(idx);
+                    financeRow.innerHTML = `
                         <div class="finance-swipe-actions" aria-hidden="true">
                             <button type="button" class="swipe-delete" onclick="loescheFinanzMitglied(${idx})"><i class="fa-solid fa-trash-can mr-1"></i>Löschen</button>
                             <button type="button" class="swipe-back" onclick="schliesseFinanzSwipe(this)">Zurück</button>
@@ -6751,11 +6859,20 @@ select,input,textarea,button{touch-action:manipulation}
                             </div>
                             <span class="text-[10px] font-bold text-[#22ffaa] shrink-0">${Number(m.balance || 0).toFixed(2).replace('.', ',')} €</span>
                         </div>`;
-                frag.appendChild(financeRow);
-                aktiviereFinanzSwipe(financeRow);
-            }
-            financesList.appendChild(frag);
-            financesList.dataset.ggFilled = '1';
+                    frag.appendChild(financeRow);
+                    aktiviereFinanzSwipe(financeRow);
+                }
+                financesList.appendChild(frag);
+                offset = end;
+                if (offset < aktive.length) {
+                    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(nextChunk);
+                    else setTimeout(nextChunk, 0);
+                } else {
+                    financesList.dataset.ggFilled = '1';
+                    finish();
+                }
+            };
+            nextChunk();
         }
 
         function rendereFinanzzahlen() {
