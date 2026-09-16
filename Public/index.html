@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Green Generation Rostock</title>
-<meta name="gg-build" content="V27-FINANZ-TAB-PERF">
+<meta name="gg-build" content="V27-FINANZ-TAB-NAV">
 <meta name="gg-build-date" content="2026-08-15">
     
     <!-- PWA & Mobile Web App Meta Tags -->
@@ -430,8 +430,13 @@ select,input,textarea,button{touch-action:manipulation}
             display:flex !important;
             visibility:visible !important;
         }
-        body.gg-vorstand-mode #bereich-vorstand.active .kapitel-inhalt {
+        body.gg-vorstand-mode #bereich-vorstand.active .kapitel-inhalt:not(.hidden):not([hidden]) {
             visibility:visible !important;
+        }
+        body.gg-vorstand-mode #bereich-vorstand.active .kapitel-inhalt.hidden,
+        body.gg-vorstand-mode #bereich-vorstand.active .kapitel-inhalt[hidden] {
+            display:none !important;
+            visibility:hidden !important;
         }
         body:not(.gg-vorstand-mode) #pos-receipts-container,
         body:not(.gg-vorstand-mode) [data-gg-global-receipts="true"] {
@@ -3051,6 +3056,10 @@ select,input,textarea,button{touch-action:manipulation}
         }
 
         function ggSichtbaresAdminKapitel() {
+            if (ggAktivesAdminKapitel) {
+                const merker = document.getElementById('unterkapitel-' + ggAktivesAdminKapitel);
+                if (merker && !merker.classList.contains('hidden')) return ggAktivesAdminKapitel;
+            }
             const sicht = document.querySelector('#bereich-vorstand .kapitel-inhalt:not(.hidden)');
             if (sicht && sicht.id && sicht.id.indexOf('unterkapitel-') === 0) {
                 return sicht.id.slice('unterkapitel-'.length);
@@ -3058,7 +3067,7 @@ select,input,textarea,button{touch-action:manipulation}
             return ggAktivesAdminKapitel || 'terminal';
         }
 
-        function ggFuehreAdminTabRenderAus(kapitelId) {
+        function ggFuehreAdminTabRenderAus(kapitelId, fromRefresh) {
             const tabRender = {
                 personen: rendereMitgliederListe,
                 beitraege: rendereBeiträgeListe,
@@ -3071,7 +3080,7 @@ select,input,textarea,button{touch-action:manipulation}
                 sortiment: rendereSortiment,
                 protokolle: () => { rendereProtokolle(); rendereAuditVerlauf(); },
                 zutritt: ladeUndRendereZutrittsprotokoll,
-                buchhaltung: () => { starteFinanzTabRender(false, true); },
+                buchhaltung: () => { starteFinanzTabRender(false, !fromRefresh); },
                 reservierungen: rendereReservierungen,
                 terminal: befüllePosOptionen,
                 darstellung: () => { aktualisiereSepaAnzeige(); fuelleUiEinstellungFelder(); },
@@ -3111,7 +3120,7 @@ select,input,textarea,button{touch-action:manipulation}
             }
             if (haupt === 'vorstand') {
                 const kapitel = ggSichtbaresAdminKapitel();
-                jobs.push(['Admin-Tab ' + kapitel, function () { ggFuehreAdminTabRenderAus(kapitel); }]);
+                jobs.push(['Admin-Tab ' + kapitel, function () { ggFuehreAdminTabRenderAus(kapitel, true); }]);
             }
             jobs.push(['Float-Warenkorb', typeof aktualisiereFloatWarenkorb === 'function' ? aktualisiereFloatWarenkorb : null]);
             jobs.forEach(([name, fn]) => {
@@ -3379,10 +3388,17 @@ select,input,textarea,button{touch-action:manipulation}
         }
         function wechsleUnterkapitel(kapitelId) {
             if (!kapitelId) return;
+            const vorher = ggAktivesAdminKapitel;
             ggAktivesAdminKapitel = kapitelId;
-            document.querySelectorAll('.kapitel-inhalt').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('#bereich-vorstand .kapitel-inhalt').forEach(el => {
+                el.classList.add('hidden');
+                el.setAttribute('hidden', '');
+            });
             const zielKapitel = document.getElementById(`unterkapitel-${kapitelId}`);
-            if (zielKapitel) zielKapitel.classList.remove('hidden');
+            if (zielKapitel) {
+                zielKapitel.classList.remove('hidden');
+                zielKapitel.removeAttribute('hidden');
+            }
 
             document.querySelectorAll('[id^="sub-btn-"]').forEach(btn => {
                 btn.className = "bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg whitespace-nowrap text-white/80";
@@ -3391,9 +3407,36 @@ select,input,textarea,button{touch-action:manipulation}
             if (aktiverBtn) aktiverBtn.className = "bg-[#22ffaa] text-black font-bold px-3 py-1.5 rounded-lg whitespace-nowrap shadow-sm";
 
             schliesseAdminDrawer();
+
+            if (vorher === 'buchhaltung' && kapitelId !== 'buchhaltung') {
+                ggFinanzRenderToken++;
+                ggFinanzHistorieToken++;
+                ggFinanzMitgliederToken++;
+            }
+            if (kapitelId === 'buchhaltung') {
+                ggFinanzRenderToken++;
+                ggFinanzHistorieToken++;
+                ggFinanzMitgliederToken++;
+                try { aktualisiereFinanzKennzahlen(); } catch (err) {
+                    console.error('Renderfehler in Finanz-KPIs', err);
+                }
+            }
+
+            try {
+                const main = document.querySelector('main');
+                if (main) main.scrollTop = 0;
+                const se = document.scrollingElement || document.documentElement;
+                if (se) se.scrollTop = 0;
+                if (typeof window.scrollTo === 'function') window.scrollTo(0, 0);
+                if (aktiverBtn && typeof aktiverBtn.scrollIntoView === 'function') {
+                    aktiverBtn.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+                }
+            } catch (_) {}
+
             const token = ++ggNavRenderToken;
             const run = () => {
                 if (token !== ggNavRenderToken) return;
+                if (ggAktivesAdminKapitel !== kapitelId) return;
                 try { ggFuehreAdminTabRenderAus(kapitelId); } catch (err) {
                     console.error('Tab-Renderfehler in ' + kapitelId, err);
                 }
@@ -6259,19 +6302,30 @@ select,input,textarea,button{touch-action:manipulation}
         }
 
         function starteFinanzTabRender(force, resetUmsatzLimit) {
+            if (ggAktivesAdminKapitel !== 'buchhaltung' && !force) return;
             const token = ++ggFinanzRenderToken;
             if (resetUmsatzLimit) ggFinanzUmsatzLimit = GG_FINANZ_UMSATZ_START;
-            aktualisiereFinanzKennzahlen();
+            try { aktualisiereFinanzKennzahlen(); } catch (err) {
+                console.error('Renderfehler in Finanz-KPIs', err);
+            }
             const nachKennzahl = () => {
-                if (token !== ggFinanzRenderToken) return;
-                rendereFinanzMitgliederListe(!!force);
+                if (token !== ggFinanzRenderToken || ggAktivesAdminKapitel !== 'buchhaltung') return;
+                try { rendereFinanzMitgliederListe(!!force); } catch (err) {
+                    console.error('Renderfehler in Finanz-Mitgliederliste', err);
+                }
                 const nachMitglieder = () => {
-                    if (token !== ggFinanzRenderToken) return;
-                    rendereGuthabenHistorie(!!force);
+                    if (token !== ggFinanzRenderToken || ggAktivesAdminKapitel !== 'buchhaltung') return;
+                    try { rendereGuthabenHistorie(!!force); } catch (err) {
+                        console.error('Renderfehler in Guthabenhistorie', err);
+                    }
                     const nachHistorie = () => {
-                        if (token !== ggFinanzRenderToken) return;
-                        rendereFinanzUmsatzListe(!!force);
-                        rendereFinanceAuditPreview();
+                        if (token !== ggFinanzRenderToken || ggAktivesAdminKapitel !== 'buchhaltung') return;
+                        try { rendereFinanzUmsatzListe(!!force); } catch (err) {
+                            console.error('Renderfehler in Umsatzliste', err);
+                        }
+                        try { rendereFinanceAuditPreview(); } catch (err) {
+                            console.error('Renderfehler in Finance-Audit', err);
+                        }
                     };
                     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(nachHistorie);
                     else setTimeout(nachHistorie, 0);
