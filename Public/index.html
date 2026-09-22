@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Green Generation Rostock</title>
-<meta name="gg-build" content="V28-RELEASE-STABIL-SECURE-FNAV-TAPFIX">
+<meta name="gg-build" content="V28-RELEASE-STABIL-SECURE-FNAV-SCROLLPANE">
 <meta name="gg-build-date" content="2026-09-22">
     
     <!-- PWA & Mobile Web App Meta Tags -->
@@ -423,23 +423,80 @@ select,input,textarea,button{touch-action:manipulation}
             filter: none !important;
         }
 
-        /* V27 – ADMIN RECOVERY */
+        /* V27 – ADMIN RECOVERY + V28 SCROLLPANE:
+           Vorstand-Kopf (App-Ansicht/Beenden/Tabs) bleibt fest.
+           Nur #gg-vorstand-scroll ist die vertikale Scrollfläche.
+           flex-basis 0% zwingt die Kette auf die Viewport-Restfläche,
+           damit der Pane wirklich scrollt statt das Dokument. */
+        html:has(body.gg-vorstand-mode) {
+            height: 100dvh;
+            max-height: 100dvh;
+            overflow: hidden;
+        }
+        body.gg-vorstand-mode {
+            height: 100dvh;
+            max-height: 100dvh;
+            overflow: hidden;
+            overscroll-behavior: none;
+            justify-content: flex-start;
+            touch-action: none;
+        }
+        body.gg-vorstand-mode > header {
+            flex: 0 0 auto;
+            position: relative;
+            top: auto;
+        }
+        body.gg-vorstand-mode main {
+            display: flex;
+            flex-direction: column;
+            flex: 1 1 0%;
+            min-height: 0;
+            height: 0;
+            overflow: hidden;
+            padding-bottom: 0 !important;
+        }
         body.gg-vorstand-mode #bereich-vorstand.active {
-            display:block !important;
-            visibility:visible !important;
+            display: flex !important;
+            flex-direction: column;
+            flex: 1 1 0%;
+            min-height: 0;
+            height: 0;
+            overflow: hidden;
+            visibility: visible !important;
+        }
+        body.gg-vorstand-mode #bereich-vorstand.active .gg-vorstand-chrome {
+            flex: 0 0 auto;
+            position: relative;
+            z-index: 5;
+            background: #08080c;
+        }
+        html.gg-theme-light body.gg-vorstand-mode #bereich-vorstand.active .gg-vorstand-chrome {
+            background: #eef1f4;
         }
         body.gg-vorstand-mode #bereich-vorstand.active .admin-subnav {
-            display:flex !important;
-            visibility:visible !important;
+            display: flex !important;
+            visibility: visible !important;
+            touch-action: pan-x;
+        }
+        body.gg-vorstand-mode #bereich-vorstand.active .gg-vorstand-scroll,
+        body.gg-vorstand-mode #gg-vorstand-scroll {
+            flex: 1 1 0%;
+            min-height: 0;
+            overflow-x: hidden;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+            touch-action: pan-y;
+            padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
         }
         body.gg-vorstand-mode #bereich-vorstand.active .kapitel-inhalt:not(.hidden):not([hidden]) {
-            display:block !important;
-            visibility:visible !important;
+            display: block !important;
+            visibility: visible !important;
         }
         body.gg-vorstand-mode #bereich-vorstand.active .kapitel-inhalt.hidden,
         body.gg-vorstand-mode #bereich-vorstand.active .kapitel-inhalt[hidden] {
-            display:none !important;
-            visibility:hidden !important;
+            display: none !important;
+            visibility: hidden !important;
         }
         body:not(.gg-vorstand-mode) #pos-receipts-container,
         body:not(.gg-vorstand-mode) [data-gg-global-receipts="true"] {
@@ -803,6 +860,7 @@ select,input,textarea,button{touch-action:manipulation}
 
         <!-- BEREICH 5: VORSTANDS & VERWALTUNGSPANEL -->
         <div id="bereich-vorstand" class="ansatz-bereich px-4 pt-4">
+            <div class="gg-vorstand-chrome">
             <div class="flex justify-between items-center mb-3">
                 <div class="flex items-center gap-2 min-w-0">
                     <button type="button" id="admin-drawer-toggle" onclick="oeffneAdminDrawer()" class="w-11 h-11 shrink-0 rounded-xl bg-[#22ffaa] text-black border border-[#22ffaa] shadow-lg shadow-[#22ffaa]/20" aria-label="Verwaltungsmenü öffnen">
@@ -842,6 +900,7 @@ select,input,textarea,button{touch-action:manipulation}
                 <button onclick="wechsleUnterkapitel('darstellung')" id="sub-btn-darstellung" class="bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg whitespace-nowrap text-white/80">🎨 Darstellung</button>
                 <button onclick="wechsleUnterkapitel('passphrase')" id="sub-btn-passphrase" class="bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg whitespace-nowrap text-white/80">🔐 Passphrase</button>
                 <button onclick="wechsleUnterkapitel('berechtigungen')" id="sub-btn-berechtigungen" class="bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg whitespace-nowrap text-white/80">🛡️ Admins</button>
+            </div>
             </div>
             <div id="admin-drawer-overlay" onclick="schliesseAdminDrawer()"></div>
             <aside id="admin-drawer" aria-label="Verwaltungsmenü">
@@ -883,6 +942,7 @@ select,input,textarea,button{touch-action:manipulation}
                 </div>
             </aside>
 
+            <div id="gg-vorstand-scroll" class="gg-vorstand-scroll">
             <!-- UNTERKAPITEL 1: POS -->
             <div id="unterkapitel-terminal" class="kapitel-inhalt space-y-3">
                 <div class="glass-card rounded-2xl p-4 border border-[#22ffaa]/40 green-glow">
@@ -1597,6 +1657,8 @@ select,input,textarea,button{touch-action:manipulation}
                     <h4 class="text-[10px] font-bold mb-2 text-white/60 uppercase tracking-wider">Master-Zugang &amp; aktive Admin-Accounts</h4>
                     <div id="admin-accounts-list" class="space-y-1.5 text-xs"></div>
                 </div>
+            </div>
+
             </div>
 
         </div>
@@ -3656,6 +3718,11 @@ select,input,textarea,button{touch-action:manipulation}
 
             if (istVorstandEingeloggt && ansichtId === 'vorstand') {
                 document.body.classList.add('gg-vorstand-mode');
+                try {
+                    const se = document.scrollingElement || document.documentElement;
+                    if (se) se.scrollTop = 0;
+                    if (typeof window.scrollTo === 'function') window.scrollTo(0, 0);
+                } catch (_) {}
             } else if (ansichtId !== 'vorstand') {
                 document.body.classList.remove('gg-vorstand-mode');
             }
@@ -3740,7 +3807,10 @@ select,input,textarea,button{touch-action:manipulation}
                 ggFinanzMitgliederToken++;
             }
 
-            ggSetzeNavLock(800);
+            try {
+                const pane = document.getElementById('gg-vorstand-scroll');
+                if (pane) pane.scrollTop = 0;
+            } catch (_) {}
 
             if (kapitelId === 'buchhaltung') {
                 ggUiBusyUntil = Math.max(ggUiBusyUntil || 0, Date.now() + 2500);
