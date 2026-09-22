@@ -3773,10 +3773,6 @@ select,input,textarea,button{touch-action:manipulation}
             if (o) o.classList.remove('open');
         }
         function wechsleUnterkapitelAusDrawer(kapitelId) {
-            if (ggAktivesAdminKapitel === kapitelId) {
-                schliesseAdminDrawer();
-                return;
-            }
             wechsleUnterkapitel(kapitelId);
         }
         function wechsleUnterkapitel(kapitelId) {
