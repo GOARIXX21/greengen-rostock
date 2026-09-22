@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Green Generation Rostock</title>
-<meta name="gg-build" content="V28-RELEASE-STABIL-SECURE-FNAV-GATEFIX">
+<meta name="gg-build" content="V28-RELEASE-STABIL-SECURE-FNAV-SCROLLFIX">
 <meta name="gg-build-date" content="2026-09-22">
     
     <!-- PWA & Mobile Web App Meta Tags -->
@@ -1785,6 +1785,7 @@ select,input,textarea,button{touch-action:manipulation}
         let ggAuthServerErreichbar = null;
         let ggAuthSession = null;
         let ggVorstandAuthCheckId = 0;
+        let ggNavLockUntil = 0;
         const GG_AUTH_SESSION_KEY = 'gg_vorstand_session';
 
         function ggAuthHeaders(extra) {
@@ -3590,6 +3591,9 @@ select,input,textarea,button{touch-action:manipulation}
         /* Navigation */
         function wechsleAnsicht(ansichtId) {
             // V27: Verwaltungs- und Mitgliederansichten strikt trennen.
+            if (ansichtId !== 'vorstand' && ggNavLockUntil && Date.now() < ggNavLockUntil) {
+                return;
+            }
             if (ansichtId === 'vorstand') {
                 const willMaster = aktiveVorstandsrolle === 'MASTER' || (ggAuthSession && ggAuthSession.role === 'MASTER');
                 if (willMaster) {
@@ -3609,12 +3613,19 @@ select,input,textarea,button{touch-action:manipulation}
                 if (bereitsVorstand && bereitsVorstand.classList.contains('active') && istVorstandEingeloggt) {
                     return;
                 }
-                // V28-FIX: Beim reinen Ansichtswechsel keine neue asynchrone
-                // Server-Sessionprüfung starten. Eine solche Prüfung konnte
-                // zeitversetzt in die Navigation eingreifen und die aktive
-                // Ansicht wieder entfernen. Die Session wird beim Login bzw.
-                // bei der Session-Wiederherstellung serverseitig geprüft; die
-                // geschützten API-Aufrufe bleiben weiterhin serverseitig geschützt.
+                if (willMaster && ggAuthSession && ggAuthSession.token) {
+                    const checkId = ++ggVorstandAuthCheckId;
+                    ggAuthSessionPruefen(ggAuthSession.token).then((r) => {
+                        if (checkId !== ggVorstandAuthCheckId) return;
+                        if (r) return;
+                        if (ggAuthServerErreichbar === false) return;
+                        if (!istVorstandEingeloggt) return;
+                        istVorstandEingeloggt = false;
+                        aktiveVorstandsrolle = null;
+                        ggSpeichereAuthSession(null);
+                        zeigeStartGate();
+                    }).catch(() => {});
+                }
             } else if (ggVorstandAuthCheckId) {
                 ggVorstandAuthCheckId++;
             }
@@ -3622,9 +3633,6 @@ select,input,textarea,button{touch-action:manipulation}
                 oeffneMitgliederLogin();
                 return;
             }
-
-            document.querySelectorAll('.ansatz-bereich').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('nav-item-active'));
 
             const zielBereich = document.getElementById(`bereich-${ansichtId}`);
             const zielNav = document.getElementById(`nav-${ansichtId}`);
@@ -3638,7 +3646,13 @@ select,input,textarea,button{touch-action:manipulation}
 
             if (bottomNav) bottomNav.classList.toggle('nav-admin-mode', istVorstandEingeloggt);
             if (zielBereich) zielBereich.classList.add('active');
+            document.querySelectorAll('.ansatz-bereich').forEach(el => {
+                if (el !== zielBereich) el.classList.remove('active');
+            });
             if (zielNav) zielNav.classList.add('nav-item-active');
+            document.querySelectorAll('.nav-item').forEach(el => {
+                if (el !== zielNav) el.classList.remove('nav-item-active');
+            });
 
             if (ansichtId === 'vorstand') {
                 const kapitel = ggAktivesAdminKapitel || ggSichtbaresAdminKapitel() || 'terminal';
@@ -3710,14 +3724,14 @@ select,input,textarea,button{touch-action:manipulation}
                 ggFinanzMitgliederToken++;
             }
 
+            ggNavLockUntil = Date.now() + 500;
             try {
-                const main = document.querySelector('main');
-                if (main) main.scrollTop = 0;
-                const se = document.scrollingElement || document.documentElement;
-                if (se) se.scrollTop = 0;
-                if (typeof window.scrollTo === 'function') window.scrollTo(0, 0);
-                if (aktiverBtn && typeof aktiverBtn.scrollIntoView === 'function') {
-                    aktiverBtn.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+                const subnav = document.querySelector('#bereich-vorstand .admin-subnav');
+                if (aktiverBtn && subnav && subnav.contains(aktiverBtn)) {
+                    const navRect = subnav.getBoundingClientRect();
+                    const btnRect = aktiverBtn.getBoundingClientRect();
+                    const delta = ((btnRect.left + btnRect.right) / 2) - ((navRect.left + navRect.right) / 2);
+                    subnav.scrollLeft += delta;
                 }
             } catch (_) {}
 
