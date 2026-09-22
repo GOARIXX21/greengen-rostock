@@ -3609,19 +3609,12 @@ select,input,textarea,button{touch-action:manipulation}
                 if (bereitsVorstand && bereitsVorstand.classList.contains('active') && istVorstandEingeloggt) {
                     return;
                 }
-                if (willMaster && ggAuthSession && ggAuthSession.token) {
-                    const checkId = ++ggVorstandAuthCheckId;
-                    ggAuthSessionPruefen(ggAuthSession.token).then((r) => {
-                        if (checkId !== ggVorstandAuthCheckId) return;
-                        if (r) return;
-                        if (ggAuthServerErreichbar === false) return;
-                        if (!istVorstandEingeloggt) return;
-                        istVorstandEingeloggt = false;
-                        aktiveVorstandsrolle = null;
-                        ggSpeichereAuthSession(null);
-                        zeigeStartGate();
-                    }).catch(() => {});
-                }
+                // V28-FIX: Beim reinen Ansichtswechsel keine neue asynchrone
+                // Server-Sessionprüfung starten. Eine solche Prüfung konnte
+                // zeitversetzt in die Navigation eingreifen und die aktive
+                // Ansicht wieder entfernen. Die Session wird beim Login bzw.
+                // bei der Session-Wiederherstellung serverseitig geprüft; die
+                // geschützten API-Aufrufe bleiben weiterhin serverseitig geschützt.
             } else if (ggVorstandAuthCheckId) {
                 ggVorstandAuthCheckId++;
             }
