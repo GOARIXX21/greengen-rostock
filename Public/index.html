@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Green Generation Rostock</title>
-<meta name="gg-build" content="V28-RELEASE-STABIL-SECURE-FNAV-FINAL-AUTHFIX">
+<meta name="gg-build" content="V28-FINANCE-TEST-A-NO-SCROLLINTO">
 <meta name="gg-build-date" content="2026-09-21">
     
     <!-- PWA & Mobile Web App Meta Tags -->
@@ -3713,9 +3713,10 @@ select,input,textarea,button{touch-action:manipulation}
                 const se = document.scrollingElement || document.documentElement;
                 if (se) se.scrollTop = 0;
                 if (typeof window.scrollTo === 'function') window.scrollTo(0, 0);
-                if (aktiverBtn && typeof aktiverBtn.scrollIntoView === 'function') {
-                    aktiverBtn.scrollIntoView({ inline: 'nearest', block: 'nearest' });
-                }
+                // TEST A: scrollIntoView deaktiviert
+                // if (aktiverBtn && typeof aktiverBtn.scrollIntoView === 'function') {
+                //     aktiverBtn.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+                // }
             } catch (_) {}
 
             if (kapitelId === 'buchhaltung') {
