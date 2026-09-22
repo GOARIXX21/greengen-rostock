@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Green Generation Rostock</title>
-<meta name="gg-build" content="V28-RELEASE-STABIL-SECURE-FNAV-SCROLLFIX">
+<meta name="gg-build" content="V28-RELEASE-STABIL-SECURE-FNAV-TAPFIX">
 <meta name="gg-build-date" content="2026-09-22">
     
     <!-- PWA & Mobile Web App Meta Tags -->
@@ -361,8 +361,12 @@
 .gg-map-hint{position:absolute;left:10px;right:10px;bottom:10px;z-index:70;background:rgba(10,12,14,.84);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:7px 9px;color:rgba(255,255,255,.75);font-size:10px;text-align:center;backdrop-filter:blur(8px)}
 .gg-map-status{position:absolute;left:10px;top:10px;z-index:70;background:rgba(10,12,14,.84);border:1px solid rgba(34,255,170,.3);color:#22ffaa;border-radius:10px;padding:6px 9px;font-size:9px;font-weight:700;pointer-events:none}
 .gg-map-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.45);font-size:11px;z-index:20;pointer-events:none}
-.admin-subnav{touch-action:pan-x pan-y;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
-.admin-subnav button{touch-action:pan-x pan-y;flex:0 0 auto}
+.admin-subnav{touch-action:pan-x;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+.admin-subnav button{touch-action:manipulation;flex:0 0 auto}
+body.gg-nav-lock #nav-home,
+body.gg-nav-lock #nav-start,
+body.gg-nav-lock #gg-btn-app-ansicht,
+body.gg-nav-lock #gg-btn-vorstand-beenden { pointer-events: none; }
 select,input,textarea,button{touch-action:manipulation}
 
 
@@ -810,10 +814,10 @@ select,input,textarea,button{touch-action:manipulation}
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button onclick="wechsleAnsicht('home')" class="text-[11px] bg-white/10 text-white border border-white/10 px-2.5 py-1 rounded-lg font-bold hover:bg-white/15 active:scale-95 transition-all">
+                    <button id="gg-btn-app-ansicht" onclick="wechsleAnsicht('home')" class="text-[11px] bg-white/10 text-white border border-white/10 px-2.5 py-1 rounded-lg font-bold hover:bg-white/15 active:scale-95 transition-all">
                         App-Ansicht
                     </button>
-                    <button onclick="beendeVorstandsbereich()" class="text-[11px] bg-red-500/20 text-red-400 border border-red-500/30 px-2.5 py-1 rounded-lg font-bold hover:bg-red-500/30 active:scale-95 transition-all">
+                    <button id="gg-btn-vorstand-beenden" onclick="beendeVorstandsbereich()" class="text-[11px] bg-red-500/20 text-red-400 border border-red-500/30 px-2.5 py-1 rounded-lg font-bold hover:bg-red-500/30 active:scale-95 transition-all">
                         Beenden
                     </button>
                 </div>
@@ -1786,7 +1790,19 @@ select,input,textarea,button{touch-action:manipulation}
         let ggAuthSession = null;
         let ggVorstandAuthCheckId = 0;
         let ggNavLockUntil = 0;
+        let ggNavLockTimer = 0;
         const GG_AUTH_SESSION_KEY = 'gg_vorstand_session';
+
+        function ggSetzeNavLock(ms) {
+            const dauer = typeof ms === 'number' ? ms : 800;
+            ggNavLockUntil = Date.now() + dauer;
+            document.body.classList.add('gg-nav-lock');
+            if (ggNavLockTimer) clearTimeout(ggNavLockTimer);
+            ggNavLockTimer = setTimeout(() => {
+                ggNavLockTimer = 0;
+                if (Date.now() >= ggNavLockUntil - 10) document.body.classList.remove('gg-nav-lock');
+            }, dauer);
+        }
 
         function ggAuthHeaders(extra) {
             const h = Object.assign({ 'Content-Type': 'application/json' }, extra || {});
@@ -3724,16 +3740,7 @@ select,input,textarea,button{touch-action:manipulation}
                 ggFinanzMitgliederToken++;
             }
 
-            ggNavLockUntil = Date.now() + 500;
-            try {
-                const subnav = document.querySelector('#bereich-vorstand .admin-subnav');
-                if (aktiverBtn && subnav && subnav.contains(aktiverBtn)) {
-                    const navRect = subnav.getBoundingClientRect();
-                    const btnRect = aktiverBtn.getBoundingClientRect();
-                    const delta = ((btnRect.left + btnRect.right) / 2) - ((navRect.left + navRect.right) / 2);
-                    subnav.scrollLeft += delta;
-                }
-            } catch (_) {}
+            ggSetzeNavLock(800);
 
             if (kapitelId === 'buchhaltung') {
                 ggUiBusyUntil = Math.max(ggUiBusyUntil || 0, Date.now() + 2500);
@@ -4020,6 +4027,7 @@ select,input,textarea,button{touch-action:manipulation}
         }
 
         function beendeVorstandsbereich() {
+            if (ggNavLockUntil && Date.now() < ggNavLockUntil) return;
             stoppeAutoRefreshTimer();
             if (ggScannerIstOffen()) schliesseKameraScanner();
             const token = ggAuthSession && ggAuthSession.token;
@@ -4095,6 +4103,7 @@ select,input,textarea,button{touch-action:manipulation}
         }
 
         function beendeMitgliederbereich() {
+            if (ggNavLockUntil && Date.now() < ggNavLockUntil) return;
             stoppeAutoRefreshTimer();
             if (ggScannerIstOffen()) schliesseKameraScanner();
             protokolliereAudit('member_logout', mitgliedSession ? mitgliedSession.id : '');
