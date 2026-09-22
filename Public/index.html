@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Green Generation Rostock</title>
-<meta name="gg-build" content="V28-FINANCE-TEST-A-NO-SCROLLINTO">
-<meta name="gg-build-date" content="2026-09-21">
+<meta name="gg-build" content="V28-RELEASE-STABIL-SECURE-FNAV-GATEFIX">
+<meta name="gg-build-date" content="2026-09-22">
     
     <!-- PWA & Mobile Web App Meta Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1784,6 +1784,7 @@ select,input,textarea,button{touch-action:manipulation}
         let cryptoKey = null;
         let ggAuthServerErreichbar = null;
         let ggAuthSession = null;
+        let ggVorstandAuthCheckId = 0;
         const GG_AUTH_SESSION_KEY = 'gg_vorstand_session';
 
         function ggAuthHeaders(extra) {
@@ -3600,20 +3601,29 @@ select,input,textarea,button{touch-action:manipulation}
                         steuereVorstandZugriff();
                         return;
                     }
-                    if (serverSession && ggAuthSession.token) {
-                        ggAuthSessionPruefen(ggAuthSession.token).then((r) => {
-                            if (!r) {
-                                istVorstandEingeloggt = false;
-                                aktiveVorstandsrolle = null;
-                                ggSpeichereAuthSession(null);
-                                zeigeStartGate();
-                            }
-                        }).catch(() => {});
-                    }
                 } else if (!istVorstandEingeloggt) {
                     steuereVorstandZugriff();
                     return;
                 }
+                const bereitsVorstand = document.getElementById('bereich-vorstand');
+                if (bereitsVorstand && bereitsVorstand.classList.contains('active') && istVorstandEingeloggt) {
+                    return;
+                }
+                if (willMaster && ggAuthSession && ggAuthSession.token) {
+                    const checkId = ++ggVorstandAuthCheckId;
+                    ggAuthSessionPruefen(ggAuthSession.token).then((r) => {
+                        if (checkId !== ggVorstandAuthCheckId) return;
+                        if (r) return;
+                        if (ggAuthServerErreichbar === false) return;
+                        if (!istVorstandEingeloggt) return;
+                        istVorstandEingeloggt = false;
+                        aktiveVorstandsrolle = null;
+                        ggSpeichereAuthSession(null);
+                        zeigeStartGate();
+                    }).catch(() => {});
+                }
+            } else if (ggVorstandAuthCheckId) {
+                ggVorstandAuthCheckId++;
             }
             if (['home','reservieren','finanzen','ausweis','karte','wissen'].includes(ansichtId) && !mitgliedSession && !istVorstandEingeloggt) {
                 oeffneMitgliederLogin();
@@ -3713,13 +3723,13 @@ select,input,textarea,button{touch-action:manipulation}
                 const se = document.scrollingElement || document.documentElement;
                 if (se) se.scrollTop = 0;
                 if (typeof window.scrollTo === 'function') window.scrollTo(0, 0);
-                // TEST A: scrollIntoView deaktiviert
-                // if (aktiverBtn && typeof aktiverBtn.scrollIntoView === 'function') {
-                //     aktiverBtn.scrollIntoView({ inline: 'nearest', block: 'nearest' });
-                // }
+                if (aktiverBtn && typeof aktiverBtn.scrollIntoView === 'function') {
+                    aktiverBtn.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+                }
             } catch (_) {}
 
             if (kapitelId === 'buchhaltung') {
+                ggUiBusyUntil = Math.max(ggUiBusyUntil || 0, Date.now() + 2500);
                 try { starteFinanzTabRender(false, true); } catch (err) {
                     console.error('Tab-Renderfehler in buchhaltung', err);
                 }
