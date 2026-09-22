@@ -3775,6 +3775,33 @@ select,input,textarea,button{touch-action:manipulation}
         function wechsleUnterkapitelAusDrawer(kapitelId) {
             wechsleUnterkapitel(kapitelId);
         }
+
+        // V28 DRAWER TOUCH-FALLBACK: Auf echten Android-Touchgeraeten kann die
+        // native click-Synthese innerhalb des scrollbaren Verwaltungs-Drawers
+        // ausbleiben. Die bestehende onclick-Navigation bleibt erhalten;
+        // pointerup fuehrt dieselbe Navigation nur dann direkt aus.
+        (function ggDrawerTouchFallback() {
+            let letzterDrawerTouch = 0;
+            function handleDrawerPointerUp(e) {
+                if (!e || e.pointerType !== 'touch') return;
+                const ziel = e.target && e.target.closest
+                    ? e.target.closest('#admin-drawer button[onclick*="wechsleUnterkapitelAusDrawer"]')
+                    : null;
+                if (!ziel) return;
+                const onclick = ziel.getAttribute('onclick') || '';
+                const match = onclick.match(/wechsleUnterkapitelAusDrawer\('([^']+)'\)/);
+                if (!match) return;
+                const jetzt = Date.now();
+                if (jetzt - letzterDrawerTouch < 250) return;
+                letzterDrawerTouch = jetzt;
+                if (e.cancelable) e.preventDefault();
+                e.stopPropagation();
+                try { wechsleUnterkapitelAusDrawer(match[1]); } catch (err) {
+                    console.error('Drawer-Touch-Navigation fehlgeschlagen', err);
+                }
+            }
+            document.addEventListener('pointerup', handleDrawerPointerUp, true);
+        })();
         function wechsleUnterkapitel(kapitelId) {
             if (!kapitelId) return;
             const bereitsOffen = document.getElementById('unterkapitel-' + kapitelId);
