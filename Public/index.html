@@ -13,6 +13,9 @@
     <meta name="apple-mobile-web-app-title" content="Green Gen Rostock">
     <meta name="theme-color" content="#08080c">
     <meta name="application-name" content="Green Generation Rostock">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="icon" href="/icons/icon-192.png" type="image/png">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
     <meta name="format-detection" content="telephone=no">
     
     <!-- Tailwind CSS, FontAwesome, QRCodeJS, Html5Qrcode Scanner Library & Leaflet CSS/JS -->
@@ -439,7 +442,10 @@ select,input,textarea,button{touch-action:manipulation}
             overflow: hidden;
             overscroll-behavior: none;
             justify-content: flex-start;
-            touch-action: pan-y;
+            /* Nur die dedizierte Vorstand-Scrollfläche nimmt vertikale Gesten an.
+               Das verhindert auf einzelnen Android-Geräten ein Konkurrenzverhalten
+               zwischen Body und innerem Scroll-Container. */
+            touch-action: none;
         }
         body.gg-vorstand-mode > header {
             flex: 0 0 auto;
@@ -485,8 +491,11 @@ select,input,textarea,button{touch-action:manipulation}
             overflow-x: hidden;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
-            overscroll-behavior: contain;
+            overscroll-behavior-y: auto;
+            overscroll-behavior-x: none;
             touch-action: pan-y;
+            scroll-behavior: auto;
+            scrollbar-gutter: stable;
             padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
         }
         body.gg-vorstand-mode #bereich-vorstand.active .kapitel-inhalt:not(.hidden):not([hidden]) {
@@ -7490,7 +7499,7 @@ select,input,textarea,button{touch-action:manipulation}
                 'th,td{border:1px solid #ccc;padding:6px;text-align:left}th{background:#f3f3f3}h1{font-size:16px}</style></head><body>' +
                 '<h1>Green Generation Rostock – Zutrittsprotokoll</h1>' +
                 '<table><thead><tr><th>Datum</th><th>Uhrzeit</th><th>Mitglied</th><th>ID</th><th>Protokoll-ID</th><th>Status</th></tr></thead><tbody>' +
-                rows + '</tbody></table></body></html>');
+                rows + '</tbody></table>\n</body></html>');
             w.document.close();
             w.focus();
             w.print();
@@ -7779,26 +7788,49 @@ select,input,textarea,button{touch-action:manipulation}
             const strainName = document.getElementById('pos-strain-select')?.value || '';
             const m = vereinMitglieder.find(x => String(x.id) === String(memberId));
             const s = vereinSorten.find(x => String(x.name) === String(strainName));
-            if (!m || !s) { alert('Bitte zuerst im Abgabe-Terminal ein Mitglied und eine Sorte auswählen.'); return; }
-            const text = `INFORMATIONSZETTEL\n\nMitglied: ${m.name} (${m.id})\nSorte: ${s.name}\nCharge: ${s.batch}\nErntedatum: ${s.harvestDate || 'nicht hinterlegt'}\nMHD: ${s.bestBefore || 'nicht hinterlegt'}\nTHC: ${s.thc || 'nicht hinterlegt'}\nCBD: ${s.cbd || 'nicht hinterlegt'}\n\nHinweis: Dieser Ausdruck ersetzt keine rechtliche oder medizinische Beratung.`;
-            const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const timestamp = new Date()
-                .toISOString()
-                .replace(/[-:]/g, '')
-                .replace(/\..+/, '')
-                .replace('T', '-');
-            const safeBatch = String(s.batch || 'charge')
-                .replace(/[^\w\-äöüÄÖÜß]+/gi, '-')
-                .replace(/^-+|-+$/g, '');
-            const filename = `Informationszettel-${safeBatch || 'charge'}-${timestamp}.txt`;
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            if (!m || !s) {
+                alert('Bitte zuerst im Abgabe-Terminal ein Mitglied und eine Sorte auswählen.');
+                return;
+            }
+
+            const esc = (value) => String(value ?? '—')
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            const datum = new Date().toLocaleString('de-DE');
+            const menge = document.getElementById('pos-amount-input')?.value || '—';
+
+            const druckHtml = `<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Informationszettel – ${esc(s.name)}</title>
+<style>
+@page{size:A4;margin:14mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:0;background:#fff}main{max-width:760px;margin:0 auto}.head{border-bottom:2px solid #111;padding-bottom:10px;margin-bottom:18px}.brand{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.title{font-size:25px;font-weight:900;margin-top:5px}.meta{font-size:11px;color:#555;margin-top:5px}.grid{display:grid;grid-template-columns:1fr 1fr;border:1px solid #bbb;border-radius:8px;overflow:hidden}.cell{padding:9px 11px;border-bottom:1px solid #ddd}.cell:nth-child(odd){border-right:1px solid #ddd}.label{font-size:9px;color:#666;text-transform:uppercase;font-weight:700}.value{font-size:14px;font-weight:700;margin-top:3px}.note{margin-top:18px;border:1px solid #ccc;border-radius:8px;padding:11px;font-size:10px;line-height:1.45}.footer{margin-top:18px;font-size:9px;color:#666}button{margin-top:18px;padding:10px 16px;border:0;border-radius:7px;background:#111;color:#fff;font-weight:700}@media print{button{display:none}}
+</style></head><body><main>
+<div class="head"><div class="brand">Green Generation Rostock</div><div class="title">Informationszettel</div><div class="meta">Erstellt am ${esc(datum)}</div></div>
+<div class="grid">
+<div class="cell"><div class="label">Mitglied</div><div class="value">${esc(m.name)}</div></div>
+<div class="cell"><div class="label">Mitglieds-ID</div><div class="value">${esc(m.id)}</div></div>
+<div class="cell"><div class="label">Sorte</div><div class="value">${esc(s.name)}</div></div>
+<div class="cell"><div class="label">Charge</div><div class="value">${esc(s.batch)}</div></div>
+<div class="cell"><div class="label">Menge</div><div class="value">${esc(menge)} g</div></div>
+<div class="cell"><div class="label">Erntedatum</div><div class="value">${esc(s.harvestDate || 'nicht hinterlegt')}</div></div>
+<div class="cell"><div class="label">MHD</div><div class="value">${esc(s.bestBefore || 'nicht hinterlegt')}</div></div>
+<div class="cell"><div class="label">THC</div><div class="value">${esc(s.thc || 'nicht hinterlegt')}</div></div>
+<div class="cell"><div class="label">CBD</div><div class="value">${esc(s.cbd || 'nicht hinterlegt')}</div></div>
+<div class="cell"><div class="label">Qualitätsstatus</div><div class="value">${esc(s.qaStatus || 'offen')}</div></div>
+</div>
+<div class="note"><strong>Hinweis:</strong> Dieser Informationszettel gibt die im System hinterlegten Angaben zur ausgewählten Abgabe wieder. Er ersetzt keine rechtliche oder medizinische Beratung.</div>
+<div class="footer">Green Generation Rostock · Interner Informationszettel · Charge ${esc(s.batch)}</div>
+<button onclick="window.print()">Drucken / als PDF speichern</button>
+</main><script>window.addEventListener('load',()=>setTimeout(()=>window.print(),250));<\/script></body></html>`;
+
+            const win = window.open('', '_blank', 'noopener,noreferrer');
+            if (!win) {
+                alert('Das Druckfenster wurde vom Browser blockiert. Bitte Pop-ups für die App erlauben.');
+                return;
+            }
+            win.document.open();
+            win.document.write(druckHtml);
+            win.document.close();
         }
 
         function archiviereKassenbons() {
@@ -7963,5 +7995,26 @@ select,input,textarea,button{touch-action:manipulation}
     <button type="button" id="gg-float-cart-reopen" class="hidden glass-card border border-[#22ffaa]/40 text-[#22ffaa] shadow-xl shadow-black/40" onclick="oeffneFloatWarenkorbWieder()" title="Warenkorb öffnen">
         <i class="fa-solid fa-basket-shopping"></i>
     </button>
+
+<script>
+(function ggPwaBootstrap(){
+    try {
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', async () => {
+                try {
+                    const reg = await navigator.serviceWorker.register('/sw.js', {scope:'/'});
+                    if (reg && reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
+                    reg?.addEventListener?.('updatefound', () => {
+                        const worker = reg.installing;
+                        if (worker) worker.addEventListener('statechange', () => {
+                            if (worker.state === 'installed' && navigator.serviceWorker.controller) worker.postMessage({type:'SKIP_WAITING'});
+                        });
+                    });
+                } catch (err) { console.warn('PWA Service Worker konnte nicht registriert werden', err); }
+            });
+        }
+    } catch (_) {}
+})();
+</script>
 </body>
 </html>
