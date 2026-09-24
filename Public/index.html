@@ -238,7 +238,7 @@
             -webkit-appearance: none;
             width: 100%;
             background: transparent;
-            touch-action: none;
+            touch-action: pan-y;
         }
         input[type=range]:focus {
             outline: none;
@@ -439,7 +439,7 @@ select,input,textarea,button{touch-action:manipulation}
             overflow: hidden;
             overscroll-behavior: none;
             justify-content: flex-start;
-            touch-action: none;
+            touch-action: pan-y;
         }
         body.gg-vorstand-mode > header {
             flex: 0 0 auto;
@@ -2520,6 +2520,7 @@ select,input,textarea,button{touch-action:manipulation}
         const GG_AUTO_REFRESH_MS = 30000;
         const GG_FAST_SYNC_MS = 30000;
         let ggFastSyncTimer = null;
+        let ggFastSyncStartTimer = null;
         let ggFastSyncInFlight = false;
         let ggLetzteSyncSignatur = '';
         let ggLetzteVollRefreshSignatur = '';
@@ -2879,7 +2880,20 @@ select,input,textarea,button{touch-action:manipulation}
                 if (ggScannerIstOffen()) return;
                 ggAutoRefreshJetzt();
             }, ms);
-            ggSyncReservierungenUndGuthaben();
+
+            // Den ersten Fast-Sync bewusst aus dem aktuellen UI-Event herauslösen.
+            // Beim Öffnen/Anmelden im geschützten Bereich darf der erste State-Load
+            // nicht die gerade sichtbare Navigation blockieren.
+            if (ggFastSyncStartTimer) clearTimeout(ggFastSyncStartTimer);
+            ggFastSyncStartTimer = setTimeout(() => {
+                ggFastSyncStartTimer = null;
+                if (document.hidden) return;
+                if (!ggIstGeschuetzterBereichAktiv()) return;
+                if (Date.now() < ggUiBusyUntil) return;
+                if (ggNutzerBearbeitetEingabe()) return;
+                if (ggScannerIstOffen()) return;
+                ggSyncReservierungenUndGuthaben();
+            }, 350);
         }
 
         function ggReservierungGuthabenSignatur() {
@@ -3102,12 +3116,17 @@ select,input,textarea,button{touch-action:manipulation}
                 if (!skipRender && !ggScannerIstOffen() && !ggNutzerBearbeitetEingabe()) {
                     const posMember = document.getElementById('pos-member-select')?.value;
                     const posStrain = document.getElementById('pos-strain-select')?.value;
-                    rendereAlles();
-                    const memberSel = document.getElementById('pos-member-select');
-                    const strainSel = document.getElementById('pos-strain-select');
-                    if (memberSel && posMember) memberSel.value = posMember;
-                    if (strainSel && posStrain) strainSel.value = posStrain;
-                    ggRefreshAlleQRs();
+                    const renderNachRefresh = () => {
+                        if (!ggIstGeschuetzterBereichAktiv() || document.hidden) return;
+                        rendereAlles();
+                        const memberSel = document.getElementById('pos-member-select');
+                        const strainSel = document.getElementById('pos-strain-select');
+                        if (memberSel && posMember) memberSel.value = posMember;
+                        if (strainSel && posStrain) strainSel.value = posStrain;
+                        ggRefreshAlleQRs();
+                    };
+                    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(renderNachRefresh);
+                    else setTimeout(renderNachRefresh, 0);
                 }
             } catch (e) {
                 console.warn('Auto-Refresh fehlgeschlagen', e);
@@ -3775,6 +3794,33 @@ select,input,textarea,button{touch-action:manipulation}
         function wechsleUnterkapitelAusDrawer(kapitelId) {
             wechsleUnterkapitel(kapitelId);
         }
+
+        // V28 DRAWER TOUCH-FALLBACK: Auf echten Android-Touchgeraeten kann die
+        // native click-Synthese innerhalb des scrollbaren Verwaltungs-Drawers
+        // ausbleiben. Die bestehende onclick-Navigation bleibt erhalten;
+        // pointerup fuehrt dieselbe Navigation nur dann direkt aus.
+        (function ggDrawerTouchFallback() {
+            let letzterDrawerTouch = 0;
+            function handleDrawerPointerUp(e) {
+                if (!e || e.pointerType !== 'touch') return;
+                const ziel = e.target && e.target.closest
+                    ? e.target.closest('#admin-drawer button[onclick*="wechsleUnterkapitelAusDrawer"]')
+                    : null;
+                if (!ziel) return;
+                const onclick = ziel.getAttribute('onclick') || '';
+                const match = onclick.match(/wechsleUnterkapitelAusDrawer\('([^']+)'\)/);
+                if (!match) return;
+                const jetzt = Date.now();
+                if (jetzt - letzterDrawerTouch < 250) return;
+                letzterDrawerTouch = jetzt;
+                if (e.cancelable) e.preventDefault();
+                e.stopPropagation();
+                try { wechsleUnterkapitelAusDrawer(match[1]); } catch (err) {
+                    console.error('Drawer-Touch-Navigation fehlgeschlagen', err);
+                }
+            }
+            document.addEventListener('pointerup', handleDrawerPointerUp, true);
+        })();
         function wechsleUnterkapitel(kapitelId) {
             if (!kapitelId) return;
             const bereitsOffen = document.getElementById('unterkapitel-' + kapitelId);
@@ -3812,18 +3858,33 @@ select,input,textarea,button{touch-action:manipulation}
                 if (pane) pane.scrollTop = 0;
             } catch (_) {}
 
-            if (kapitelId === 'buchhaltung') {
-                ggUiBusyUntil = Math.max(ggUiBusyUntil || 0, Date.now() + 2500);
-                try { starteFinanzTabRender(false, true); } catch (err) {
-                    console.error('Tab-Renderfehler in buchhaltung', err);
-                }
-            } else {
-                try { ggFuehreAdminTabRenderAus(kapitelId); } catch (err) {
+            // V29 PAINT-FIRST NAVIGATION: Erst den neuen Tab sichtbar machen und
+            // dem Browser mindestens einen Frame fuer Layout/Paint geben. Erst
+            // danach laufen die ggf. schweren Renderfunktionen. Dadurch bleibt
+            // der Vorstand beim Tabwechsel sofort bedienbar und ein Touch/Scroll
+            // ist nicht mehr noetig, um den neuen Inhalt sichtbar zu machen.
+            const navToken = ++ggNavRenderToken;
+            const renderNachPaint = () => {
+                if (navToken !== ggNavRenderToken) return;
+                if (ggAktivesAdminKapitel !== kapitelId) return;
+                try {
+                    if (kapitelId === 'buchhaltung') {
+                        ggUiBusyUntil = Math.max(ggUiBusyUntil || 0, Date.now() + 2500);
+                        starteFinanzTabRender(false, true);
+                    } else {
+                        ggFuehreAdminTabRenderAus(kapitelId);
+                    }
+                } catch (err) {
                     console.error('Tab-Renderfehler in ' + kapitelId, err);
                 }
-            }
-            if (kapitelId === 'standort') {
-                setTimeout(initialisiereAdminKarte, 100);
+                if (kapitelId === 'standort') {
+                    setTimeout(initialisiereAdminKarte, 100);
+                }
+            };
+            if (typeof requestAnimationFrame === 'function') {
+                requestAnimationFrame(renderNachPaint);
+            } else {
+                setTimeout(renderNachPaint, 0);
             }
         }
 
@@ -6714,29 +6775,42 @@ select,input,textarea,button{touch-action:manipulation}
             if (openFeesDisplay) openFeesDisplay.textContent = offene.toFixed(2).replace('.', ',') + ' €';
         }
 
+        // V29 FINANCE CHUNK RENDER: Die Finanzansicht wird bewusst ueber mehrere
+        // Browser-Frames aufgebaut. Alle vorhandenen Renderer bleiben erhalten;
+        // nur ihre Ausfuehrung wird verteilt, damit Layout/Paint und Touch nicht
+        // von einem langen synchronen Renderlauf blockiert werden.
         function starteFinanzTabRender(force, resetUmsatzLimit) {
             if (ggAktivesAdminKapitel !== 'buchhaltung' && !force) return;
-            const token = ggFinanzRenderToken;
+            const token = ++ggFinanzRenderToken;
+            const doForce = !!force;
             if (resetUmsatzLimit) ggFinanzUmsatzLimit = GG_FINANZ_UMSATZ_START;
-            try { aktualisiereFinanzKennzahlen(); } catch (err) {
-                console.error('Renderfehler in Finanz-KPIs', err);
-            }
-            if (token !== ggFinanzRenderToken || ggAktivesAdminKapitel !== 'buchhaltung') return;
-            try { rendereFinanzMitgliederListe(!!force); } catch (err) {
-                console.error('Renderfehler in Finanz-Mitgliederliste', err);
-            }
-            if (token !== ggFinanzRenderToken || ggAktivesAdminKapitel !== 'buchhaltung') return;
-            try { rendereGuthabenHistorie(!!force); } catch (err) {
-                console.error('Renderfehler in Guthabenhistorie', err);
-            }
-            if (token !== ggFinanzRenderToken || ggAktivesAdminKapitel !== 'buchhaltung') return;
-            try { rendereFinanzUmsatzListe(!!force); } catch (err) {
-                console.error('Renderfehler in Umsatzliste', err);
-            }
-            if (token !== ggFinanzRenderToken || ggAktivesAdminKapitel !== 'buchhaltung') return;
-            try { rendereFinanceAuditPreview(); } catch (err) {
-                console.error('Renderfehler in Finance-Audit', err);
-            }
+
+            const naechsterFrame = (fn) => {
+                const run = () => {
+                    if (token !== ggFinanzRenderToken || (ggAktivesAdminKapitel !== 'buchhaltung' && !doForce)) return;
+                    try { fn(); } catch (err) { console.error('Renderfehler in Finanz-Tab', err); }
+                };
+                if (typeof requestAnimationFrame === 'function') requestAnimationFrame(run);
+                else setTimeout(run, 0);
+            };
+
+            // Der erste Frame ist bereits fuer das Sichtbarwerden des Tabs reserviert.
+            // KPI-Render erst danach starten.
+            naechsterFrame(() => {
+                aktualisiereFinanzKennzahlen();
+                naechsterFrame(() => {
+                    rendereFinanzMitgliederListe(doForce);
+                    naechsterFrame(() => {
+                        rendereGuthabenHistorie(doForce);
+                        naechsterFrame(() => {
+                            rendereFinanzUmsatzListe(doForce);
+                            naechsterFrame(() => {
+                                rendereFinanceAuditPreview();
+                            });
+                        });
+                    });
+                });
+            });
         }
 
         function ggWeitereFinanzUmsaetzeAnzeigen() {
