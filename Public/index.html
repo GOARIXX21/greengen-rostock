@@ -511,7 +511,18 @@ select,input,textarea,button{touch-action:manipulation}
         body:not(.gg-vorstand-mode) [data-gg-global-receipts="true"] {
             display:none !important;
         }
-</style>
+/* Informationszettel: direkt in der App, ohne Popup/about:blank */
+.gg-infozettel-overlay{position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.94);overflow:auto;padding:env(safe-area-inset-top) 12px env(safe-area-inset-bottom)}
+.gg-infozettel-toolbar{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 0;background:#08080c}
+.gg-infozettel-toolbar button{border:0;border-radius:10px;padding:10px 12px;font-weight:800;color:#fff;background:#27272a}
+.gg-infozettel-toolbar .gg-info-print{background:#22ffaa;color:#050505}
+.gg-info-title{font-weight:900;color:#fff;font-size:14px}
+.gg-info-page{width:min(100%,794px);min-height:1123px;margin:0 auto 30px;background:#fff;color:#111;padding:42px 44px;box-shadow:0 12px 40px rgba(0,0,0,.45);font-family:Arial,Helvetica,sans-serif}
+.gg-info-head{border-bottom:2px solid #111;padding-bottom:14px;margin-bottom:20px}.gg-info-brand{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.gg-info-main-title{font-size:28px;font-weight:900;margin-top:5px}.gg-info-meta{font-size:11px;color:#555;margin-top:6px}
+.gg-info-grid{display:grid;grid-template-columns:1fr 1fr;border:1px solid #bbb;border-radius:8px;overflow:hidden}.gg-info-grid>div{padding:12px;border-bottom:1px solid #ddd}.gg-info-grid>div:nth-child(odd){border-right:1px solid #ddd}.gg-info-grid span{display:block;font-size:9px;color:#666;text-transform:uppercase;font-weight:700}.gg-info-grid strong{display:block;font-size:15px;margin-top:4px}.gg-info-note{margin-top:20px;border:1px solid #ccc;border-radius:8px;padding:12px;font-size:11px;line-height:1.5}.gg-info-footer{margin-top:20px;font-size:9px;color:#666}
+body.gg-print-preview-open{overflow:hidden!important}
+@media print{html body.gg-print-preview-open>*:not(#gg-infozettel-preview){display:none!important}body.gg-print-preview-open{background:#fff!important;overflow:visible!important}.gg-infozettel-overlay{position:static!important;inset:auto!important;background:#fff!important;padding:0!important;overflow:visible!important}.gg-infozettel-toolbar{display:none!important}.gg-info-page{width:auto!important;min-height:0!important;margin:0!important;padding:0!important;box-shadow:none!important}.gg-info-grid{break-inside:avoid}.gg-info-note{break-inside:avoid}}
+</style></style>
 </head>
 <body class="text-white min-h-screen flex flex-col justify-between selection:bg-[#22ffaa] selection:text-black pre-gate">
 
@@ -2526,8 +2537,8 @@ select,input,textarea,button{touch-action:manipulation}
         let ggScanBusy = false;
         let ggAutoRefreshTimer = null;
         let ggAutoRefreshInFlight = false;
-        const GG_AUTO_REFRESH_MS = 30000;
-        const GG_FAST_SYNC_MS = 30000;
+        const GG_AUTO_REFRESH_MS = 60000;
+        const GG_FAST_SYNC_MS = 10000;
         let ggFastSyncTimer = null;
         let ggFastSyncStartTimer = null;
         let ggFastSyncInFlight = false;
@@ -2903,6 +2914,16 @@ select,input,textarea,button{touch-action:manipulation}
                 if (ggScannerIstOffen()) return;
                 ggSyncReservierungenUndGuthaben();
             }, 350);
+
+            if (ggFastSyncTimer) clearInterval(ggFastSyncTimer);
+            ggFastSyncTimer = setInterval(() => {
+                if (document.hidden) return;
+                if (!ggIstGeschuetzterBereichAktiv()) return;
+                if (Date.now() < ggUiBusyUntil) return;
+                if (ggNutzerBearbeitetEingabe()) return;
+                if (ggScannerIstOffen()) return;
+                ggSyncReservierungenUndGuthaben();
+            }, GG_FAST_SYNC_MS);
         }
 
         function ggReservierungGuthabenSignatur() {
@@ -7496,7 +7517,7 @@ select,input,textarea,button{touch-action:manipulation}
             if (!w) { alert('Pop-up blockiert. Bitte Pop-ups erlauben.'); return; }
             w.document.write('<!DOCTYPE html><html><head><title>Zutrittsprotokoll</title>' +
                 '<style>body{font-family:system-ui,sans-serif;padding:16px;color:#111}table{width:100%;border-collapse:collapse;font-size:12px}' +
-                'th,td{border:1px solid #ccc;padding:6px;text-align:left}th{background:#f3f3f3}h1{font-size:16px}</style></head><body>' +
+                'th,td{border:1px solid #ccc;padding:6px;text-align:left}th{background:#f3f3f3}h1{font-size:16px}\n</head><body>' +
                 '<h1>Green Generation Rostock – Zutrittsprotokoll</h1>' +
                 '<table><thead><tr><th>Datum</th><th>Uhrzeit</th><th>Mitglied</th><th>ID</th><th>Protokoll-ID</th><th>Status</th></tr></thead><tbody>' +
                 rows + '</tbody></table>\n</body></html>');
@@ -7786,6 +7807,7 @@ select,input,textarea,button{touch-action:manipulation}
         function erzeugeInformationszettel() {
             const memberId = document.getElementById('pos-member-select')?.value || '';
             const strainName = document.getElementById('pos-strain-select')?.value || '';
+            const menge = document.getElementById('pos-amount-input')?.value || '—';
             const m = vereinMitglieder.find(x => String(x.id) === String(memberId));
             const s = vereinSorten.find(x => String(x.name) === String(strainName));
             if (!m || !s) {
@@ -7797,40 +7819,52 @@ select,input,textarea,button{touch-action:manipulation}
                 .replace(/&/g, '&amp;').replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
             const datum = new Date().toLocaleString('de-DE');
-            const menge = document.getElementById('pos-amount-input')?.value || '—';
+            const old = document.getElementById('gg-infozettel-preview');
+            if (old) old.remove();
 
-            const druckHtml = `<!doctype html>
-<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Informationszettel – ${esc(s.name)}</title>
-<style>
-@page{size:A4;margin:14mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:0;background:#fff}main{max-width:760px;margin:0 auto}.head{border-bottom:2px solid #111;padding-bottom:10px;margin-bottom:18px}.brand{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.title{font-size:25px;font-weight:900;margin-top:5px}.meta{font-size:11px;color:#555;margin-top:5px}.grid{display:grid;grid-template-columns:1fr 1fr;border:1px solid #bbb;border-radius:8px;overflow:hidden}.cell{padding:9px 11px;border-bottom:1px solid #ddd}.cell:nth-child(odd){border-right:1px solid #ddd}.label{font-size:9px;color:#666;text-transform:uppercase;font-weight:700}.value{font-size:14px;font-weight:700;margin-top:3px}.note{margin-top:18px;border:1px solid #ccc;border-radius:8px;padding:11px;font-size:10px;line-height:1.45}.footer{margin-top:18px;font-size:9px;color:#666}button{margin-top:18px;padding:10px 16px;border:0;border-radius:7px;background:#111;color:#fff;font-weight:700}@media print{button{display:none}}
-</style></head><body><main>
-<div class="head"><div class="brand">Green Generation Rostock</div><div class="title">Informationszettel</div><div class="meta">Erstellt am ${esc(datum)}</div></div>
-<div class="grid">
-<div class="cell"><div class="label">Mitglied</div><div class="value">${esc(m.name)}</div></div>
-<div class="cell"><div class="label">Mitglieds-ID</div><div class="value">${esc(m.id)}</div></div>
-<div class="cell"><div class="label">Sorte</div><div class="value">${esc(s.name)}</div></div>
-<div class="cell"><div class="label">Charge</div><div class="value">${esc(s.batch)}</div></div>
-<div class="cell"><div class="label">Menge</div><div class="value">${esc(menge)} g</div></div>
-<div class="cell"><div class="label">Erntedatum</div><div class="value">${esc(s.harvestDate || 'nicht hinterlegt')}</div></div>
-<div class="cell"><div class="label">MHD</div><div class="value">${esc(s.bestBefore || 'nicht hinterlegt')}</div></div>
-<div class="cell"><div class="label">THC</div><div class="value">${esc(s.thc || 'nicht hinterlegt')}</div></div>
-<div class="cell"><div class="label">CBD</div><div class="value">${esc(s.cbd || 'nicht hinterlegt')}</div></div>
-<div class="cell"><div class="label">Qualitätsstatus</div><div class="value">${esc(s.qaStatus || 'offen')}</div></div>
-</div>
-<div class="note"><strong>Hinweis:</strong> Dieser Informationszettel gibt die im System hinterlegten Angaben zur ausgewählten Abgabe wieder. Er ersetzt keine rechtliche oder medizinische Beratung.</div>
-<div class="footer">Green Generation Rostock · Interner Informationszettel · Charge ${esc(s.batch)}</div>
-<button onclick="window.print()">Drucken / als PDF speichern</button>
-</main><script>window.addEventListener('load',()=>setTimeout(()=>window.print(),250));<\/script></body></html>`;
+            const overlay = document.createElement('div');
+            overlay.id = 'gg-infozettel-preview';
+            overlay.className = 'gg-infozettel-overlay';
+            overlay.innerHTML = `
+                <div class="gg-infozettel-toolbar">
+                    <button type="button" class="gg-info-close">Schließen</button>
+                    <div class="gg-info-title">Informationszettel</div>
+                    <button type="button" class="gg-info-print">Drucken / PDF</button>
+                </div>
+                <div class="gg-info-page">
+                    <div class="gg-info-head"><div class="gg-info-brand">Green Generation Rostock</div><div class="gg-info-main-title">Informationszettel</div><div class="gg-info-meta">Erstellt am ${esc(datum)}</div></div>
+                    <div class="gg-info-grid">
+                        <div><span>Mitglied</span><strong>${esc(m.name)}</strong></div>
+                        <div><span>Mitglieds-ID</span><strong>${esc(m.id)}</strong></div>
+                        <div><span>Sorte</span><strong>${esc(s.name)}</strong></div>
+                        <div><span>Charge</span><strong>${esc(s.batch || 'nicht hinterlegt')}</strong></div>
+                        <div><span>Menge</span><strong>${esc(menge)} g</strong></div>
+                        <div><span>Erntedatum</span><strong>${esc(s.harvestDate || 'nicht hinterlegt')}</strong></div>
+                        <div><span>MHD</span><strong>${esc(s.bestBefore || 'nicht hinterlegt')}</strong></div>
+                        <div><span>THC</span><strong>${esc(s.thc || 'nicht hinterlegt')}</strong></div>
+                        <div><span>CBD</span><strong>${esc(s.cbd || 'nicht hinterlegt')}</strong></div>
+                        <div><span>Qualitätsstatus</span><strong>${esc(s.qaStatus || 'offen')}</strong></div>
+                    </div>
+                    <div class="gg-info-note"><strong>Hinweis:</strong> Dieser Informationszettel gibt die im System hinterlegten Angaben zur ausgewählten Abgabe wieder.</div>
+                    <div class="gg-info-footer">Green Generation Rostock · Interner Informationszettel · Charge ${esc(s.batch || '—')}</div>
+                </div>`;
+            document.body.appendChild(overlay);
+            document.body.classList.add('gg-print-preview-open');
 
-            const win = window.open('', '_blank', 'noopener,noreferrer');
-            if (!win) {
-                alert('Das Druckfenster wurde vom Browser blockiert. Bitte Pop-ups für die App erlauben.');
-                return;
-            }
-            win.document.open();
-            win.document.write(druckHtml);
-            win.document.close();
+            const close = () => {
+                document.body.classList.remove('gg-print-preview-open');
+                overlay.remove();
+                window.removeEventListener('afterprint', close);
+            };
+            overlay.querySelector('.gg-info-close')?.addEventListener('click', close);
+            overlay.querySelector('.gg-info-print')?.addEventListener('click', () => {
+                window.addEventListener('afterprint', close, { once: true });
+                window.print();
+                setTimeout(() => {
+                    if (document.getElementById('gg-infozettel-preview')) close();
+                }, 1500);
+            });
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
         }
 
         function archiviereKassenbons() {
