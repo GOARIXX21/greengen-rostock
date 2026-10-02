@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Green Generation Rostock</title>
-<meta name="gg-build" content="V32-UI-SMOKE-DYNAMIC-HARBOR-NONDESTRUCTIVE-APP-DIALOGS">
+<meta name="gg-build" content="V33-UI-SMOKE-DYNAMIC-HARBOR-NONDESTRUCTIVE-APP-FLOW">
 <meta name="gg-build-date" content="2026-10-02">
     
     <!-- PWA & Mobile Web App Meta Tags -->
@@ -271,7 +271,7 @@
         body.pre-gate > #member-login-modal,
         body.pre-gate > #login-modal-overlay { visibility: visible !important; }
         body.gate-open > *:not(#security-gate) { visibility: visible !important; }
-        body.pre-gate > #gg-app-age-overlay, body.pre-gate > #gg-app-confirm-overlay, body.pre-gate > #gg-app-toast-stack { visibility: visible !important; }
+        body.pre-gate > #gg-app-age-overlay, body.pre-gate > #gg-login-transition { visibility: visible !important; }
 
         #admin-drawer-overlay {
             display: none;
@@ -411,14 +411,18 @@ select,input,textarea,button{touch-action:manipulation}
         #gg-splash-progress-bar{display:block;height:100%;width:8%;border-radius:999px;background:linear-gradient(90deg,#00cc7a,#22ffaa);box-shadow:0 0 18px rgba(34,255,170,.7);transition:width .35s ease}
         #gg-splash-status{font-size:10px;color:rgba(255,255,255,.55);letter-spacing:.06em}
 
-        #gg-login-transition{position:fixed;inset:0;z-index:19000;display:none;align-items:center;justify-content:center;overflow:hidden;background:rgba(3,6,5,.94);opacity:0;pointer-events:none}
-        #gg-login-transition.open{display:flex;animation:ggTransitionIn .18s ease-out forwards}
-        #gg-login-transition.exit{animation:ggTransitionOut 1.05s cubic-bezier(.16,1,.3,1) forwards}
-        .gg-transition-mark{position:relative;z-index:3;width:96px;height:96px;border-radius:32px;display:flex;align-items:center;justify-content:center;background:rgba(34,255,170,.08);border:1px solid rgba(34,255,170,.5);box-shadow:0 0 55px rgba(34,255,170,.2);color:#22ffaa;font-size:44px}
-        .gg-transition-check{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:30px;color:#fff;opacity:0;transform:scale(.6);animation:ggCheckIn .5s .22s ease-out forwards}
-        @keyframes ggTransitionIn{to{opacity:1}}
-        @keyframes ggTransitionOut{to{opacity:0;visibility:hidden}}
-        @keyframes ggCheckIn{to{opacity:1;transform:scale(1)}}
+        #gg-login-transition{position:fixed;inset:0;z-index:2147482000;display:none;align-items:center;justify-content:center;overflow:hidden;background:rgba(3,6,5,.965);opacity:0;pointer-events:none;transition:opacity .24s ease}
+        #gg-login-transition.open{display:flex;opacity:1;pointer-events:auto}
+        #gg-login-transition.exit{opacity:0;pointer-events:none}
+        .gg-transition-content{position:relative;z-index:3;width:min(88vw,390px);text-align:center;padding:34px 24px}
+        .gg-transition-logo{width:72px;height:72px;margin:0 auto 14px;border-radius:25px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#22ffaa,#00a96a);color:#04120a;font-size:34px;box-shadow:0 0 42px rgba(34,255,170,.22);animation:ggLogoFloat 2.4s ease-in-out infinite}
+        .gg-transition-brand{font-family:'Space Grotesk',sans-serif;font-size:clamp(21px,6vw,30px);font-weight:900;letter-spacing:.02em;color:#22ffaa;text-shadow:0 0 20px rgba(34,255,170,.2)}
+        .gg-transition-sub{margin-top:4px;font-size:9px;letter-spacing:.22em;color:rgba(255,255,255,.58);text-transform:uppercase}
+        .gg-transition-progress{height:6px;width:min(72vw,260px);margin:25px auto 10px;background:#181c1d;border:1px solid rgba(255,255,255,.12);border-radius:999px;overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,.5)}
+        #gg-transition-progress-bar{display:block;height:100%;width:6%;border-radius:999px;background:linear-gradient(90deg,#00cc7a,#22ffaa);box-shadow:0 0 16px rgba(34,255,170,.65);transition:width .28s ease}
+        #gg-transition-status{font-size:9px;color:rgba(255,255,255,.52);letter-spacing:.05em;min-height:14px}
+        .gg-transition-check{display:none}
+        @media (prefers-reduced-motion:reduce){.gg-smoke-field span,.gg-splash-logo,.gg-transition-logo{animation:none!important}.gg-splash-progress,.gg-transition-progress{transition:none!important}}
         @media (prefers-reduced-motion:reduce){.gg-smoke-field span,.gg-splash-logo,.gg-transition-check{animation:none!important}.gg-splash-progress{transition:none!important}.gg-login-transition.exit{animation:none!important;opacity:0}}
 
         .gg-home-hero{position:relative;min-height:204px;margin:0 -4px 18px;padding:0;border-radius:28px;overflow:hidden;border:1px solid rgba(34,255,170,.24);box-shadow:0 18px 50px rgba(0,0,0,.42),0 0 30px rgba(34,255,170,.08);isolation:isolate}
@@ -600,14 +604,16 @@ body.gg-print-preview-open{overflow:hidden!important}
 @media print{html body.gg-print-preview-open>*:not(#gg-infozettel-preview){display:none!important}body.gg-print-preview-open{background:#fff!important;overflow:visible!important}.gg-infozettel-overlay{position:static!important;inset:auto!important;background:#fff!important;padding:0!important;overflow:visible!important}.gg-infozettel-toolbar{display:none!important}.gg-info-page{width:auto!important;min-height:0!important;margin:0!important;padding:0!important;box-shadow:none!important}.gg-info-grid{break-inside:avoid}.gg-info-note{break-inside:avoid}}
 
 /* V32 APP-STYLE SECURITY / CONFIRM / TOAST UI */
-#gg-app-confirm-overlay,#gg-app-age-overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(2,7,6,.82);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+#gg-app-confirm-overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(2,7,6,.58);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
+#gg-app-age-overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(2,7,6,.58);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
 #gg-app-confirm-overlay{z-index:2147483001}
 #gg-app-age-overlay{z-index:2147483002}
-.gg-app-dialog{width:min(100%,410px);border:1px solid rgba(34,255,170,.28);border-radius:28px;background:linear-gradient(145deg,rgba(13,28,25,.97),rgba(8,13,14,.98));box-shadow:0 30px 90px rgba(0,0,0,.6),0 0 40px rgba(34,255,170,.08);overflow:hidden}
-.gg-app-dialog-head{padding:22px 22px 10px}.gg-app-dialog-icon{width:48px;height:48px;border-radius:16px;display:flex;align-items:center;justify-content:center;margin-bottom:13px;background:rgba(34,255,170,.12);border:1px solid rgba(34,255,170,.25);color:#22ffaa;font-size:20px}
-.gg-app-dialog h3{margin:0;font-size:17px;font-weight:900}.gg-app-dialog p{margin:7px 0 0;color:rgba(255,255,255,.62);font-size:11px;line-height:1.55}
-.gg-app-dialog-body{padding:10px 22px 18px}.gg-app-dialog-actions{display:flex;gap:10px;padding:0 22px 22px}.gg-app-btn{flex:1;border:0;border-radius:15px;padding:13px 14px;font-weight:900;font-size:12px;cursor:pointer}.gg-app-btn-green{background:linear-gradient(135deg,#22ffaa,#00b96b);color:#04110b;box-shadow:0 8px 24px rgba(34,255,170,.16)}.gg-app-btn-dark{background:rgba(255,255,255,.07);color:#fff;border:1px solid rgba(255,255,255,.12)}
-.gg-app-check{display:flex;gap:10px;align-items:flex-start;margin-top:12px;padding:12px;border-radius:16px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);cursor:pointer}.gg-app-check input{margin-top:2px;accent-color:#22ffaa}.gg-app-check span{font-size:10px;color:rgba(255,255,255,.72);line-height:1.5}.gg-app-check b{color:#fff}.gg-app-privacy{margin-top:12px;padding:12px 13px;border-radius:16px;background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.07);font-size:9px;line-height:1.55;color:rgba(255,255,255,.5)}
+.gg-app-dialog{width:min(100%,360px);border:1px solid rgba(34,255,170,.30);border-radius:24px;background:linear-gradient(145deg,rgba(13,28,25,.985),rgba(8,13,14,.99));box-shadow:0 24px 70px rgba(0,0,0,.58),0 0 35px rgba(34,255,170,.08);overflow:hidden}
+#gg-app-age-overlay .gg-app-dialog{max-height:min(82vh,560px);overflow:auto}
+.gg-app-dialog-head{padding:18px 18px 8px}.gg-app-dialog-icon{width:42px;height:42px;border-radius:14px;display:flex;align-items:center;justify-content:center;margin-bottom:10px;background:rgba(34,255,170,.12);border:1px solid rgba(34,255,170,.25);color:#22ffaa;font-size:18px}
+.gg-app-dialog h3{margin:0;font-size:16px;font-weight:900}.gg-app-dialog p{margin:6px 0 0;color:rgba(255,255,255,.62);font-size:10px;line-height:1.5}
+.gg-app-dialog-body{padding:8px 18px 14px}.gg-app-dialog-actions{display:flex;gap:10px;padding:0 18px 18px}.gg-app-btn{flex:1;border:0;border-radius:14px;padding:12px 13px;font-weight:900;font-size:11px;cursor:pointer}.gg-app-btn-green{background:linear-gradient(135deg,#22ffaa,#00b96b);color:#04110b;box-shadow:0 8px 24px rgba(34,255,170,.16)}.gg-app-btn-dark{background:rgba(255,255,255,.07);color:#fff;border:1px solid rgba(255,255,255,.12)}.gg-app-btn-danger{background:linear-gradient(135deg,#ff6670,#e51f3a);color:#fff;box-shadow:0 8px 24px rgba(255,70,80,.16)}
+.gg-app-check{display:flex;gap:9px;align-items:flex-start;margin-top:9px;padding:10px;border-radius:14px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);cursor:pointer}.gg-app-check input{margin-top:2px;accent-color:#22ffaa}.gg-app-check span{font-size:9.5px;color:rgba(255,255,255,.72);line-height:1.45}.gg-app-check b{color:#fff}.gg-app-privacy{margin-top:9px;padding:10px 11px;border-radius:14px;background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.07);font-size:8.5px;line-height:1.45;color:rgba(255,255,255,.5)}
 #gg-app-toast-stack{position:fixed;left:12px;right:12px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:2147483003;display:flex;flex-direction:column;gap:9px;pointer-events:none;align-items:center}.gg-app-toast{width:min(100%,430px);display:flex;align-items:flex-start;gap:12px;padding:13px 14px;border-radius:18px;background:linear-gradient(135deg,rgba(12,30,26,.96),rgba(10,15,17,.97));border:1px solid rgba(34,255,170,.25);box-shadow:0 18px 55px rgba(0,0,0,.45);animation:ggToastIn .22s ease-out both}.gg-app-toast-icon{width:34px;height:34px;border-radius:12px;display:grid;place-items:center;background:rgba(34,255,170,.13);color:#22ffaa;flex:0 0 auto}.gg-app-toast-title{font-size:11px;font-weight:900;color:#fff}.gg-app-toast-msg{font-size:10px;line-height:1.45;color:rgba(255,255,255,.62);margin-top:2px}.gg-app-toast-close{margin-left:auto;color:rgba(255,255,255,.55);font-size:18px;cursor:pointer;padding:0 2px}.gg-app-toast.warn{border-color:rgba(255,190,50,.3)}.gg-app-toast.warn .gg-app-toast-icon{color:#ffd15a;background:rgba(255,190,50,.12)}.gg-app-toast.error{border-color:rgba(255,90,90,.3)}.gg-app-toast.error .gg-app-toast-icon{color:#ff7070;background:rgba(255,90,90,.12)}
 @keyframes ggToastIn{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
 </style></style>
@@ -629,17 +635,23 @@ body.gg-print-preview-open{overflow:hidden!important}
 
     <div id="gg-login-transition" aria-hidden="true">
         <svg class="gg-real-smoke" viewBox="0 0 600 1100" preserveAspectRatio="none" aria-hidden="true"><defs><filter id="ggSmokeBlur" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="8"/></filter></defs><path class="smoke-soft s6" d="M80 1080 C20 930 180 880 80 740 C-10 610 170 520 90 390 C30 285 180 210 150 20"/><path class="smoke-green s2" d="M530 1120 C590 970 420 900 520 770 C610 650 450 550 525 430 C590 320 430 220 470 0"/><path class="smoke-white s1" d="M270 1120 C180 960 340 860 245 720 C155 585 340 500 255 355 C190 250 320 160 300 -10"/><path class="smoke-soft s4" d="M430 1100 C350 970 500 860 400 720 C330 610 505 500 410 365 C340 260 470 145 455 30"/><path class="smoke-green s3" d="M120 1080 C210 940 40 840 155 700 C255 580 80 500 180 350 C255 240 120 140 195 10"/><path class="smoke-white s5" d="M360 1080 C450 930 300 850 390 720 C475 595 315 500 405 360 C470 250 350 140 380 0"/></svg>
-        <div class="gg-transition-mark"><i class="fa-solid fa-leaf"></i><span class="gg-transition-check"><i class="fa-solid fa-check"></i></span></div>
+        <div class="gg-transition-content">
+            <div class="gg-transition-logo"><i class="fa-solid fa-leaf"></i></div>
+            <div class="gg-transition-brand">GREEN GENERATION</div>
+            <div class="gg-transition-sub">ROSTOCK · GEMEINSAM · LEGAL · REGIONAL</div>
+            <div class="gg-transition-progress"><span id="gg-transition-progress-bar"></span></div>
+            <p id="gg-transition-status">Zugang wird vorbereitet …</p>
+        </div>
     </div>
 
 
-    <!-- V32: App-Stil Sicherheits-/Datenschutz-Hinweis beim Start -->
+    <!-- V32: kompakter App-Start-Hinweis; liegt als Popup über dem normalen Zugang -->
     <div id="gg-app-age-overlay" aria-modal="true" role="dialog">
         <div class="gg-app-dialog">
             <div class="gg-app-dialog-head">
                 <div class="gg-app-dialog-icon"><i class="fa-solid fa-shield-heart"></i></div>
                 <h3>Willkommen bei Green Generation Rostock</h3>
-                <p>Bitte bestätige vor dem Zugang zur App, dass du die Zugangsvoraussetzungen kennst.</p>
+                <p>Bitte bestätige kurz die Zugangsvoraussetzungen, bevor du die App nutzt.</p>
             </div>
             <div class="gg-app-dialog-body">
                 <label class="gg-app-check">
@@ -648,14 +660,14 @@ body.gg-print-preview-open{overflow:hidden!important}
                 </label>
                 <label class="gg-app-check">
                     <input id="gg-privacy-confirm" type="checkbox">
-                    <span><b>Datenschutzhinweis gelesen.</b><br>Ich habe den folgenden Datenschutzhinweis zur Kenntnis genommen.</span>
+                    <span><b>Datenschutzhinweis gelesen.</b><br>Ich habe den Datenschutzhinweis zur Kenntnis genommen.</span>
                 </label>
                 <div class="gg-app-privacy">
-                    <b style="color:#fff">Datenschutzhinweis:</b> Für die Nutzung der Vereins-App können je nach Funktion insbesondere Mitglieds-, Zugangs-, Reservierungs-, Abgabe-, Guthaben- und Protokolldaten verarbeitet werden. Die Verarbeitung erfolgt zur Verwaltung des Vereins und der von dir genutzten Funktionen sowie zur Erfüllung gesetzlicher Pflichten. Daten werden nur im erforderlichen Umfang verarbeitet und nach den jeweils geltenden gesetzlichen Aufbewahrungs- und Löschfristen behandelt. Deine gesetzlichen Datenschutzrechte bleiben unberührt. Eine vollständige Datenschutzerklärung mit Verantwortlichem, Kontakt, Rechtsgrundlagen, Speicherdauern und Betroffenenrechten sollte im Verein separat bereitgestellt werden.
+                    <b style="color:#fff">Datenschutzhinweis:</b> Für die Vereins-App können je nach Funktion Mitglieds-, Zugangs-, Reservierungs-, Abgabe-, Guthaben- und Protokolldaten verarbeitet werden. Die Verarbeitung erfolgt zur Vereinsverwaltung, für genutzte Funktionen und zur Erfüllung gesetzlicher Pflichten. Es gelten die gesetzlichen Datenschutzrechte sowie die jeweils geltenden Aufbewahrungs- und Löschfristen.
                 </div>
             </div>
             <div class="gg-app-dialog-actions">
-                <button type="button" class="gg-app-btn gg-app-btn-green" onclick="ggBestaetigeStartGate()"><i class="fa-solid fa-check mr-1"></i> Bestätigen &amp; fortfahren</button>
+                <button type="button" class="gg-app-btn gg-app-btn-green" onclick="ggBestaetigeStartGate()"><i class="fa-solid fa-check mr-1"></i> Bestätigen</button>
             </div>
         </div>
     </div>
@@ -669,7 +681,7 @@ body.gg-print-preview-open{overflow:hidden!important}
             </div>
             <div class="gg-app-dialog-actions">
                 <button type="button" class="gg-app-btn gg-app-btn-dark" onclick="ggAppConfirmCancel()">Abbrechen</button>
-                <button type="button" class="gg-app-btn" style="background:linear-gradient(135deg,#ff6670,#e51f3a);color:#fff;box-shadow:0 8px 24px rgba(255,70,80,.16)" onclick="ggAppConfirmOk()"><i class="fa-solid fa-trash-can mr-1"></i> Löschen</button>
+                <button type="button" id="gg-app-confirm-ok" class="gg-app-btn gg-app-btn-danger" onclick="ggAppConfirmOk()"><i id="gg-app-confirm-ok-icon" class="fa-solid fa-trash-can mr-1"></i> <span id="gg-app-confirm-ok-label">Löschen</span></button>
             </div>
         </div>
     </div>
@@ -2169,10 +2181,11 @@ body.gg-print-preview-open{overflow:hidden!important}
                 document.body.classList.add('gate-open');
                 document.body.classList.add('gg-vorstand-mode');
                 document.getElementById('security-gate')?.classList.add('hidden');
-                try { rendereMitgliederIdentität(); } catch (e) { console.error(e); }
-                wechsleAnsicht('vorstand');
-                try { ggChatZeichneVerlauf(); } catch (_) {}
-                ggStarteLoginUebergang();
+                ggStarteLoginUebergang('Sicherer Admin-Zugang wird geladen …', 860).then(() => {
+                    try { rendereMitgliederIdentität(); } catch (e) { console.error(e); }
+                    wechsleAnsicht('vorstand');
+                    try { ggChatZeichneVerlauf(); } catch (_) {}
+                });
             }
         }
 
@@ -3493,23 +3506,38 @@ body.gg-print-preview-open{overflow:hidden!important}
             if (ggSplashDone) return;
             ggSplashDone = true;
             const elapsed = Date.now() - ggSplashStartedAt;
-            const wait = Math.max(0, 1250 - elapsed);
+            const wait = Math.max(0, 1800 - elapsed);
             if (wait) await new Promise(r => setTimeout(r, wait));
             ggSetzeSplashFortschritt(100, 'Bereit …');
             await new Promise(r => setTimeout(r, 180));
             document.getElementById('gg-app-splash')?.classList.add('is-hidden');
+            // Erst nach der vollständigen Startanimation das 21+-/Datenschutz-Gate zeigen.
+            setTimeout(() => ggZeigeStartGateImmer(), 120);
         }
 
-        function ggStarteLoginUebergang() {
+        function ggStarteLoginUebergang(statusText = 'Zugang wird vorbereitet …', duration = 820) {
             const overlay = document.getElementById('gg-login-transition');
+            const bar = document.getElementById('gg-transition-progress-bar');
+            const status = document.getElementById('gg-transition-status');
             if (!overlay) return Promise.resolve();
             overlay.classList.remove('exit');
             overlay.classList.add('open');
+            if (bar) { bar.style.transition = 'none'; bar.style.width = '7%'; void bar.offsetWidth; bar.style.transition = 'width .28s ease'; }
+            if (status) status.textContent = statusText;
             return new Promise(resolve => {
-                setTimeout(() => {
-                    overlay.classList.add('exit');
-                    setTimeout(() => { overlay.classList.remove('open','exit'); resolve(); }, 1050);
-                }, 950);
+                const start = performance.now();
+                const tick = (now) => {
+                    const p = Math.min(100, ((now - start) / duration) * 100);
+                    if (bar) bar.style.width = Math.max(7, p) + '%';
+                    if (p < 100) requestAnimationFrame(tick);
+                    else {
+                        setTimeout(() => {
+                            overlay.classList.add('exit');
+                            setTimeout(() => { overlay.classList.remove('open','exit'); resolve(); }, 240);
+                        }, 70);
+                    }
+                };
+                requestAnimationFrame(tick);
             });
         }
 
@@ -3536,7 +3564,8 @@ body.gg-print-preview-open{overflow:hidden!important}
         }
 
         window.addEventListener('DOMContentLoaded', () => {
-            ggZeigeStartGateImmer();
+            const startGate = document.getElementById('gg-app-age-overlay');
+            if (startGate) startGate.style.display = 'none';
             document.body.classList.add('pre-gate');
             ggSetzeSplashFortschritt(18, 'Grundsystem wird geladen …');
             ladeBarrierefreiheitsGroesse();
@@ -4541,11 +4570,11 @@ body.gg-print-preview-open{overflow:hidden!important}
                 await ggLadeVereinWissenAktuell();
                 ggBalanceAnzeigeWert = null;
             } catch (_) {}
+            await protokolliereAudit('member_login', m.id);
+            await ggStarteLoginUebergang('Mitgliederbereich wird geladen …', 860);
             wechsleAnsicht('home');
             ggChatZeichneVerlauf();
             ggZeigeMitgliederStornierungshinweis();
-            ggStarteLoginUebergang();
-            await protokolliereAudit('member_login', m.id);
 
             if (m.forceAccessCodeChange) {
                 alert('Temporärer Zugang erkannt. Bitte ändere den Zugangscode nach dem Login.');
@@ -4601,25 +4630,35 @@ body.gg-print-preview-open{overflow:hidden!important}
     
         /* V32: Einheitliche App-Dialoge statt Browser-Grau-Fenster */
         let ggAppConfirmResolver = null;
-        function ggAppConfirm(title, message) {
+        function ggAppConfirm(title, message, actionLabel = 'Löschen', destructive = true) {
+            // Destruktive Löschbestätigungen gehören ausschließlich in den geschützten Admin-/Vorstandsbereich.
+            if (destructive && !istVorstandEingeloggt) return Promise.resolve(false);
             const overlay = document.getElementById('gg-app-confirm-overlay');
             const titleEl = document.getElementById('gg-app-confirm-title');
             const msgEl = document.getElementById('gg-app-confirm-message');
-            if (!overlay || !titleEl || !msgEl) return Promise.resolve(false);
+            const okBtn = document.getElementById('gg-app-confirm-ok');
+            const okIcon = document.getElementById('gg-app-confirm-ok-icon');
+            const okLabel = document.getElementById('gg-app-confirm-ok-label');
+            if (!overlay || !titleEl || !msgEl || !okBtn || !okLabel) return Promise.resolve(false);
             titleEl.textContent = String(title || 'Sind Sie sich sicher?');
             msgEl.textContent = String(message || 'Diese Aktion kann nicht rückgängig gemacht werden.');
+            okLabel.textContent = String(actionLabel || (destructive ? 'Löschen' : 'Bestätigen'));
+            okBtn.classList.toggle('gg-app-btn-danger', !!destructive);
+            okBtn.classList.toggle('gg-app-btn-green', !destructive);
+            if (okIcon) okIcon.className = 'fa-solid ' + (destructive ? 'fa-trash-can' : 'fa-check') + ' mr-1';
             overlay.classList.remove('hidden');
+            overlay.style.display = 'flex';
             return new Promise(resolve => { ggAppConfirmResolver = resolve; });
         }
         function ggAppConfirmOk() {
             const overlay = document.getElementById('gg-app-confirm-overlay');
-            if (overlay) overlay.classList.add('hidden');
+            if (overlay) { overlay.classList.add('hidden'); overlay.style.display = 'none'; }
             const r = ggAppConfirmResolver; ggAppConfirmResolver = null;
             if (r) r(true);
         }
         function ggAppConfirmCancel() {
             const overlay = document.getElementById('gg-app-confirm-overlay');
-            if (overlay) overlay.classList.add('hidden');
+            if (overlay) { overlay.classList.add('hidden'); overlay.style.display = 'none'; }
             const r = ggAppConfirmResolver; ggAppConfirmResolver = null;
             if (r) r(false);
         }
@@ -4644,7 +4683,40 @@ body.gg-print-preview-open{overflow:hidden!important}
         }
         window.alert = ggAppAlert;
 
-        function ggBestaetigeStartGate() {
+        async function ggProtokolliereStartbestaetigung() {
+            const now = new Date();
+            const eintrag = {
+                id: 'APP-' + Date.now() + '-' + Math.floor(Math.random() * 1e6),
+                memberId: 'APP-START',
+                memberName: 'App-Start',
+                date: ggFormatiereZutrittDatum(now),
+                time: ggFormatiereZutrittZeit(now),
+                ts: now.toISOString(),
+                status: '21+ & Datenschutz bestätigt',
+                ereignis: 'App-Zugang bestätigt',
+                club: 'Green Generation Rostock'
+            };
+            try {
+                if (ggD1Available === null) await ggD1Health();
+                if (ggD1Available) {
+                    const bestand = await ggLadeZutritteAutoritaet([]);
+                    const neu = [eintrag].concat(Array.isArray(bestand) ? bestand : []);
+                    if (neu.length > 5000) neu.length = 5000;
+                    await ggSchreibeZutritteAutoritaet(neu);
+                    vereinZutritte = neu;
+                } else {
+                    throw new Error('Server/D1 nicht erreichbar');
+                }
+            } catch (e) {
+                console.warn('Startbestätigung konnte nicht im Zutrittsprotokoll gespeichert werden.', e);
+                try { await protokolliereAudit('app_start_confirmation', '21+ & Datenschutz bestätigt; Zutrittsprotokoll nicht erreichbar.'); } catch (_) {}
+                return false;
+            }
+            try { await protokolliereAudit('app_start_confirmation', '21+ & Datenschutz bestätigt.'); } catch (_) {}
+            return true;
+        }
+
+        async function ggBestaetigeStartGate() {
             const age = document.getElementById('gg-age-confirm');
             const privacy = document.getElementById('gg-privacy-confirm');
             if (!age?.checked || !privacy?.checked) {
@@ -4653,6 +4725,8 @@ body.gg-print-preview-open{overflow:hidden!important}
             }
             const gate = document.getElementById('gg-app-age-overlay');
             if (gate) gate.style.display = 'none';
+            await ggProtokolliereStartbestaetigung();
+            await ggStarteLoginUebergang('Zugang wird vorbereitet …', 760);
             document.body.classList.add('gate-open');
             ggAppToast('Willkommen. Du kannst jetzt deinen Zugang wählen.', 'success', 'Bestätigt');
         }
@@ -5283,7 +5357,7 @@ body.gg-print-preview-open{overflow:hidden!important}
         }
 
         async function entferneWarenkorbPosition(i) {
-            if (!(await ggAppConfirm('Position aus dem Warenkorb entfernen?', 'Diese Position wird aus der aktuellen Reservierung entfernt.'))) return;
+            if (!(await ggAppConfirm('Position aus dem Warenkorb entfernen?', 'Diese Position wird aus der aktuellen Reservierung entfernt.', 'Entfernen', false))) return;
             ggReservierungsWarenkorb.splice(i, 1);
             rendereWarenkorb();
             aktualisiereReservierungsKontrollen();
@@ -5587,7 +5661,7 @@ body.gg-print-preview-open{overflow:hidden!important}
                 return;
             }
 
-            if (!(await ggAppConfirm(`${totalGrams} g für ${totalPrice.toFixed(2).replace('.', ',')} € am ${resDate} (${resTime}) verbindlich reservieren?`))) return;
+            if (!(await ggAppConfirm(`${totalGrams} g für ${totalPrice.toFixed(2).replace('.', ',')} € am ${resDate} (${resTime}) verbindlich reservieren?`, 'Die Reservierung wird jetzt verbindlich gespeichert.', 'Reservieren', false))) return;
 
             const guthabenVorher = Number(mitglied.balance || 0);
             mitglied.balance -= totalPrice;
