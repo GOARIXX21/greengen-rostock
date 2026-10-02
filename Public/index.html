@@ -1895,6 +1895,22 @@ body.gg-print-preview-open{overflow:hidden!important}
                     </div>
                 </div>
 
+                <div class="glass-card rounded-2xl p-3 border border-[#22ffaa]/25 bg-black/20">
+                    <div class="flex items-center justify-between gap-2 mb-2">
+                        <div><h4 class="font-black text-sm text-[#22ffaa]">🔎 Exportfilter</h4><p class="text-[10px] text-white/45 mt-0.5">Die Auswahl gilt für die folgenden Exporte. So können auch ältere Zeiträume gezielt erneut abgerufen und gedruckt werden.</p></div>
+                        <button type="button" onclick="ggExportFilterZuruecksetzenBestaetigt()" class="bg-white/10 hover:bg-white/15 text-white font-bold px-2.5 py-1.5 rounded-lg text-[10px]" title="Setzt ausschließlich die Exportfilter zurück. Es werden keine Daten gelöscht.">Filter zurücksetzen</button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div><label class="block text-[9px] text-white/50 mb-1">Von</label><input id="gg-export-von" type="date" class="w-full bg-zinc-900 border border-white/10 px-2.5 py-2 rounded-lg text-white text-[10px]"></div>
+                        <div><label class="block text-[9px] text-white/50 mb-1">Bis</label><input id="gg-export-bis" type="date" class="w-full bg-zinc-900 border border-white/10 px-2.5 py-2 rounded-lg text-white text-[10px]"></div>
+                        <div><label class="block text-[9px] text-white/50 mb-1">Mitglied</label><select id="gg-export-mitglied" class="w-full bg-zinc-900 border border-white/10 px-2.5 py-2 rounded-lg text-white text-[10px]"><option value="">Alle Mitglieder</option></select></div>
+                        <div><label class="block text-[9px] text-white/50 mb-1">Sorte / Charge</label><select id="gg-export-sorte" class="w-full bg-zinc-900 border border-white/10 px-2.5 py-2 rounded-lg text-white text-[10px]"><option value="">Alle Sorten / Chargen</option></select></div>
+                        <div><label class="block text-[9px] text-white/50 mb-1">Status / Ereignis</label><select id="gg-export-status" class="w-full bg-zinc-900 border border-white/10 px-2.5 py-2 rounded-lg text-white text-[10px]"><option value="">Alle</option></select></div>
+                        <div><label class="block text-[9px] text-white/50 mb-1">Schnellzeitraum</label><div class="grid grid-cols-3 gap-1"><button type="button" onclick="ggExportZeitraum('heute')" class="bg-white/10 rounded-lg py-2 text-[9px] font-bold">Heute</button><button type="button" onclick="ggExportZeitraum('woche')" class="bg-white/10 rounded-lg py-2 text-[9px] font-bold">Woche</button><button type="button" onclick="ggExportZeitraum('monat')" class="bg-white/10 rounded-lg py-2 text-[9px] font-bold">Monat</button></div></div>
+                    </div>
+                    <p id="gg-export-filter-status" class="text-[9px] text-[#22ffaa]/80 mt-2">Aktuell: alle Daten</p>
+                </div>
+
                 <div class="glass-card rounded-2xl p-3 border border-white/10">
                     <div class="flex items-center justify-between gap-2 mb-2">
                         <div><h4 class="font-black text-sm text-[#22ffaa]">📋 Änderungsprotokoll / Sicherheitsprotokoll</h4><p class="text-[10px] text-white/45 mt-0.5">Anmeldungen, Änderungen, Löschungen und sicherheitsrelevante Aktionen.</p></div>
@@ -1964,6 +1980,36 @@ body.gg-print-preview-open{overflow:hidden!important}
                     <h4 class="font-black text-sm text-[#22ffaa] mb-0.5">📦 Reservierungen</h4>
                     <p class="text-[10px] text-white/45 mb-2">Reservierungen separat mit Status, Mitglied, Menge und Betrag.</p>
                     <button type="button" onclick="exportiereReservierungenCSV()" class="w-full bg-[#22ffaa] text-black font-black py-2.5 rounded-xl text-[10px]"><i class="fa-solid fa-file-csv mr-1"></i> Reservierungs-Export (CSV)</button>
+                </div>
+
+                <div class="glass-card rounded-2xl p-3 border border-white/10">
+                    <h4 class="font-black text-sm text-[#22ffaa] mb-0.5">💳 Guthaben- &amp; Kontobewegungen</h4>
+                    <p class="text-[10px] text-white/45 mb-2">Separater Export der gespeicherten Guthabenhistorie.</p>
+                    <div class="grid grid-cols-2 gap-2"><button type="button" onclick="ggExportGuthabenCSV()" class="bg-white/10 hover:bg-white/15 text-white font-bold py-2.5 rounded-xl text-[10px]">CSV-Export</button><button type="button" onclick="ggDruckeGuthaben()" class="bg-[#22ffaa] text-black font-black py-2.5 rounded-xl text-[10px]">Drucken / PDF</button></div>
+                </div>
+
+                <div class="glass-card rounded-2xl p-3 border border-white/10">
+                    <h4 class="font-black text-sm text-[#22ffaa] mb-0.5">🧾 Kassenbons &amp; Zahlungsbelege</h4>
+                    <p class="text-[10px] text-white/45 mb-2">Eigener Export der vorhandenen Kassenbon-Daten.</p>
+                    <div class="grid grid-cols-2 gap-2"><button type="button" onclick="ggExportKassenbonsCSV()" class="bg-white/10 hover:bg-white/15 text-white font-bold py-2.5 rounded-xl text-[10px]">CSV-Export</button><button type="button" onclick="ggDruckeKassenbons()" class="bg-[#22ffaa] text-black font-black py-2.5 rounded-xl text-[10px]">Drucken / PDF</button></div>
+                </div>
+
+                <div class="glass-card rounded-2xl p-3 border border-white/10">
+                    <h4 class="font-black text-sm text-[#22ffaa] mb-0.5">🧪 Qualitätsprüfungen</h4>
+                    <p class="text-[10px] text-white/45 mb-2">Separater Export der Qualitäts- und Chargenprüfungen.</p>
+                    <div class="grid grid-cols-2 gap-2"><button type="button" onclick="ggExportQualitaetCSV()" class="bg-white/10 hover:bg-white/15 text-white font-bold py-2.5 rounded-xl text-[10px]">CSV-Export</button><button type="button" onclick="ggDruckeQualitaet()" class="bg-[#22ffaa] text-black font-black py-2.5 rounded-xl text-[10px]">Drucken / PDF</button></div>
+                </div>
+
+                <div class="glass-card rounded-2xl p-3 border border-white/10">
+                    <h4 class="font-black text-sm text-[#22ffaa] mb-0.5">🚨 Rückrufverwaltung</h4>
+                    <p class="text-[10px] text-white/45 mb-2">Separater Export der dokumentierten Rückrufe.</p>
+                    <div class="grid grid-cols-2 gap-2"><button type="button" onclick="ggExportRueckrufeCSV()" class="bg-white/10 hover:bg-white/15 text-white font-bold py-2.5 rounded-xl text-[10px]">CSV-Export</button><button type="button" onclick="ggDruckeRueckrufe()" class="bg-[#22ffaa] text-black font-black py-2.5 rounded-xl text-[10px]">Drucken / PDF</button></div>
+                </div>
+
+                <div class="glass-card rounded-2xl p-3 border border-white/10">
+                    <h4 class="font-black text-sm text-[#22ffaa] mb-0.5">🧑‍⚕️ Präventionsdokumentation</h4>
+                    <p class="text-[10px] text-white/45 mb-2">Separater Export der hinterlegten Präventionsverantwortlichen.</p>
+                    <div class="grid grid-cols-2 gap-2"><button type="button" onclick="ggExportPraeventionCSV()" class="bg-white/10 hover:bg-white/15 text-white font-bold py-2.5 rounded-xl text-[10px]">CSV-Export</button><button type="button" onclick="ggDruckePraevention()" class="bg-[#22ffaa] text-black font-black py-2.5 rounded-xl text-[10px]">Drucken / PDF</button></div>
                 </div>
 
                 <div class="glass-card rounded-2xl p-3 border border-white/10">
@@ -2591,6 +2637,10 @@ body.gg-print-preview-open{overflow:hidden!important}
            Zeitstempel-Logik verwenden. Für Berichte, Druck, Exporte und Informationszettel
            gilt dagegen: kein alter lokaler Cache, kein älterer Renderstand. */
         async function ggLadeD1StandDirekt(schluessel, fallback) {
+            if (schluessel === 'vereinAudit') {
+                const audit = await ggLadeAuditAutoritaet(true);
+                return { ok: true, found: true, value: audit, updated_at: new Date().toISOString() };
+            }
             // Bei einer ausdrücklichen Benutzeraktion immer einen frischen Health-Check
             // machen. Ein einmaliger Offline-Status darf keinen alten Cache festhalten.
             await ggD1Health();
@@ -2663,6 +2713,7 @@ body.gg-print-preview-open{overflow:hidden!important}
                 rueckruf: ['vereinRueckrufe','vereinSorten','vereinAudit'],
                 sortiment: ['vereinSorten','vereinAudit'],
                 protokolle: ['vereinProtokolle','vereinKassenbons','vereinReservierungen','vereinAudit','vereinMitglieder'],
+                export: ['vereinMitglieder','vereinSorten','vereinProtokolle','vereinKassenbons','vereinReservierungen','vereinUmsatz','vereinGuthabenHistorie','vereinAudit','vereinZutritte','vereinPraevention','vereinQualitaetspruefungen','vereinRueckrufe'],
                 zutritt: ['vereinZutritte'],
                 buchhaltung: ['vereinMitglieder','vereinReservierungen','vereinUmsatz','vereinGuthabenHistorie','vereinAudit'],
                 reservierungen: ['vereinReservierungen','vereinMitglieder','vereinSorten','vereinAbholzeitfenster','vereinAudit'],
@@ -3866,7 +3917,7 @@ body.gg-print-preview-open{overflow:hidden!important}
                 const legacyMitglieder = await ladeVerschlüsseltenState('mitglieder', []);
                 if (Array.isArray(legacyMitglieder) && legacyMitglieder.length) { vereinMitglieder=legacyMitglieder; await speichereVerschlüsseltenState('vereinMitglieder',vereinMitglieder); }
             }
-            vereinAudit = await ladeVerschlüsseltenState('vereinAudit', []);
+            vereinAudit = await ggLadeAuditAutoritaet();
             vereinZutritte = await ladeVerschlüsseltenState('vereinZutritte', []);
             vereinGuthabenHistorie = await ladeVerschlüsseltenState('vereinGuthabenHistorie', []);
             if (!Array.isArray(vereinGuthabenHistorie)) vereinGuthabenHistorie = [];
@@ -4443,6 +4494,7 @@ body.gg-print-preview-open{overflow:hidden!important}
                     // So werden Auswahlfelder und Berichte nicht mehr aus einem alten lokalen
                     // Cache aufgebaut. Der bestehende Paint-first Ablauf bleibt erhalten.
                     await ggAktualisiereAdminTabDaten(kapitelId);
+                    if (kapitelId === 'export') { try { ggExportFilterOptionenAktualisieren(); } catch (_) {} }
                     if (navToken !== ggNavRenderToken || ggAktivesAdminKapitel !== kapitelId) return;
                     if (kapitelId === 'buchhaltung') {
                         ggUiBusyUntil = Math.max(ggUiBusyUntil || 0, Date.now() + 2500);
@@ -8287,7 +8339,7 @@ body.gg-print-preview-open{overflow:hidden!important}
             if (!istVorstandEingeloggt) return;
             await ggAktualisiereDatenVonServer(['vereinZutritte']);
             rendereZutrittsprotokoll();
-            const list = ggHoleGefilterteZutritte();
+            const list = ggExportFilterListe(ggHoleGefilterteZutritte(),'zutritt');
             const rows = [['Protokoll-ID', 'Mitglieds-ID', 'Mitglied', 'Datum', 'Uhrzeit', 'Status', 'Ereignis', 'Club', 'Zeitstempel']];
             list.forEach(e => {
                 rows.push([
@@ -8320,7 +8372,7 @@ body.gg-print-preview-open{overflow:hidden!important}
             if (!istVorstandEingeloggt) return;
             await ggAktualisiereDatenVonServer(['vereinZutritte']);
             rendereZutrittsprotokoll();
-            const list = ggHoleGefilterteZutritte();
+            const list = ggExportFilterListe(ggHoleGefilterteZutritte(),'zutritt');
             const rows = list.map(e =>
                 '<tr><td>' + escapeHtml(e.date || '') + '</td><td>' + escapeHtml(e.time || '') +
                 '</td><td>' + escapeHtml(e.memberName || '') + '</td><td>' + escapeHtml(e.memberId || '') +
@@ -8518,18 +8570,67 @@ body.gg-print-preview-open{overflow:hidden!important}
                 : { monthly: 50, daily: 25, maxThc: null };
         }
 
+        async function ggAuditAppend(event) {
+            try {
+                const encrypted = await verschlüsseleDaten(event);
+                const r = await fetch('/api/audit', {
+                    method: 'POST',
+                    headers: ggAuthHeaders({ 'Content-Type': 'application/json' }),
+                    cache: 'no-store',
+                    body: JSON.stringify({ id: event.id, occurred_at: new Date().toISOString(), payload: encrypted })
+                });
+                if (!r.ok) throw new Error('Audit-Server nicht erreichbar');
+                const j = await r.json();
+                if (!j || !j.ok || j.appended !== true) throw new Error('Audit-Eintrag wurde nicht bestätigt');
+                return true;
+            } catch (e) {
+                console.error('[GG-Audit] Append fehlgeschlagen', e);
+                return false;
+            }
+        }
+
+        async function ggLadeAuditAutoritaet(vollstaendig = false) {
+            try {
+                const out = [];
+                let before = null;
+                do {
+                const query = new URLSearchParams({ limit: vollstaendig ? '5000' : '1000' });
+                if (before) query.set('before', before);
+                const r = await fetch('/api/audit?' + query.toString(), { method: 'GET', headers: ggAuthHeaders(), cache: 'no-store' });
+                if (!r.ok) return Array.isArray(vereinAudit) ? vereinAudit : [];
+                const j = await r.json();
+                if (!j || !j.ok || !Array.isArray(j.entries)) return Array.isArray(vereinAudit) ? vereinAudit : [];
+                for (const row of j.entries) {
+                    const event = await entschlüsseleDaten(row.payload, null);
+                    if (event && typeof event === 'object') out.push(event);
+                }
+                before = vollstaendig ? (j.next_before || null) : null;
+                if (!vollstaendig) before = null;
+                } while (vollstaendig && before);
+                return out;
+            } catch (_) {
+                return Array.isArray(vereinAudit) ? vereinAudit : [];
+            }
+        }
+
         async function protokolliereAudit(aktion, details) {
-            if (!Array.isArray(vereinAudit)) vereinAudit = [];
-            vereinAudit.unshift({
-                id: Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+            const event = {
+                id: Date.now() + '-' + Math.random().toString(36).slice(2, 10),
                 date: new Date().toLocaleString('de-DE'),
                 action: String(aktion || ''),
                 details: String(details || ''),
                 actor: aktiveVorstandsrolle || (mitgliedSession ? 'MITGLIED' : 'SYSTEM')
-            });
-            if (vereinAudit.length > 500) vereinAudit = vereinAudit.slice(0, 500);
-            try { await speichereVerschlüsseltenState('vereinAudit', vereinAudit); } catch (e) { console.error('Audit-Speicherung fehlgeschlagen', e); }
+            };
+            const persisted = await ggAuditAppend(event);
+            if (!persisted) {
+                console.error('[GG-Audit] Aktion wird nicht als dauerhaft protokolliert behandelt.');
+                return false;
+            }
+            if (!Array.isArray(vereinAudit)) vereinAudit = [];
+            vereinAudit.unshift(event);
+            // Kein künstliches Limit: Der Server führt das Audit als append-only Journal.
             try { rendereAuditVerlauf(); rendereFinanceAuditPreview(); } catch (e) { console.error('Audit-Anzeige konnte nicht aktualisiert werden', e); }
+            return true;
         }
 
         function rendereMitgliederInfos() {
@@ -8548,6 +8649,18 @@ body.gg-print-preview-open{overflow:hidden!important}
                 container.appendChild(card);
             });
         }
+
+        /* Rechtliche Aufbewahrung: kein 'unendliches' Löschen/Behalten erzwingen.
+           KCanG §26 verlangt für die dort genannten Aufzeichnungen grundsätzlich 5 Jahre.
+           Personenbezogene Auditdaten werden deshalb append-only gespeichert, aber nur solange
+           eine dokumentierte Rechtsgrundlage/Aufbewahrungsfrist besteht. Die UI bietet keine
+           Löschfunktion für den Auditbestand. Eine spätere Löschung darf ausschließlich über
+           eine serverseitige, dokumentierte Retention-Regel erfolgen. */
+        const GG_AUDIT_RETENTION_POLICY = Object.freeze({
+            kcangDocumentationsYears: 5,
+            mode: 'append-only-server-journal',
+            userDelete: false
+        });
 
         function rendereComplianceCenter() {
             const el = document.getElementById('compliance-dashboard');
@@ -8770,6 +8883,52 @@ body.gg-print-preview-open{overflow:hidden!important}
             if (event.key === 'Escape') { schliesseBarrierefreiheit(); schliesseHauptmenue(); }
         });
 
+        // Zentraler Exportfilter: wird nur im Vorstand/Export-Tab verwendet und beeinflusst keine normalen App-Ansichten.
+        function ggExportDatumWert(o) {
+            const raw=o?.date ?? o?.datum ?? o?.timestamp ?? o?.createdAt ?? o?.updatedAt ?? o?.ts ?? '';
+            if (!raw) return '';
+            const d=new Date(raw); if (!Number.isNaN(d.getTime())) return d.toISOString().slice(0,10);
+            const m=String(raw).match(/(\d{4})[-./](\d{1,2})[-./](\d{1,2})/); return m ? `${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}` : '';
+        }
+        function ggExportFilterLesen() {
+            return { von:document.getElementById('gg-export-von')?.value||'', bis:document.getElementById('gg-export-bis')?.value||'', mitglied:document.getElementById('gg-export-mitglied')?.value||'', sorte:document.getElementById('gg-export-sorte')?.value||'', status:document.getElementById('gg-export-status')?.value||'' };
+        }
+        function ggExportPasst(o, f, mode='generic') {
+            const d=ggExportDatumWert(o);
+            if (f.von && d && d<f.von) return false; if (f.bis && d && d>f.bis) return false;
+            const mid=String(o?.memberId ?? o?.mitgliedId ?? o?.member_id ?? ''); const mn=String(o?.memberName ?? o?.member ?? o?.name ?? '');
+            const hasMember=!!(mid||mn);
+            if (f.mitglied && ['generic','audit','abgabe','zutritt','reservation','kcang','member','finance'].includes(mode) && hasMember && f.mitglied!==mid && f.mitglied!==mn) return false;
+            const sn=String(o?.strainName ?? o?.strain ?? o?.sorte ?? ''); const batch=String(o?.batch ?? o?.charge ?? '');
+            const hasSorte=!!(sn||batch);
+            if (f.sorte && ['generic','abgabe','reservation','kcang','sorten','compliance'].includes(mode) && hasSorte && f.sorte!==sn && f.sorte!==batch && f.sorte!==(sn+' · '+batch)) return false;
+            const st=String(o?.status ?? o?.ereignis ?? o?.action ?? o?.type ?? '');
+            if (f.status && ['generic','audit','abgabe','zutritt','reservation','kcang','member','sorten','compliance'].includes(mode) && st && f.status!==st) return false;
+            return true;
+        }
+        function ggExportFilterListe(list, mode='generic') { const f=ggExportFilterLesen(); return (Array.isArray(list)?list:[]).filter(x=>ggExportPasst(x,f,mode)); }
+
+        function ggExportOptionKey(v){ return String(v||'').trim(); }
+        function ggExportFilterOptionenAktualisieren(){
+            const ms=document.getElementById('gg-export-mitglied'), ss=document.getElementById('gg-export-sorte'), ts=document.getElementById('gg-export-status'); if(!ms||!ss||!ts)return;
+            const oldM=ms.value, oldS=ss.value, oldT=ts.value;
+            const members=(vereinMitglieder||[]).map(m=>({v:String(m.id||m.name||''),t:(m.name||m.id||'')})).filter(x=>x.v).sort((a,b)=>a.t.localeCompare(b.t,'de'));
+            ms.innerHTML='<option value="">Alle Mitglieder</option>'+members.map(x=>`<option value="${escapeHtml(x.v)}">${escapeHtml(x.t)}</option>`).join(''); if([...ms.options].some(o=>o.value===oldM))ms.value=oldM;
+            const sorten=[]; (vereinSorten||[]).forEach(s=>{const n=String(s.name||s.sorte||'').trim(),b=String(s.batch||s.charge||'').trim(); if(n)sorten.push({v:n,t:b?n+' · '+b:n});});
+            ss.innerHTML='<option value="">Alle Sorten / Chargen</option>'+sorten.map(x=>`<option value="${escapeHtml(x.v)}">${escapeHtml(x.t)}</option>`).join(''); if([...ss.options].some(o=>o.value===oldS))ss.value=oldS;
+            const values=new Set(); [...(vereinAudit||[]),...(vereinProtokolle||[]),...(vereinZutritte||[]),...(vereinReservierungen||[])].forEach(x=>{const v=String(x?.status??x?.ereignis??x?.action??'').trim();if(v)values.add(v)});
+            ts.innerHTML='<option value="">Alle</option>'+[...values].sort((a,b)=>a.localeCompare(b,'de')).map(v=>`<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join(''); if([...ts.options].some(o=>o.value===oldT))ts.value=oldT;
+            ggExportFilterStatusAnzeigen();
+        }
+        function ggExportFilterStatusAnzeigen(){ const f=ggExportFilterLesen(), el=document.getElementById('gg-export-filter-status'); if(!el)return; const bits=[]; if(f.von||f.bis)bits.push((f.von||'…')+' bis '+(f.bis||'…')); if(f.mitglied)bits.push('Mitglied'); if(f.sorte)bits.push('Sorte/Charge'); if(f.status)bits.push('Status'); el.textContent='Aktuell: '+(bits.length?bits.join(' · '):'alle Daten'); }
+        function ggExportZeitraum(w){ const n=new Date(), end=new Date(n); let start=new Date(n); if(w==='heute'){} else if(w==='woche'){const day=(n.getDay()+6)%7;start.setDate(n.getDate()-day);} else if(w==='monat'){start=new Date(n.getFullYear(),n.getMonth(),1);} const fmt=d=>{const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${day}`}; const a=document.getElementById('gg-export-von'),b=document.getElementById('gg-export-bis');if(a)a.value=fmt(start);if(b)b.value=fmt(end);ggExportFilterStatusAnzeigen(); }
+        function ggExportFilterZuruecksetzen(){['gg-export-von','gg-export-bis'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});['gg-export-mitglied','gg-export-sorte','gg-export-status'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});ggExportFilterStatusAnzeigen();}
+        async function ggExportFilterZuruecksetzenBestaetigt(){
+            const bestaetigt = await ggAppConfirm('Nur Exportfilter zurücksetzen?', 'Es werden ausschließlich die aktuell gesetzten Filter (Zeitraum, Mitglied, Sorte/Charge und Status) entfernt. Es werden dabei keine Mitglieder, Protokolle, Abgaben, Zutritte, Finanzdaten oder sonstige gespeicherte Daten gelöscht.');
+            if(bestaetigt) ggExportFilterZuruecksetzen();
+        }
+        document.addEventListener('change',e=>{if(e.target?.id?.startsWith('gg-export-'))ggExportFilterStatusAnzeigen();});
+
         function ggDownloadDatei(dateiname, inhalt, mimeType) {
             const blob = new Blob([inhalt], { type: mimeType || 'text/plain;charset=utf-8' });
             const url = URL.createObjectURL(blob);
@@ -8781,12 +8940,12 @@ body.gg-print-preview-open{overflow:hidden!important}
         async function exportiereAuditCSV() {
             if (!istVorstandEingeloggt) return; await ggAktualisiereDatenVonServer(['vereinAudit']);
             const rows=[['Datum','Aktion','Details','Durchgeführt von']];
-            (Array.isArray(vereinAudit)?vereinAudit:[]).forEach(e=>rows.push([e.date||'',e.action||'',e.details||'',e.actor||'SYSTEM']));
+            ggExportFilterListe(vereinAudit,'audit').forEach(e=>rows.push([e.date||'',e.action||'',e.details||'',e.actor||'SYSTEM']));
             ggDownloadDatei('Green-Generation-Aenderungsprotokoll.csv','\ufeff'+rows.map(r=>r.map(ggCsvEsc).join(';')).join('\n'),'text/csv;charset=utf-8');
         }
         async function druckeAuditProtokoll() {
             if (!istVorstandEingeloggt) return; await ggAktualisiereDatenVonServer(['vereinAudit']);
-            const rows=(Array.isArray(vereinAudit)?vereinAudit:[]).map(e=>'<tr><td>'+escapeHtml(e.date||'')+'</td><td>'+escapeHtml(e.action||'')+'</td><td>'+escapeHtml(e.details||'')+'</td><td>'+escapeHtml(e.actor||'SYSTEM')+'</td></tr>').join('');
+            const rows=ggExportFilterListe(vereinAudit,'audit').map(e=>'<tr><td>'+escapeHtml(e.date||'')+'</td><td>'+escapeHtml(e.action||'')+'</td><td>'+escapeHtml(e.details||'')+'</td><td>'+escapeHtml(e.actor||'SYSTEM')+'</td></tr>').join('');
             const w=window.open('','_blank'); if(!w){alert('Pop-up blockiert. Bitte Pop-ups erlauben.');return;}
             w.document.write('<!doctype html><html><head><title>Änderungsprotokoll</title><style>body{font-family:system-ui,sans-serif;padding:20px;color:#111}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #ccc;padding:6px;text-align:left;vertical-align:top}th{background:#eee}</style></head><body><h1>Green Generation Rostock – Änderungsverlauf / Sicherheitsprotokoll</h1><table><thead><tr><th>Datum</th><th>Aktion</th><th>Details</th><th>Durchgeführt von</th></tr></thead><tbody>'+rows+'</tbody></table></body></html>'); w.document.close();w.focus();w.print();
         }
@@ -8797,21 +8956,22 @@ body.gg-print-preview-open{overflow:hidden!important}
             if(ggAbgabeLogFilterId) list=list.filter(p=>String(p.member||'').includes(ggAbgabeLogFilterId)||String(p.memberId||'')===String(ggAbgabeLogFilterId));
             if(q) list=list.filter(p=>String(p.member||'').toLowerCase().includes(q)||String(p.strain||'').toLowerCase().includes(q)||String(p.batch||'').toLowerCase().includes(q));
             if(von) list=list.filter(p=>ggParseProtokollDatum(p)>=von); if(bis) list=list.filter(p=>{const d=ggParseProtokollDatum(p);return !d||d<=bis;});
+            list=ggExportFilterListe(list,'abgabe');
             const rows=[['Datum','Mitglied','Mitglieds-ID','Sorte','Charge','Menge','Betrag','Kassenbon-ID','Status']];
             list.forEach(p=>rows.push([p.date||'',p.member||'',p.memberId||'',p.strain||'',p.batch||'',p.amount??p.grams??'',p.price??'',p.bonId||p.id||'',p.status||'Abgabe']));
             ggDownloadDatei('Green-Generation-Abgabeprotokoll.csv','\ufeff'+rows.map(r=>r.map(ggCsvEsc).join(';')).join('\n'),'text/csv;charset=utf-8');
         }
         async function druckeAbgabeProtokoll() {
             if (!istVorstandEingeloggt) return; await ggAktualisiereDatenVonServer(['vereinProtokolle']);
-            const list=Array.isArray(vereinProtokolle)?vereinProtokolle:[];
+            const list=ggExportFilterListe(vereinProtokolle,'abgabe');
             const rows=list.map(p=>'<tr><td>'+escapeHtml(p.date||'')+'</td><td>'+escapeHtml(p.member||'')+'</td><td>'+escapeHtml(p.memberId||'')+'</td><td>'+escapeHtml(p.strain||'')+'</td><td>'+escapeHtml(p.batch||'')+'</td><td>'+escapeHtml(p.amount??p.grams??'')+'</td><td>'+escapeHtml(p.price??'')+'</td><td>'+escapeHtml(p.bonId||p.id||'')+'</td></tr>').join('');
             const w=window.open('','_blank'); if(!w){alert('Pop-up blockiert. Bitte Pop-ups erlauben.');return;}
             w.document.write('<!doctype html><html><head><title>Abgabeprotokoll</title><style>body{font-family:system-ui,sans-serif;padding:20px;color:#111}table{width:100%;border-collapse:collapse;font-size:10px}th,td{border:1px solid #ccc;padding:5px;text-align:left}th{background:#eee}</style></head><body><h1>Green Generation Rostock – Abgabeprotokoll</h1><table><thead><tr><th>Datum</th><th>Mitglied</th><th>ID</th><th>Sorte</th><th>Charge</th><th>Menge</th><th>Betrag</th><th>Bon</th></tr></thead><tbody>'+rows+'</tbody></table></body></html>'); w.document.close();w.focus();w.print();
         }
         async function druckeFinanzbericht() {
             if (!istVorstandEingeloggt) return; await ggAktualisiereDatenVonServer(['vereinMitglieder','vereinReservierungen','vereinUmsatz','vereinGuthabenHistorie','vereinAudit']);
-            const offene=(vereinMitglieder||[]).filter(m=>m&&m.feePaid===false).reduce((n,m)=>n+Number(m.feeAmount||0),0);
-            const rows=(vereinMitglieder||[]).filter(m=>m&&m.financeEntryActive!==false).map(m=>'<tr><td>'+escapeHtml(m.name||'')+'</td><td>'+escapeHtml(m.id||'')+'</td><td>'+(m.feePaid?'Bezahlt':'Ausstehend')+'</td><td>'+Number(m.feeAmount||0).toFixed(2).replace('.',',')+' €</td><td>'+Number(m.balance||0).toFixed(2).replace('.',',')+' €</td></tr>').join('');
+            const offene=ggExportFilterListe((vereinMitglieder||[]).filter(m=>m&&m.feePaid===false),'finance').reduce((n,m)=>n+Number(m.feeAmount||0),0);
+            const rows=ggExportFilterListe((vereinMitglieder||[]).filter(m=>m&&m.financeEntryActive!==false),'finance').map(m=>'<tr><td>'+escapeHtml(m.name||'')+'</td><td>'+escapeHtml(m.id||'')+'</td><td>'+(m.feePaid?'Bezahlt':'Ausstehend')+'</td><td>'+Number(m.feeAmount||0).toFixed(2).replace('.',',')+' €</td><td>'+Number(m.balance||0).toFixed(2).replace('.',',')+' €</td></tr>').join('');
             const w=window.open('','_blank'); if(!w){alert('Pop-up blockiert. Bitte Pop-ups erlauben.');return;}
             w.document.write('<!doctype html><html><head><title>Finanzbericht</title><style>body{font-family:system-ui,sans-serif;padding:20px;color:#111}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #ccc;padding:6px;text-align:left}th{background:#eee}</style></head><body><h1>Green Generation Rostock – Finanzbericht</h1><p><b>Gesamtumsatz:</b> '+Number(vereinUmsatz||0).toFixed(2).replace('.',',')+' € &nbsp; <b>Offene Beiträge:</b> '+offene.toFixed(2).replace('.',',')+' €</p><table><thead><tr><th>Mitglied</th><th>ID</th><th>Beitrag</th><th>Beitragshöhe</th><th>Guthaben</th></tr></thead><tbody>'+rows+'</tbody></table></body></html>'); w.document.close();w.focus();w.print();
         }
@@ -8819,47 +8979,59 @@ body.gg-print-preview-open{overflow:hidden!important}
         async function exportiereFinanzCSV() {
             if (!istVorstandEingeloggt) return;
             await ggAktualisiereDatenVonServer(['vereinMitglieder','vereinReservierungen','vereinUmsatz','vereinGuthabenHistorie','vereinAudit']);
-            const offene=(vereinMitglieder||[]).filter(m=>m&&m.feePaid===false).reduce((n,m)=>n+Number(m.feeAmount||0),0);
+            const offene=ggExportFilterListe((vereinMitglieder||[]).filter(m=>m&&m.feePaid===false),'finance').reduce((n,m)=>n+Number(m.feeAmount||0),0);
             const rows=[['Exportiert am',new Date().toISOString()],['Gesamtumsatz',Number(vereinUmsatz||0).toFixed(2)+' EUR'],['Offene Beiträge',offene.toFixed(2)+' EUR'],[],['Mitglied','Mitglieds-ID','Beitragsstatus','Beitrag EUR','Guthaben EUR']];
-            (vereinMitglieder||[]).filter(m=>m&&m.financeEntryActive!==false).forEach(m=>rows.push([m.name||'',m.id||'',m.feePaid?'Bezahlt':'Ausstehend',Number(m.feeAmount||0).toFixed(2),Number(m.balance||0).toFixed(2)]));
+            ggExportFilterListe((vereinMitglieder||[]).filter(m=>m&&m.financeEntryActive!==false),'finance').forEach(m=>rows.push([m.name||'',m.id||'',m.feePaid?'Bezahlt':'Ausstehend',Number(m.feeAmount||0).toFixed(2),Number(m.balance||0).toFixed(2)]));
             ggDownloadDatei('Green-Generation-Finanzbericht.csv','\ufeff'+rows.map(r=>r.map(ggCsvEsc).join(';')).join('\n'),'text/csv;charset=utf-8');
         }
         async function exportiereKcang26CSV() {
             if (!istVorstandEingeloggt) return;
             await ggAktualisiereDatenVonServer(['vereinMitglieder','vereinSorten','vereinProtokolle','vereinKassenbons','vereinReservierungen','vereinGuthabenHistorie','vereinAudit']);
             const rows=[['Bereich','Datum','Mitglied','Mitglieds-ID','Sorte','Charge','Menge','Betrag','Status','Referenz']];
-            (vereinProtokolle||[]).forEach(p=>rows.push(['Abgabeprotokoll',p.date||'',p.member||'',p.memberId||'',p.strain||'',p.batch||'',p.amount??p.grams??'',p.price??'',p.status||'Abgabe',p.bonId||p.id||'']));
-            (vereinKassenbons||[]).forEach(p=>rows.push(['Kassenbon',p.date||'',p.member||'',p.memberId||'',p.strain||'',p.batch||'',p.amount??p.grams??'',p.total??p.price??'',p.status||'',p.id||p.bonId||'']));
+            ggExportFilterListe(vereinProtokolle,'kcang').forEach(p=>rows.push(['Abgabeprotokoll',p.date||'',p.member||'',p.memberId||'',p.strain||'',p.batch||'',p.amount??p.grams??'',p.price??'',p.status||'Abgabe',p.bonId||p.id||'']));
+            ggExportFilterListe(vereinKassenbons,'kcang').forEach(p=>rows.push(['Kassenbon',p.date||'',p.member||'',p.memberId||'',p.strain||'',p.batch||'',p.amount??p.grams??'',p.total??p.price??'',p.status||'',p.id||p.bonId||'']));
             ggDownloadDatei('Green-Generation-KCanG-§26-Dokumentation.csv','\ufeff'+rows.map(r=>r.map(ggCsvEsc).join(';')).join('\n'),'text/csv;charset=utf-8');
         }
         async function exportiereMitgliederCSV() {
             if (!istVorstandEingeloggt) return;
             await ggAktualisiereDatenVonServer(['vereinMitglieder']);
             const rows=[['Mitglieds-ID','Name','E-Mail','Beitrag bezahlt','Beitrag EUR','Guthaben EUR','Status']];
-            (vereinMitglieder||[]).forEach(m=>rows.push([m.id||'',m.name||'',m.email||'',m.feePaid?'Ja':'Nein',Number(m.feeAmount||0).toFixed(2),Number(m.balance||0).toFixed(2),m.status||'aktiv']));
+            ggExportFilterListe(vereinMitglieder,'member').forEach(m=>rows.push([m.id||'',m.name||'',m.email||'',m.feePaid?'Ja':'Nein',Number(m.feeAmount||0).toFixed(2),Number(m.balance||0).toFixed(2),m.status||'aktiv']));
             ggDownloadDatei('Green-Generation-Mitglieder.csv','\ufeff'+rows.map(r=>r.map(ggCsvEsc).join(';')).join('\n'),'text/csv;charset=utf-8');
         }
         async function exportiereSortenCSV() {
             if (!istVorstandEingeloggt) return;
             await ggAktualisiereDatenVonServer(['vereinSorten']);
             const rows=[['Sorte','Charge','THC %','CBD %','Genetik','Bestand g','Erntedatum','MHD','Preis/g EUR','Status']];
-            (vereinSorten||[]).forEach(s=>rows.push([s.name||'',s.batch||'',s.thc||'',s.cbd||'',s.gen||s.genetik||'',s.stock??s.menge??'',s.harvest||s.erntedatum||'',s.bestbefore||s.mhd||'',s.price??'',s.statusLabel||s.status||'']));
+            ggExportFilterListe(vereinSorten,'sorten').forEach(s=>rows.push([s.name||'',s.batch||'',s.thc||'',s.cbd||'',s.gen||s.genetik||'',s.stock??s.menge??'',s.harvest||s.erntedatum||'',s.bestbefore||s.mhd||'',s.price??'',s.statusLabel||s.status||'']));
             ggDownloadDatei('Green-Generation-Sorten-Chargen.csv','\ufeff'+rows.map(r=>r.map(ggCsvEsc).join(';')).join('\n'),'text/csv;charset=utf-8');
         }
         async function exportiereReservierungenCSV() {
             if (!istVorstandEingeloggt) return;
             await ggAktualisiereDatenVonServer(['vereinReservierungen','vereinMitglieder','vereinSorten']);
             const rows=[['Reservierungs-ID','Datum','Mitglied','Mitglieds-ID','Sorte','Charge','Menge','Betrag','Status']];
-            (vereinReservierungen||[]).forEach(r=>rows.push([r.id||'',r.date||r.datum||r.createdAt||'',r.memberName||r.member||'',r.memberId||'',r.strainName||r.strain||'',r.batch||'',r.amount??r.grams??r.menge??'',r.price??r.total??'',r.status||'']));
+            ggExportFilterListe(vereinReservierungen,'reservation').forEach(r=>rows.push([r.id||'',r.date||r.datum||r.createdAt||'',r.memberName||r.member||'',r.memberId||'',r.strainName||r.strain||'',r.batch||'',r.amount??r.grams??r.menge??'',r.price??r.total??'',r.status||'']));
             ggDownloadDatei('Green-Generation-Reservierungen.csv','\ufeff'+rows.map(r=>r.map(ggCsvEsc).join(';')).join('\n'),'text/csv;charset=utf-8');
         }
+        async function ggExportGuthabenCSV(){ if(!istVorstandEingeloggt)return; await ggAktualisiereDatenVonServer(['vereinGuthabenHistorie']); const rows=[['Datum','Mitglied','Mitglieds-ID','Betrag','Art','Grund','Referenz']]; ggExportFilterListe(vereinGuthabenHistorie,'generic').forEach(x=>rows.push([x.date||x.datum||x.timestamp||'',x.memberName||x.member||'',x.memberId||'',x.amount??x.betrag??'',x.type||x.art||'',x.reason||x.grund||'',x.id||x.ref||''])); ggDownloadDatei('Green-Generation-Guthabenhistorie.csv','\\ufeff'+rows.map(r=>r.map(ggCsvEsc).join(';')).join('\\n'),'text/csv;charset=utf-8'); }
+        async function ggDruckeGuthaben(){ if(!istVorstandEingeloggt)return; await ggAktualisiereDatenVonServer(['vereinGuthabenHistorie']); const rows=ggExportFilterListe(vereinGuthabenHistorie,'generic').map(x=>'<tr><td>'+escapeHtml(x.date||x.datum||x.timestamp||'')+'</td><td>'+escapeHtml(x.memberName||x.member||'')+'</td><td>'+escapeHtml(x.memberId||'')+'</td><td>'+escapeHtml(x.amount??x.betrag??'')+'</td><td>'+escapeHtml(x.type||x.art||'')+'</td><td>'+escapeHtml(x.reason||x.grund||'')+'</td></tr>').join(''); ggPrintTable('Guthabenhistorie', ['Datum','Mitglied','ID','Betrag','Art','Grund'], rows); }
+        async function ggExportKassenbonsCSV(){ if(!istVorstandEingeloggt)return; await ggAktualisiereDatenVonServer(['vereinKassenbons']); const rows=[['Datum','Bon-ID','Mitglied','Mitglieds-ID','Sorte','Charge','Menge','Betrag','Status']]; ggExportFilterListe(vereinKassenbons,'kcang').forEach(x=>rows.push([x.date||x.datum||x.timestamp||'',x.id||x.bonId||'',x.memberName||x.member||'',x.memberId||'',x.strainName||x.strain||'',x.batch||'',x.amount??x.grams??'',x.total??x.price??'',x.status||''])); ggDownloadDatei('Green-Generation-Kassenbons.csv','\\ufeff'+rows.map(r=>r.map(ggCsvEsc).join(';')).join('\\n'),'text/csv;charset=utf-8'); }
+        async function ggDruckeKassenbons(){ if(!istVorstandEingeloggt)return; await ggAktualisiereDatenVonServer(['vereinKassenbons']); const rows=ggExportFilterListe(vereinKassenbons,'kcang').map(x=>'<tr><td>'+escapeHtml(x.date||x.datum||'')+'</td><td>'+escapeHtml(x.id||x.bonId||'')+'</td><td>'+escapeHtml(x.memberName||x.member||'')+'</td><td>'+escapeHtml(x.memberId||'')+'</td><td>'+escapeHtml(x.strainName||x.strain||'')+'</td><td>'+escapeHtml(x.batch||'')+'</td><td>'+escapeHtml(x.amount??x.grams??'')+'</td><td>'+escapeHtml(x.total??x.price??'')+'</td></tr>').join(''); ggPrintTable('Kassenbons und Zahlungsbelege',['Datum','Bon-ID','Mitglied','ID','Sorte','Charge','Menge','Betrag'],rows); }
+        async function ggExportQualitaetCSV(){ if(!istVorstandEingeloggt)return; await ggAktualisiereDatenVonServer(['vereinQualitaetspruefungen']); const rows=[['Datum','Charge','Status/Ergebnis','Details']]; ggExportFilterListe(vereinQualitaetspruefungen,'compliance').forEach(x=>rows.push([x.date||x.datum||'',x.batch||x.charge||'',x.status||x.ergebnis||'',x.details||x.notiz||''])); ggDownloadDatei('Green-Generation-Qualitaetspruefungen.csv','\\ufeff'+rows.map(r=>r.map(ggCsvEsc).join(';')).join('\\n'),'text/csv;charset=utf-8'); }
+        async function ggDruckeQualitaet(){ if(!istVorstandEingeloggt)return; await ggAktualisiereDatenVonServer(['vereinQualitaetspruefungen']); const rows=ggExportFilterListe(vereinQualitaetspruefungen,'compliance').map(x=>'<tr><td>'+escapeHtml(x.date||x.datum||'')+'</td><td>'+escapeHtml(x.batch||x.charge||'')+'</td><td>'+escapeHtml(x.status||x.ergebnis||'')+'</td><td>'+escapeHtml(x.details||x.notiz||'')+'</td></tr>').join(''); ggPrintTable('Qualitätsprüfungen',['Datum','Charge','Status/Ergebnis','Details'],rows); }
+        async function ggExportRueckrufeCSV(){ if(!istVorstandEingeloggt)return; await ggAktualisiereDatenVonServer(['vereinRueckrufe']); const rows=[['Datum','Charge','Status','Grund']]; ggExportFilterListe(vereinRueckrufe,'compliance').forEach(x=>rows.push([x.date||x.datum||'',x.batch||x.charge||'',x.status||'',x.reason||x.grund||''])); ggDownloadDatei('Green-Generation-Rueckrufe.csv','\\ufeff'+rows.map(r=>r.map(ggCsvEsc).join(';')).join('\\n'),'text/csv;charset=utf-8'); }
+        async function ggDruckeRueckrufe(){ if(!istVorstandEingeloggt)return; await ggAktualisiereDatenVonServer(['vereinRueckrufe']); const rows=ggExportFilterListe(vereinRueckrufe,'compliance').map(x=>'<tr><td>'+escapeHtml(x.date||x.datum||'')+'</td><td>'+escapeHtml(x.batch||x.charge||'')+'</td><td>'+escapeHtml(x.status||'')+'</td><td>'+escapeHtml(x.reason||x.grund||'')+'</td></tr>').join(''); ggPrintTable('Rückrufverwaltung',['Datum','Charge','Status','Grund'],rows); }
+        async function ggExportPraeventionCSV(){ if(!istVorstandEingeloggt)return; await ggAktualisiereDatenVonServer(['vereinPraevention']); const p=vereinPraevention||{}; const rows=[['Präventionsbeauftragte/r','Kontakt'],[p.name||'',p.contact||'']]; ggDownloadDatei('Green-Generation-Praevention.csv','\\ufeff'+rows.map(r=>r.map(ggCsvEsc).join(';')).join('\\n'),'text/csv;charset=utf-8'); }
+        async function ggDruckePraevention(){ if(!istVorstandEingeloggt)return; await ggAktualisiereDatenVonServer(['vereinPraevention']); const p=vereinPraevention||{}; ggPrintTable('Präventionsdokumentation',['Präventionsbeauftragte/r','Kontakt'],'<tr><td>'+escapeHtml(p.name||'')+'</td><td>'+escapeHtml(p.contact||'')+'</td></tr>'); }
+        function ggPrintTable(title,heads,body){ const w=window.open('','_blank'); if(!w){alert('Pop-up blockiert. Bitte Pop-ups erlauben.');return;} w.document.write('<!doctype html><html><head><title>'+escapeHtml(title)+'</title><style>body{font-family:system-ui,sans-serif;padding:20px;color:#111}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #ccc;padding:6px;text-align:left;vertical-align:top}th{background:#eee}h1{font-size:18px}</style></head><body><h1>Green Generation Rostock – '+escapeHtml(title)+'</h1><table><thead><tr>'+heads.map(h=>'<th>'+escapeHtml(h)+'</th>').join('')+'</tr></thead><tbody>'+body+'</tbody></table></body></html>'); w.document.close();w.focus();w.print(); }
+
         async function druckeComplianceBericht() {
             if (!istVorstandEingeloggt) return;
             await ggAktualisiereDatenVonServer(['vereinPraevention','vereinQualitaetspruefungen','vereinRueckrufe','vereinAudit']);
             const esc=v=>escapeHtml(v??'');
             const praev=vereinPraevention||{};
-            const q=(vereinQualitaetspruefungen||[]).map(x=>'<tr><td>'+esc(x.date||x.datum||'')+'</td><td>'+esc(x.batch||'')+'</td><td>'+esc(x.status||x.ergebnis||'')+'</td><td>'+esc(x.details||x.notiz||'')+'</td></tr>').join('');
-            const r=(vereinRueckrufe||[]).map(x=>'<tr><td>'+esc(x.date||'')+'</td><td>'+esc(x.batch||'')+'</td><td>'+esc(x.status||'')+'</td><td>'+esc(x.reason||'')+'</td></tr>').join('');
+            const q=ggExportFilterListe(vereinQualitaetspruefungen,'compliance').map(x=>'<tr><td>'+esc(x.date||x.datum||'')+'</td><td>'+esc(x.batch||'')+'</td><td>'+esc(x.status||x.ergebnis||'')+'</td><td>'+esc(x.details||x.notiz||'')+'</td></tr>').join('');
+            const r=ggExportFilterListe(vereinRueckrufe,'compliance').map(x=>'<tr><td>'+esc(x.date||'')+'</td><td>'+esc(x.batch||'')+'</td><td>'+esc(x.status||'')+'</td><td>'+esc(x.reason||'')+'</td></tr>').join('');
             const w=window.open('','_blank'); if(!w){alert('Pop-up blockiert. Bitte Pop-ups erlauben.');return;}
             w.document.write('<!doctype html><html><head><title>Compliance-Bericht</title><style>body{font-family:system-ui,sans-serif;padding:20px;color:#111}table{width:100%;border-collapse:collapse;font-size:10px;margin:8px 0 20px}th,td{border:1px solid #ccc;padding:5px;text-align:left;vertical-align:top}th{background:#eee}h1{font-size:18px}h2{font-size:13px;margin-top:18px}</style></head><body><h1>Green Generation Rostock – Compliance-Bericht</h1><p><b>Erstellt:</b> '+esc(new Date().toLocaleString('de-DE'))+'</p><p><b>Präventionsbeauftragte/r:</b> '+esc(praev.name||'—')+' · <b>Kontakt:</b> '+esc(praev.contact||'—')+'</p><h2>Qualitätsprüfungen</h2><table><thead><tr><th>Datum</th><th>Charge</th><th>Status/Ergebnis</th><th>Details</th></tr></thead><tbody>'+q+'</tbody></table><h2>Rückrufe</h2><table><thead><tr><th>Datum</th><th>Charge</th><th>Status</th><th>Grund</th></tr></thead><tbody>'+r+'</tbody></table></body></html>'); w.document.close(); w.focus(); w.print();
         }
