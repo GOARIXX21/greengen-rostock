@@ -1109,6 +1109,7 @@ body.gg-print-preview-open{overflow:hidden!important}
                 <button onclick="wechsleUnterkapitel('darstellung')" id="sub-btn-darstellung" class="bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg whitespace-nowrap text-white/80">🎨 Darstellung</button>
                 <button onclick="wechsleUnterkapitel('passphrase')" id="sub-btn-passphrase" class="bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg whitespace-nowrap text-white/80">🔐 Passphrase</button>
                 <button onclick="wechsleUnterkapitel('berechtigungen')" id="sub-btn-berechtigungen" class="bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg whitespace-nowrap text-white/80">🛡️ Admins</button>
+                <button onclick="wechsleUnterkapitel('export')" id="sub-btn-export" class="bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg whitespace-nowrap text-white/80">📤 Export</button>
             </div>
             </div>
             <div id="admin-drawer-overlay" onclick="schliesseAdminDrawer()"></div>
@@ -1147,6 +1148,7 @@ body.gg-print-preview-open{overflow:hidden!important}
                         <button type="button" onclick="wechsleUnterkapitelAusDrawer('darstellung')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white mb-1">🎨 Darstellung</button>
                         <button type="button" onclick="wechsleUnterkapitelAusDrawer('passphrase')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white mb-1">🔐 Passphrase</button>
                         <button type="button" onclick="wechsleUnterkapitelAusDrawer('berechtigungen')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">🛡️ Admins</button>
+                        <button type="button" onclick="wechsleUnterkapitelAusDrawer('export')" class="w-full text-left px-3 py-2 rounded-lg bg-white/5 text-white">📤 Exporte</button>
                     </div>
                 </div>
             </aside>
@@ -1438,8 +1440,8 @@ body.gg-print-preview-open{overflow:hidden!important}
                         <button onclick="löscheUmsatz()" class="bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-all">
                             <i class="fa-solid fa-trash-can mr-1"></i> Umsatz auf 0,00 € setzen
                         </button>
-                        <button onclick="exportiereDokumentation()" class="bg-white/10 text-white border border-white/10 hover:bg-white/15 font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-all">
-                            <i class="fa-solid fa-file-export mr-1"></i> Bericht exportieren
+                        <button onclick="druckeFinanzbericht()" class="bg-white/10 text-white border border-white/10 hover:bg-white/15 font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-all">
+                            <i class="fa-solid fa-file-invoice mr-1"></i> Finanzbericht
                         </button>
                         <button onclick="druckeFinanzbericht()" class="bg-white/10 text-white border border-white/10 hover:bg-white/15 font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-all">
                             <i class="fa-solid fa-print mr-1"></i> Drucken
@@ -1539,7 +1541,7 @@ body.gg-print-preview-open{overflow:hidden!important}
                     <div id="compliance-dashboard" class="space-y-2"></div>
                     <div class="grid grid-cols-2 gap-2 mt-3">
                         <button onclick="exportiereComplianceBericht()" class="bg-white/10 rounded-xl py-2 text-[10px] font-bold">Compliance-Bericht</button>
-                        <button onclick="exportiereDokumentation()" class="bg-[#22ffaa] text-black rounded-xl py-2 text-[10px] font-bold">§26-Export</button>
+                        <button onclick="exportiereKcang26CSV()" class="bg-[#22ffaa] text-black rounded-xl py-2 text-[10px] font-bold">§26-Export</button>
                     </div>
                 </div>
                 <div class="glass-card rounded-2xl p-4 border border-white/10">
@@ -1879,6 +1881,96 @@ body.gg-print-preview-open{overflow:hidden!important}
                 </div>
             </div>
 
+            </div>
+
+            <!-- UNTERKAPITEL 10: ZENTRALER EXPORT-BEREICH -->
+            <div id="unterkapitel-export" class="kapitel-inhalt hidden space-y-3">
+                <div class="glass-card rounded-2xl p-4 border border-[#22ffaa]/40 green-glow">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <span class="kcang-badge">DOKUMENTATION</span>
+                            <h3 class="font-black text-base mt-1 text-white flex items-center gap-2"><i class="fa-solid fa-file-export text-[#22ffaa]"></i> Exporte</h3>
+                            <p class="text-[10px] text-white/55 mt-1 leading-relaxed">Jeder Export ist separat. Vor jedem Export wird der aktuelle Server-/D1-Stand geladen. Keine Sammeldatei, keine Vermischung der Protokolle.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-2xl p-3 border border-white/10">
+                    <div class="flex items-center justify-between gap-2 mb-2">
+                        <div><h4 class="font-black text-sm text-[#22ffaa]">📋 Änderungsprotokoll / Sicherheitsprotokoll</h4><p class="text-[10px] text-white/45 mt-0.5">Anmeldungen, Änderungen, Löschungen und sicherheitsrelevante Aktionen.</p></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" onclick="exportiereAuditCSV()" class="bg-white/10 hover:bg-white/15 text-white font-bold py-2.5 rounded-xl text-[10px]"><i class="fa-solid fa-file-csv mr-1"></i> CSV-Export</button>
+                        <button type="button" onclick="druckeAuditProtokoll()" class="bg-[#22ffaa] text-black font-black py-2.5 rounded-xl text-[10px]"><i class="fa-solid fa-print mr-1"></i> Drucken / PDF</button>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-2xl p-3 border border-white/10">
+                    <h4 class="font-black text-sm text-[#22ffaa] mb-0.5">📦 Abgabeprotokoll</h4>
+                    <p class="text-[10px] text-white/45 mb-2">Chronologische, chargenbezogene Abgaben mit Mitglied, Menge, Betrag und Bon.</p>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" onclick="exportiereAbgabeCSV()" class="bg-white/10 hover:bg-white/15 text-white font-bold py-2.5 rounded-xl text-[10px]"><i class="fa-solid fa-file-csv mr-1"></i> CSV-Export</button>
+                        <button type="button" onclick="druckeAbgabeProtokoll()" class="bg-[#22ffaa] text-black font-black py-2.5 rounded-xl text-[10px]"><i class="fa-solid fa-print mr-1"></i> Drucken / PDF</button>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-2xl p-3 border border-white/10">
+                    <h4 class="font-black text-sm text-[#22ffaa] mb-0.5">🚪 Zutrittsprotokoll</h4>
+                    <p class="text-[10px] text-white/45 mb-2">Separater Export der dokumentierten Zutritte und App-Start-Bestätigungen.</p>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" onclick="exportiereZutrittsCSV()" class="bg-white/10 hover:bg-white/15 text-white font-bold py-2.5 rounded-xl text-[10px]"><i class="fa-solid fa-file-csv mr-1"></i> CSV-Export</button>
+                        <button type="button" onclick="druckeZutrittsprotokoll()" class="bg-[#22ffaa] text-black font-black py-2.5 rounded-xl text-[10px]"><i class="fa-solid fa-print mr-1"></i> Drucken / PDF</button>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-2xl p-3 border border-white/10">
+                    <h4 class="font-black text-sm text-[#22ffaa] mb-0.5">💶 Finanzen</h4>
+                    <p class="text-[10px] text-white/45 mb-2">Umsatz, offene Beiträge, Mitgliedsstatus und Guthaben – getrennt vom übrigen Dokumentationsbestand.</p>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" onclick="exportiereFinanzCSV()" class="bg-white/10 hover:bg-white/15 text-white font-bold py-2.5 rounded-xl text-[10px]"><i class="fa-solid fa-file-csv mr-1"></i> CSV-Export</button>
+                        <button type="button" onclick="druckeFinanzbericht()" class="bg-[#22ffaa] text-black font-black py-2.5 rounded-xl text-[10px]"><i class="fa-solid fa-print mr-1"></i> Drucken / PDF</button>
+                    </div>
+                    <button type="button" onclick="exportiereSEPA_XML()" class="w-full mt-2 bg-white/10 hover:bg-white/15 text-white font-bold py-2.5 rounded-xl text-[10px]"><i class="fa-solid fa-file-code mr-1"></i> SEPA-XML separat exportieren</button>
+                </div>
+
+                <div class="glass-card rounded-2xl p-3 border border-white/10">
+                    <h4 class="font-black text-sm text-[#22ffaa] mb-0.5">🛡️ Compliance-Bericht</h4>
+                    <p class="text-[10px] text-white/45 mb-2">Prävention, Qualitätsprüfungen, Rückrufe und zugehörige Auditdaten – als eigener Bericht.</p>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" onclick="exportiereComplianceBericht()" class="bg-white/10 hover:bg-white/15 text-white font-bold py-2.5 rounded-xl text-[10px]"><i class="fa-solid fa-file-code mr-1"></i> Bericht (JSON)</button>
+                        <button type="button" onclick="druckeComplianceBericht()" class="bg-[#22ffaa] text-black font-black py-2.5 rounded-xl text-[10px]"><i class="fa-solid fa-print mr-1"></i> Drucken / PDF</button>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-2xl p-3 border border-white/10">
+                    <h4 class="font-black text-sm text-[#22ffaa] mb-0.5">📑 §26-Dokumentation</h4>
+                    <p class="text-[10px] text-white/45 mb-2">Eigener Export der für die Dokumentation vorgesehenen Vereinsdaten – nicht mit anderen Berichten vermischt.</p>
+                    <button type="button" onclick="exportiereKcang26CSV()" class="w-full bg-[#22ffaa] text-black font-black py-2.5 rounded-xl text-[10px]"><i class="fa-solid fa-file-csv mr-1"></i> §26-Export (CSV)</button>
+                </div>
+
+                <div class="glass-card rounded-2xl p-3 border border-white/10">
+                    <h4 class="font-black text-sm text-[#22ffaa] mb-0.5">👥 Mitglieder</h4>
+                    <p class="text-[10px] text-white/45 mb-2">Separater Mitgliederbestand für Verwaltung und Dokumentation.</p>
+                    <button type="button" onclick="exportiereMitgliederCSV()" class="w-full bg-[#22ffaa] text-black font-black py-2.5 rounded-xl text-[10px]"><i class="fa-solid fa-file-csv mr-1"></i> Mitglieder-Export (CSV)</button>
+                </div>
+
+                <div class="glass-card rounded-2xl p-3 border border-white/10">
+                    <h4 class="font-black text-sm text-[#22ffaa] mb-0.5">🌿 Sorten &amp; Chargen</h4>
+                    <p class="text-[10px] text-white/45 mb-2">Sorten, Chargen, Bestände und hinterlegte Stammdaten separat.</p>
+                    <button type="button" onclick="exportiereSortenCSV()" class="w-full bg-[#22ffaa] text-black font-black py-2.5 rounded-xl text-[10px]"><i class="fa-solid fa-file-csv mr-1"></i> Sorten-/Chargen-Export (CSV)</button>
+                </div>
+
+                <div class="glass-card rounded-2xl p-3 border border-white/10">
+                    <h4 class="font-black text-sm text-[#22ffaa] mb-0.5">📦 Reservierungen</h4>
+                    <p class="text-[10px] text-white/45 mb-2">Reservierungen separat mit Status, Mitglied, Menge und Betrag.</p>
+                    <button type="button" onclick="exportiereReservierungenCSV()" class="w-full bg-[#22ffaa] text-black font-black py-2.5 rounded-xl text-[10px]"><i class="fa-solid fa-file-csv mr-1"></i> Reservierungs-Export (CSV)</button>
+                </div>
+
+                <div class="glass-card rounded-2xl p-3 border border-white/10">
+                    <h4 class="font-black text-sm text-[#22ffaa] mb-0.5">ℹ️ Informationszettel</h4>
+                    <p class="text-[10px] text-white/45 mb-2">Der Informationszettel wird weiterhin aus dem aktuell geladenen Mitglied-/Sortenstand erzeugt. Die Auswahl erfolgt im Abgabe-Terminal.</p>
+                    <button type="button" onclick="wechsleUnterkapitel('terminal')" class="w-full bg-white/10 hover:bg-white/15 text-white font-bold py-2.5 rounded-xl text-[10px]"><i class="fa-solid fa-arrow-right mr-1"></i> Zum Abgabe-Terminal / Informationszettel</button>
+                </div>
             </div>
 
         </div>
@@ -8722,6 +8814,63 @@ body.gg-print-preview-open{overflow:hidden!important}
             const rows=(vereinMitglieder||[]).filter(m=>m&&m.financeEntryActive!==false).map(m=>'<tr><td>'+escapeHtml(m.name||'')+'</td><td>'+escapeHtml(m.id||'')+'</td><td>'+(m.feePaid?'Bezahlt':'Ausstehend')+'</td><td>'+Number(m.feeAmount||0).toFixed(2).replace('.',',')+' €</td><td>'+Number(m.balance||0).toFixed(2).replace('.',',')+' €</td></tr>').join('');
             const w=window.open('','_blank'); if(!w){alert('Pop-up blockiert. Bitte Pop-ups erlauben.');return;}
             w.document.write('<!doctype html><html><head><title>Finanzbericht</title><style>body{font-family:system-ui,sans-serif;padding:20px;color:#111}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #ccc;padding:6px;text-align:left}th{background:#eee}</style></head><body><h1>Green Generation Rostock – Finanzbericht</h1><p><b>Gesamtumsatz:</b> '+Number(vereinUmsatz||0).toFixed(2).replace('.',',')+' € &nbsp; <b>Offene Beiträge:</b> '+offene.toFixed(2).replace('.',',')+' €</p><table><thead><tr><th>Mitglied</th><th>ID</th><th>Beitrag</th><th>Beitragshöhe</th><th>Guthaben</th></tr></thead><tbody>'+rows+'</tbody></table></body></html>'); w.document.close();w.focus();w.print();
+        }
+
+        async function exportiereFinanzCSV() {
+            if (!istVorstandEingeloggt) return;
+            await ggAktualisiereDatenVonServer(['vereinMitglieder','vereinReservierungen','vereinUmsatz','vereinGuthabenHistorie','vereinAudit']);
+            const offene=(vereinMitglieder||[]).filter(m=>m&&m.feePaid===false).reduce((n,m)=>n+Number(m.feeAmount||0),0);
+            const rows=[['Exportiert am',new Date().toISOString()],['Gesamtumsatz',Number(vereinUmsatz||0).toFixed(2)+' EUR'],['Offene Beiträge',offene.toFixed(2)+' EUR'],[],['Mitglied','Mitglieds-ID','Beitragsstatus','Beitrag EUR','Guthaben EUR']];
+            (vereinMitglieder||[]).filter(m=>m&&m.financeEntryActive!==false).forEach(m=>rows.push([m.name||'',m.id||'',m.feePaid?'Bezahlt':'Ausstehend',Number(m.feeAmount||0).toFixed(2),Number(m.balance||0).toFixed(2)]));
+            ggDownloadDatei('Green-Generation-Finanzbericht.csv','\ufeff'+rows.map(r=>r.map(ggCsvEsc).join(';')).join('\n'),'text/csv;charset=utf-8');
+        }
+        async function exportiereKcang26CSV() {
+            if (!istVorstandEingeloggt) return;
+            await ggAktualisiereDatenVonServer(['vereinMitglieder','vereinSorten','vereinProtokolle','vereinKassenbons','vereinReservierungen','vereinGuthabenHistorie','vereinAudit']);
+            const rows=[['Bereich','Datum','Mitglied','Mitglieds-ID','Sorte','Charge','Menge','Betrag','Status','Referenz']];
+            (vereinProtokolle||[]).forEach(p=>rows.push(['Abgabeprotokoll',p.date||'',p.member||'',p.memberId||'',p.strain||'',p.batch||'',p.amount??p.grams??'',p.price??'',p.status||'Abgabe',p.bonId||p.id||'']));
+            (vereinKassenbons||[]).forEach(p=>rows.push(['Kassenbon',p.date||'',p.member||'',p.memberId||'',p.strain||'',p.batch||'',p.amount??p.grams??'',p.total??p.price??'',p.status||'',p.id||p.bonId||'']));
+            ggDownloadDatei('Green-Generation-KCanG-§26-Dokumentation.csv','\ufeff'+rows.map(r=>r.map(ggCsvEsc).join(';')).join('\n'),'text/csv;charset=utf-8');
+        }
+        async function exportiereMitgliederCSV() {
+            if (!istVorstandEingeloggt) return;
+            await ggAktualisiereDatenVonServer(['vereinMitglieder']);
+            const rows=[['Mitglieds-ID','Name','E-Mail','Beitrag bezahlt','Beitrag EUR','Guthaben EUR','Status']];
+            (vereinMitglieder||[]).forEach(m=>rows.push([m.id||'',m.name||'',m.email||'',m.feePaid?'Ja':'Nein',Number(m.feeAmount||0).toFixed(2),Number(m.balance||0).toFixed(2),m.status||'aktiv']));
+            ggDownloadDatei('Green-Generation-Mitglieder.csv','\ufeff'+rows.map(r=>r.map(ggCsvEsc).join(';')).join('\n'),'text/csv;charset=utf-8');
+        }
+        async function exportiereSortenCSV() {
+            if (!istVorstandEingeloggt) return;
+            await ggAktualisiereDatenVonServer(['vereinSorten']);
+            const rows=[['Sorte','Charge','THC %','CBD %','Genetik','Bestand g','Erntedatum','MHD','Preis/g EUR','Status']];
+            (vereinSorten||[]).forEach(s=>rows.push([s.name||'',s.batch||'',s.thc||'',s.cbd||'',s.gen||s.genetik||'',s.stock??s.menge??'',s.harvest||s.erntedatum||'',s.bestbefore||s.mhd||'',s.price??'',s.statusLabel||s.status||'']));
+            ggDownloadDatei('Green-Generation-Sorten-Chargen.csv','\ufeff'+rows.map(r=>r.map(ggCsvEsc).join(';')).join('\n'),'text/csv;charset=utf-8');
+        }
+        async function exportiereReservierungenCSV() {
+            if (!istVorstandEingeloggt) return;
+            await ggAktualisiereDatenVonServer(['vereinReservierungen','vereinMitglieder','vereinSorten']);
+            const rows=[['Reservierungs-ID','Datum','Mitglied','Mitglieds-ID','Sorte','Charge','Menge','Betrag','Status']];
+            (vereinReservierungen||[]).forEach(r=>rows.push([r.id||'',r.date||r.datum||r.createdAt||'',r.memberName||r.member||'',r.memberId||'',r.strainName||r.strain||'',r.batch||'',r.amount??r.grams??r.menge??'',r.price??r.total??'',r.status||'']));
+            ggDownloadDatei('Green-Generation-Reservierungen.csv','\ufeff'+rows.map(r=>r.map(ggCsvEsc).join(';')).join('\n'),'text/csv;charset=utf-8');
+        }
+        async function druckeComplianceBericht() {
+            if (!istVorstandEingeloggt) return;
+            await ggAktualisiereDatenVonServer(['vereinPraevention','vereinQualitaetspruefungen','vereinRueckrufe','vereinAudit']);
+            const esc=v=>escapeHtml(v??'');
+            const praev=vereinPraevention||{};
+            const q=(vereinQualitaetspruefungen||[]).map(x=>'<tr><td>'+esc(x.date||x.datum||'')+'</td><td>'+esc(x.batch||'')+'</td><td>'+esc(x.status||x.ergebnis||'')+'</td><td>'+esc(x.details||x.notiz||'')+'</td></tr>').join('');
+            const r=(vereinRueckrufe||[]).map(x=>'<tr><td>'+esc(x.date||'')+'</td><td>'+esc(x.batch||'')+'</td><td>'+esc(x.status||'')+'</td><td>'+esc(x.reason||'')+'</td></tr>').join('');
+            const w=window.open('','_blank'); if(!w){alert('Pop-up blockiert. Bitte Pop-ups erlauben.');return;}
+            w.document.write('<!doctype html><html><head><title>Compliance-Bericht</title><style>body{font-family:system-ui,sans-serif;padding:20px;color:#111}table{width:100%;border-collapse:collapse;font-size:10px;margin:8px 0 20px}th,td{border:1px solid #ccc;padding:5px;text-align:left;vertical-align:top}th{background:#eee}h1{font-size:18px}h2{font-size:13px;margin-top:18px}</style></head><body><h1>Green Generation Rostock – Compliance-Bericht</h1><p><b>Erstellt:</b> '+esc(new Date().toLocaleString('de-DE'))+'</p><p><b>Präventionsbeauftragte/r:</b> '+esc(praev.name||'—')+' · <b>Kontakt:</b> '+esc(praev.contact||'—')+'</p><h2>Qualitätsprüfungen</h2><table><thead><tr><th>Datum</th><th>Charge</th><th>Status/Ergebnis</th><th>Details</th></tr></thead><tbody>'+q+'</tbody></table><h2>Rückrufe</h2><table><thead><tr><th>Datum</th><th>Charge</th><th>Status</th><th>Grund</th></tr></thead><tbody>'+r+'</tbody></table></body></html>'); w.document.close(); w.focus(); w.print();
+        }
+        async function exportiereSEPA_XML() {
+            if (!istVorstandEingeloggt) return;
+            await ggAktualisiereDatenVonServer(['vereinMitglieder','vereinGuthabenHistorie']);
+            const escapeXml=v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+            const zahlungen=(vereinMitglieder||[]).filter(m=>m&&m.feePaid===false&&Number(m.feeAmount||0)>0);
+            const sum=zahlungen.reduce((n,m)=>n+Number(m.feeAmount||0),0).toFixed(2);
+            const xml='<?xml version="1.0" encoding="UTF-8"?>\n<Document><GreenGenerationExport><ErstelltAm>'+escapeXml(new Date().toISOString())+'</ErstelltAm><Anzahl>'+zahlungen.length+'</Anzahl><SummeEUR>'+sum+'</SummeEUR><Zahlungen>'+zahlungen.map(m=>'<Zahlung><MitgliedsID>'+escapeXml(m.id||'')+'</MitgliedsID><Name>'+escapeXml(m.name||'')+'</Name><BetragEUR>'+Number(m.feeAmount||0).toFixed(2)+'</BetragEUR></Zahlung>').join('')+'</Zahlungen></GreenGenerationExport></Document>';
+            ggDownloadDatei('Green-Generation-SEPA-Export.xml',xml,'application/xml;charset=utf-8');
         }
 
         async function exportiereDokumentation() {
