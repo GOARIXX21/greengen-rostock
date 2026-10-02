@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Green Generation Rostock</title>
-<meta name="gg-build" content="V35-UI-SMOKE-DYNAMIC-HARBOR-NONDESTRUCTIVE-EXPORT-TOP-FIX">
+<meta name="gg-build" content="V36-ADMIN-EXPORT-REAL-SCROLL-FIX">
 <meta name="gg-build-date" content="2026-10-02">
     
     <!-- PWA & Mobile Web App Meta Tags -->
@@ -535,18 +535,18 @@ select,input,textarea,button{touch-action:manipulation}
         body.gg-vorstand-mode main {
             display: flex;
             flex-direction: column;
-            flex: 1 1 0%;
+            flex: 1 1 auto;
             min-height: 0;
-            height: 0;
+            height: auto !important;
             overflow: hidden;
             padding-bottom: 0 !important;
         }
         body.gg-vorstand-mode #bereich-vorstand.active {
             display: flex !important;
             flex-direction: column;
-            flex: 1 1 0%;
+            flex: 1 1 auto;
             min-height: 0;
-            height: 0;
+            height: auto !important;
             overflow: hidden;
             visibility: visible !important;
         }
@@ -566,30 +566,34 @@ select,input,textarea,button{touch-action:manipulation}
         }
         body.gg-vorstand-mode #bereich-vorstand.active .gg-vorstand-scroll,
         body.gg-vorstand-mode #gg-vorstand-scroll {
-            /* V34 MOBILE SCROLL FIX: Der Vorstand bekommt eine eindeutig
-               begrenzte eigene Scrollfläche. Dadurch kann Android die
-               vertikale Touch-Geste nicht mehr an body/main verlieren. */
-            flex: 1 1 0%;
-            flex-basis: 0%;
-            min-height: 0 !important;
-            height: 0;
-            max-height: 100%;
+            /* V36: Echte, physisch vorhandene Scrollfläche.
+               Die vorherige Kombination aus height:0 + flex-basis:0% konnte
+               auf Android dazu führen, dass der Inhalt zwar sichtbar war,
+               die Scrollfläche selbst aber keine nutzbare Touch-Höhe hatte. */
+            display: block;
+            flex: 1 1 auto;
+            flex-basis: auto;
+            min-height: 1px !important;
+            height: auto !important;
+            max-height: none !important;
             width: 100%;
             min-width: 0;
             overflow-x: hidden;
-            overflow-y: scroll;
+            overflow-y: auto;
             -webkit-overflow-scrolling: touch;
             overscroll-behavior-y: contain;
             overscroll-behavior-x: none;
             touch-action: pan-y !important;
-            -webkit-user-select: none;
-            user-select: none;
             scroll-behavior: auto;
             scrollbar-gutter: stable;
             overflow-anchor: none;
             padding-top: 0 !important;
             padding-bottom: calc(8rem + env(safe-area-inset-bottom));
             box-sizing: border-box;
+        }
+        body.gg-vorstand-mode #gg-vorstand-scroll > #unterkapitel-export {
+            margin-top: 0 !important;
+            padding-top: 0 !important;
         }
         body.gg-vorstand-mode #gg-vorstand-scroll > .kapitel-inhalt {
             width: 100%;
@@ -4508,11 +4512,8 @@ body.gg-print-preview-open{overflow:hidden!important}
                 }
             } catch (_) {}
 
-            // V35 EXPORT-TAB TOP ALIGNMENT: Der Exportinhalt muss unmittelbar
-            // unter der Admin-Navigation beginnen. Android kann nach einem
-            // asynchronen D1-Render durch Scroll-Anchoring wieder eine alte
-            // vertikale Position herstellen. Deshalb wird die Scrollposition
-            // nach dem Render nochmals explizit auf den Anfang gesetzt.
+            // V36: Beim Tabwechsel immer am Anfang des gemeinsamen Vorstand-
+            // Scrollcontainers starten. Das verändert nicht die Scrollbarkeit.
             const ggSetzeVorstandsScrollAnfang = () => {
                 try {
                     const pane = document.getElementById('gg-vorstand-scroll');
