@@ -1,5 +1,5 @@
 /**
- * GreenGenRostock V28-RELEASE-STABIL-SECURE-FINAL – Worker
+ * GreenGenRostock V38-COMPLIANCE-HARDENED-APPEND-ONLY – Worker
  *
  * Cloudflare Secrets:
  *   AUTH_SIGNING_SECRET       NEU, starkes Zufallssecret (HMAC)
@@ -14,17 +14,32 @@ const CORS_HEADERS = {
 };
 
 const SENSITIVE_KEYS = new Set([
-  'gg_master_account', 'vereinAdmins', 'adminSystemInitialisiert',
-  'vereinMitglieder', 'vereinReservierungen', 'vereinUmsatz',
-  'vereinProtokolle', 'vereinKassenbons', 'vereinAudit',
-  'vereinGuthabenHistorie', 'vereinZutritte'
+  'gg_master_account',
+  'vereinAdmins',
+  'adminSystemInitialisiert',
+  'vereinMitglieder',
+  'vereinReservierungen',
+  'vereinUmsatz',
+  'vereinProtokolle',
+  'vereinKassenbons',
+  'vereinAudit',
+  'vereinGuthabenHistorie',
+  'vereinZutritte',
+  'vereinPraevention',
+  'vereinQualitaetspruefungen',
+  'vereinRueckrufe',
+  'vereinKcang26'
 ]);
 
 const PUBLIC_GET_KEYS = new Set([
-  'vereinNews', 'vereinSorten', 'vereinWissen', 'vereinInfoArtikel',
-  'vereinAbholzeitfenster', 'standortKoordinaten', 'vereinSepaSichtbar',
-  'vereinUiEinstellungen', 'vereinPraevention', 'vereinQualitaetspruefungen',
-  'vereinRueckrufe'
+  'vereinNews',
+  'vereinSorten',
+  'vereinWissen',
+  'vereinInfoArtikel',
+  'vereinAbholzeitfenster',
+  'standortKoordinaten',
+  'vereinSepaSichtbar',
+  'vereinUiEinstellungen'
 ]);
 
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
@@ -36,7 +51,7 @@ function json(data, status = 200, extraHeaders = {}) {
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
       ...CORS_HEADERS,
-      ...extraHeaders
+      ...extraHeaders,
     },
   });
 }
@@ -54,10 +69,7 @@ function b64urlEncode(bytes) {
 }
 
 function b64urlDecode(str) {
-  const pad = str.length % 4 === 0
-    ? ''
-    : '='.repeat(4 - (str.length % 4));
-
+  const pad = str.length % 4 === 0 ? '' : '='.repeat(4 - (str.length % 4));
   const b64 = str.replace(/-/g, '+').replace(/_/g, '/') + pad;
   const bin = atob(b64);
   const out = new Uint8Array(bin.length);
@@ -121,7 +133,9 @@ async function hmacVerify(secret, msg, sigB64) {
 
 async function mintToken(secret, payload) {
   const body = b64urlEncode(
-    new TextEncoder().encode(JSON.stringify(payload))
+    new TextEncoder().encode(
+      JSON.stringify(payload)
+    )
   );
 
   return body + '.' + await hmacSign(secret, body);
@@ -153,7 +167,11 @@ async function readToken(secret, token) {
       )
     );
 
-    if (!payload || !payload.exp || Date.now() > payload.exp) {
+    if (
+      !payload ||
+      !payload.exp ||
+      Date.now() > payload.exp
+    ) {
       return null;
     }
 
@@ -168,22 +186,34 @@ async function readToken(secret, token) {
 }
 
 function bearerToken(request) {
-  const h = request.headers.get('Authorization') || '';
-  const m = h.match(/^Bearer\s+(.+)$/i);
+  const h =
+    request.headers.get('Authorization') || '';
+
+  const m =
+    h.match(/^Bearer\s+(.+)$/i);
 
   if (m) {
     return m[1].trim();
   }
 
-  const cookie = request.headers.get('Cookie') || '';
-  const cm = cookie.match(/(?:^|;\s*)gg_session=([^;]+)/);
+  const cookie =
+    request.headers.get('Cookie') || '';
+
+  const cm =
+    cookie.match(
+      /(?:^|;\s*)gg_session=([^;]+)/
+    );
 
   return cm
     ? decodeURIComponent(cm[1])
     : '';
 }
 
-async function requireSession(request, env, roles) {
+async function requireSession(
+  request,
+  env,
+  roles
+) {
   if (!env.AUTH_SIGNING_SECRET) {
     return {
       ok: false,
@@ -192,10 +222,11 @@ async function requireSession(request, env, roles) {
     };
   }
 
-  const payload = await readToken(
-    env.AUTH_SIGNING_SECRET,
-    bearerToken(request)
-  );
+  const payload =
+    await readToken(
+      env.AUTH_SIGNING_SECRET,
+      bearerToken(request)
+    );
 
   if (!payload) {
     return {
@@ -223,16 +254,25 @@ async function requireSession(request, env, roles) {
   };
 }
 
-async function decryptClientBlob(b64, passphrase) {
+async function decryptClientBlob(
+  b64,
+  passphrase
+) {
   if (!b64 || !passphrase) {
     return null;
   }
 
   try {
     const binStr = atob(String(b64));
-    const bytes = new Uint8Array(binStr.length);
 
-    for (let i = 0; i < binStr.length; i++) {
+    const bytes =
+      new Uint8Array(binStr.length);
+
+    for (
+      let i = 0;
+      i < binStr.length;
+      i++
+    ) {
       bytes[i] = binStr.charCodeAt(i);
     }
 
@@ -249,38 +289,41 @@ async function decryptClientBlob(b64, passphrase) {
 
     const enc = new TextEncoder();
 
-    const keyMaterial = await crypto.subtle.importKey(
-      'raw',
-      enc.encode(passphrase),
-      'PBKDF2',
-      false,
-      ['deriveKey']
-    );
+    const keyMaterial =
+      await crypto.subtle.importKey(
+        'raw',
+        enc.encode(passphrase),
+        'PBKDF2',
+        false,
+        ['deriveKey']
+      );
 
-    const key = await crypto.subtle.deriveKey(
-      {
-        name: 'PBKDF2',
-        salt: enc.encode(PBKDF_SALT),
-        iterations: 100000,
-        hash: 'SHA-256'
-      },
-      keyMaterial,
-      {
-        name: 'AES-GCM',
-        length: 256
-      },
-      false,
-      ['decrypt']
-    );
+    const key =
+      await crypto.subtle.deriveKey(
+        {
+          name: 'PBKDF2',
+          salt: enc.encode(PBKDF_SALT),
+          iterations: 100000,
+          hash: 'SHA-256'
+        },
+        keyMaterial,
+        {
+          name: 'AES-GCM',
+          length: 256
+        },
+        false,
+        ['decrypt']
+      );
 
-    const plain = await crypto.subtle.decrypt(
-      {
-        name: 'AES-GCM',
-        iv
-      },
-      key,
-      data
-    );
+    const plain =
+      await crypto.subtle.decrypt(
+        {
+          name: 'AES-GCM',
+          iv
+        },
+        key,
+        data
+      );
 
     return JSON.parse(
       new TextDecoder().decode(plain)
@@ -295,108 +338,158 @@ async function decryptClientBlob(b64, passphrase) {
 }
 
 async function loadStateValue(db, key) {
-  const row = await db
-    .prepare(
-      'SELECT value FROM app_state WHERE key = ?'
-    )
-    .bind(key)
-    .first();
+  const row =
+    await db
+      .prepare(
+        'SELECT value FROM app_state WHERE key = ?'
+      )
+      .bind(key)
+      .first();
 
-  return row && typeof row.value === 'string'
+  return row &&
+    typeof row.value === 'string'
     ? row.value
     : null;
 }
 
 async function ensureTable(db) {
-  await db.prepare(`
-    CREATE TABLE IF NOT EXISTS app_state (
-      key TEXT PRIMARY KEY NOT NULL,
-      value TEXT NOT NULL,
-      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-    )
-  `).run();
+  await db
+    .prepare(`
+      CREATE TABLE IF NOT EXISTS app_state (
+        key TEXT PRIMARY KEY NOT NULL,
+        value TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+          DEFAULT (datetime('now'))
+      )
+    `)
+    .run();
+}
+
+async function ensureAccessTable(db) {
+  await db
+    .prepare(`
+      CREATE TABLE IF NOT EXISTS access_events (
+        id TEXT PRIMARY KEY NOT NULL,
+        occurred_at TEXT NOT NULL,
+        payload TEXT NOT NULL,
+        payload_sha256 TEXT NOT NULL,
+        created_at TEXT NOT NULL
+          DEFAULT (datetime('now'))
+      )
+    `)
+    .run();
+
+  await db
+    .prepare(`
+      CREATE INDEX IF NOT EXISTS
+      idx_access_events_occurred
+      ON access_events(occurred_at)
+    `)
+    .run();
 }
 
 async function ensureAuditTable(db) {
-  await db.prepare(`
-    CREATE TABLE IF NOT EXISTS audit_events (
-      id TEXT PRIMARY KEY NOT NULL,
-      occurred_at TEXT NOT NULL,
-      payload TEXT NOT NULL,
-      payload_sha256 TEXT NOT NULL,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    )
-  `).run();
+  await db
+    .prepare(`
+      CREATE TABLE IF NOT EXISTS audit_events (
+        id TEXT PRIMARY KEY NOT NULL,
+        occurred_at TEXT NOT NULL,
+        payload TEXT NOT NULL,
+        payload_sha256 TEXT NOT NULL,
+        created_at TEXT NOT NULL
+          DEFAULT (datetime('now'))
+      )
+    `)
+    .run();
 
-  await db.prepare(
-    'CREATE INDEX IF NOT EXISTS idx_audit_events_occurred ON audit_events(occurred_at)'
-  ).run();
+  await db
+    .prepare(`
+      CREATE INDEX IF NOT EXISTS
+      idx_audit_events_occurred
+      ON audit_events(occurred_at)
+    `)
+    .run();
 }
 
 async function sha256Hex(text) {
-  const bytes = await crypto.subtle.digest(
-    'SHA-256',
-    new TextEncoder().encode(String(text))
-  );
+  const bytes =
+    await crypto.subtle.digest(
+      'SHA-256',
+      new TextEncoder().encode(
+        String(text)
+      )
+    );
 
-  return Array.from(
-    new Uint8Array(bytes)
-  )
-    .map(b => b.toString(16).padStart(2, '0'))
+  return Array
+    .from(new Uint8Array(bytes))
+    .map(
+      b => b
+        .toString(16)
+        .padStart(2, '0')
+    )
     .join('');
 }
 
-async function encryptClientBlob(value, passphrase) {
+async function encryptClientBlob(
+  value,
+  passphrase
+) {
   if (!passphrase) {
     return null;
   }
 
   const enc = new TextEncoder();
 
-  const keyMaterial = await crypto.subtle.importKey(
-    'raw',
-    enc.encode(passphrase),
-    'PBKDF2',
-    false,
-    ['deriveKey']
-  );
+  const keyMaterial =
+    await crypto.subtle.importKey(
+      'raw',
+      enc.encode(passphrase),
+      'PBKDF2',
+      false,
+      ['deriveKey']
+    );
 
-  const key = await crypto.subtle.deriveKey(
-    {
-      name: 'PBKDF2',
-      salt: enc.encode(PBKDF_SALT),
-      iterations: 100000,
-      hash: 'SHA-256'
-    },
-    keyMaterial,
-    {
-      name: 'AES-GCM',
-      length: 256
-    },
-    false,
-    ['encrypt']
-  );
+  const key =
+    await crypto.subtle.deriveKey(
+      {
+        name: 'PBKDF2',
+        salt: enc.encode(PBKDF_SALT),
+        iterations: 100000,
+        hash: 'SHA-256'
+      },
+      keyMaterial,
+      {
+        name: 'AES-GCM',
+        length: 256
+      },
+      false,
+      ['encrypt']
+    );
 
-  const iv = crypto.getRandomValues(
-    new Uint8Array(12)
-  );
+  const iv =
+    crypto.getRandomValues(
+      new Uint8Array(12)
+    );
 
-  const plain = enc.encode(
-    JSON.stringify(value)
-  );
+  const plain =
+    enc.encode(
+      JSON.stringify(value)
+    );
 
-  const cipher = await crypto.subtle.encrypt(
-    {
-      name: 'AES-GCM',
-      iv
-    },
-    key,
-    plain
-  );
+  const cipher =
+    await crypto.subtle.encrypt(
+      {
+        name: 'AES-GCM',
+        iv
+      },
+      key,
+      plain
+    );
 
-  const out = new Uint8Array(
-    iv.length + cipher.byteLength
-  );
+  const out =
+    new Uint8Array(
+      iv.length + cipher.byteLength
+    );
 
   out.set(iv, 0);
   out.set(
@@ -413,59 +506,73 @@ async function encryptClientBlob(value, passphrase) {
   return btoa(bin);
 }
 
-async function migrateLegacyAuditOnce(db, env) {
-  const marker = await db
-    .prepare(
-      "SELECT id FROM audit_events WHERE id = 'GG_LEGACY_MIGRATION_MARKER'"
-    )
-    .first();
+async function migrateLegacyAuditOnce(
+  db,
+  env
+) {
+  const marker =
+    await db
+      .prepare(
+        "SELECT id FROM audit_events WHERE id = 'GG_LEGACY_MIGRATION_MARKER'"
+      )
+      .first();
 
   if (marker) {
     return;
   }
 
-  const raw = await loadStateValue(
-    db,
-    'vereinAudit'
-  );
+  const raw =
+    await loadStateValue(
+      db,
+      'vereinAudit'
+    );
 
   if (
     raw &&
     env.DATA_CRYPTO_PASSPHRASE
   ) {
-    const legacy = await decryptClientBlob(
-      raw,
-      env.DATA_CRYPTO_PASSPHRASE
-    );
+    const legacy =
+      await decryptClientBlob(
+        raw,
+        env.DATA_CRYPTO_PASSPHRASE
+      );
 
     if (Array.isArray(legacy)) {
       for (const event of legacy) {
-        const id = String(
-          event?.id ||
-          (
-            Date.now() +
-            '-' +
-            crypto.randomUUID()
-          )
-        );
+        const id =
+          String(
+            event?.id ||
+            (
+              Date.now() +
+              '-' +
+              crypto.randomUUID()
+            )
+          );
 
-        const occurred = new Date(
+        const parsedDate =
           event?.date &&
-          !Number.isNaN(Date.parse(event.date))
+          !Number.isNaN(
+            Date.parse(event.date)
+          )
             ? event.date
-            : Date.now()
-        ).toISOString();
+            : Date.now();
 
-        const payload = await encryptClientBlob(
-          event,
-          env.DATA_CRYPTO_PASSPHRASE
-        );
+        const occurred =
+          new Date(parsedDate)
+            .toISOString();
+
+        const payload =
+          await encryptClientBlob(
+            event,
+            env.DATA_CRYPTO_PASSPHRASE
+          );
 
         if (!payload) {
           continue;
         }
 
-        const hash = await sha256Hex(payload);
+        const hash =
+          await sha256Hex(payload);
 
         await db
           .prepare(`
@@ -501,388 +608,339 @@ async function migrateLegacyAuditOnce(db, env) {
     .run();
 }
 
-async function verifyMasterAgainstD1(env, user, pass) {
-  const phrase = env.DATA_CRYPTO_PASSPHRASE;
-
-  if (!phrase || !env.DB) {
-    return false;
-  }
-
-  const raw = await loadStateValue(
-    env.DB,
-    'gg_master_account'
-  );
-
-  if (!raw) {
-    return false;
-  }
-
-  const master = await decryptClientBlob(
-    raw,
-    phrase
-  );
-
-  if (
-    !master ||
-    typeof master !== 'object'
-  ) {
-    return false;
-  }
-
-  const mu =
-    master.user ||
-    master.username ||
-    '';
-
-  const mp =
-    master.pass ||
-    master.password ||
-    '';
-
-  const role = String(
-    master.role || 'MASTER'
-  ).toUpperCase();
-
-  if (role && role !== 'MASTER') {
-    return false;
-  }
-
-  return (
-    safeEq(mu, user) &&
-    safeEq(mp, pass)
-  );
-}
-
-async function verifyAdminAgainstD1(env, user, pass) {
-  const phrase = env.DATA_CRYPTO_PASSPHRASE;
-
-  if (!phrase || !env.DB) {
-    return false;
-  }
-
-  const raw = await loadStateValue(
-    env.DB,
-    'vereinAdmins'
-  );
-
-  if (!raw) {
-    return false;
-  }
-
-  const admins = await decryptClientBlob(
-    raw,
-    phrase
-  );
-
-  if (!Array.isArray(admins)) {
-    return false;
-  }
-
-  return admins.some(
-    (a) =>
-      a &&
-      safeEq(a.user, user) &&
-      safeEq(a.pass, pass) &&
-      String(
-        a.role || 'ADMIN'
-      ).toUpperCase() !== 'MASTER'
-  );
-}
-
-async function isSystemInitialized(env) {
-  if (!env.DB) {
-    return false;
-  }
-
-  if (
-    await env.DB
+async function migrateLegacyAccessOnce(
+  db,
+  env
+) {
+  const marker =
+    await db
       .prepare(
-        'SELECT key FROM app_state WHERE key = ?'
+        "SELECT id FROM access_events WHERE id = 'GG_LEGACY_ACCESS_MIGRATION_MARKER'"
       )
-      .bind('gg_master_account')
-      .first()
-  ) {
-    return true;
+      .first();
+
+  if (marker) {
+    return;
   }
+
+  const raw =
+    await loadStateValue(
+      db,
+      'vereinZutritte'
+    );
 
   if (
-    await env.DB
-      .prepare(
-        'SELECT key FROM app_state WHERE key = ?'
-      )
-      .bind('adminSystemInitialisiert')
-      .first()
+    raw &&
+    env.DATA_CRYPTO_PASSPHRASE
   ) {
-    return true;
+    const legacy =
+      await decryptClientBlob(
+        raw,
+        env.DATA_CRYPTO_PASSPHRASE
+      );
+
+    if (Array.isArray(legacy)) {
+      for (const event of legacy) {
+        const id =
+          String(
+            event?.id ||
+            (
+              Date.now() +
+              '-' +
+              crypto.randomUUID()
+            )
+          );
+
+        const occurred =
+          new Date(
+            event?.ts || Date.now()
+          ).toISOString();
+
+        const payload =
+          await encryptClientBlob(
+            event,
+            env.DATA_CRYPTO_PASSPHRASE
+          );
+
+        if (!payload) {
+          continue;
+        }
+
+        const hash =
+          await sha256Hex(payload);
+
+        await db
+          .prepare(`
+            INSERT OR IGNORE INTO access_events
+            (id, occurred_at, payload, payload_sha256)
+            VALUES (?, ?, ?, ?)
+          `)
+          .bind(
+            id,
+            occurred,
+            payload,
+            hash
+          )
+          .run();
+      }
+    }
   }
 
-  return false;
-}
-
-function authConfigured(env) {
-  return !!(
-    env.AUTH_SIGNING_SECRET &&
-    (
-      env.MASTER_USER ||
-      env.MASTER_PASS ||
-      env.DATA_CRYPTO_PASSPHRASE
+  await db
+    .prepare(`
+      INSERT OR IGNORE INTO access_events
+      (id, occurred_at, payload, payload_sha256)
+      VALUES (
+        'GG_LEGACY_ACCESS_MIGRATION_MARKER',
+        ?,
+        '',
+        'migration-marker'
+      )
+    `)
+    .bind(
+      new Date().toISOString()
     )
-  );
+    .run();
 }
 
-async function handleAuth(request, env) {
-  const url = new URL(request.url);
-  const path =
-    url.pathname.replace(/\/+$/, '') || '/';
-
-  if (
-    path === '/api/auth/login' &&
-    request.method === 'POST'
-  ) {
-    if (!authConfigured(env)) {
-      return json(
-        {
-          ok: false,
-          error: 'auth_not_configured'
-        },
-        503
-      );
-    }
-
-    let body;
-
-    try {
-      body = await request.json();
-    } catch {
-      return json(
-        {
-          ok: false,
-          error: 'Invalid JSON body'
-        },
-        400
-      );
-    }
-
-    const user = String(
-      body?.user || ''
-    ).trim();
-
-    const pass = String(
-      body?.pass || ''
-    );
-
-    if (!user || !pass) {
-      return json(
-        {
-          ok: false,
-          error: 'invalid'
-        },
-        401
-      );
-    }
-
-    let role = null;
-
-    const initialized =
-      await isSystemInitialized(env);
-
-    if (
-      !initialized &&
-      safeEq(user, 'admin') &&
-      safeEq(pass, 'vorstand2026')
-    ) {
-      role = 'BOOTSTRAP';
-    } else if (
-      initialized &&
-      safeEq(user, 'admin') &&
-      safeEq(pass, 'vorstand2026')
-    ) {
-      return json(
-        {
-          ok: false,
-          error: 'bootstrap_disabled'
-        },
-        401
-      );
-    }
-
-    if (
-      !role &&
-      env.MASTER_USER &&
-      env.MASTER_PASS &&
-      safeEq(
-        user,
-        env.MASTER_USER
-      ) &&
-      safeEq(
-        pass,
-        env.MASTER_PASS
-      )
-    ) {
-      role = 'MASTER';
-    }
-
-    if (
-      !role &&
-      await verifyMasterAgainstD1(
-        env,
-        user,
-        pass
-      )
-    ) {
-      role = 'MASTER';
-    }
-
-    if (
-      !role &&
-      await verifyAdminAgainstD1(
-        env,
-        user,
-        pass
-      )
-    ) {
-      role = 'ADMIN';
-    }
-
-    if (!role) {
-      return json(
-        {
-          ok: false,
-          error: 'invalid'
-        },
-        401
-      );
-    }
-
-    const now = Date.now();
-
-    const payload = {
-      user,
-      role,
-      iat: now,
-      exp: now + SESSION_TTL_MS
-    };
-
-    const token =
-      await mintToken(
-        env.AUTH_SIGNING_SECRET,
-        payload
-      );
-
-    const cookie =
-      `gg_session=${encodeURIComponent(token)}; ` +
-      `Path=/; ` +
-      `Max-Age=${Math.floor(SESSION_TTL_MS / 1000)}; ` +
-      `HttpOnly; ` +
-      `SameSite=Strict`;
-
-    return json(
-      {
-        ok: true,
-        user,
-        role,
-        token,
-        exp: payload.exp,
-        immutable: role === 'MASTER'
-      },
-      200,
-      {
-        'Set-Cookie': cookie
-      }
-    );
-  }
-
-  if (
-    path === '/api/auth/session' &&
-    request.method === 'GET'
-  ) {
-    if (!env.AUTH_SIGNING_SECRET) {
-      return json(
-        {
-          ok: false,
-          error: 'auth_not_configured'
-        },
-        503
-      );
-    }
-
-    const payload =
-      await readToken(
-        env.AUTH_SIGNING_SECRET,
-        bearerToken(request)
-      );
-
-    if (!payload) {
-      return json(
-        {
-          ok: false,
-          error: 'invalid_session'
-        },
-        401
-      );
-    }
-
-    return json({
-      ok: true,
-      user: payload.user,
-      role: payload.role,
-      exp: payload.exp,
-      immutable: payload.role === 'MASTER'
-    });
-  }
-
-  if (
-    path === '/api/auth/logout' &&
-    request.method === 'POST'
-  ) {
-    return json(
-      {
-        ok: true
-      },
-      200,
-      {
-        'Set-Cookie':
-          'gg_session=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict'
-      }
-    );
-  }
-
-  return null;
-}
-
-async function handleApi(request, env) {
-  const authResp =
-    await handleAuth(
-      request,
-      env
-    );
-
-  if (authResp) {
-    return authResp;
-  }
-
+async function verifyMasterAgainstD1(
+  env,
+  username,
+  password
+) {
   if (!env.DB) {
-    return json(
-      {
-        ok: false,
-        error: 'D1 binding missing (DB)'
-      },
-      503
-    );
+    return false;
   }
-
-  const url = new URL(request.url);
-
-  const path =
-    url.pathname.replace(/\/+$/, '') || '/';
 
   try {
     await ensureTable(env.DB);
+
+    const raw =
+      await loadStateValue(
+        env.DB,
+        'gg_master_account'
+      );
+
+    if (!raw) {
+      return false;
+    }
+
+    const parsed =
+      await decryptClientBlob(
+        raw,
+        env.DATA_CRYPTO_PASSPHRASE
+      );
+
+    if (!parsed) {
+      return false;
+    }
+
+    return (
+      safeEq(
+        parsed.username,
+        username
+      ) &&
+      safeEq(
+        parsed.password,
+        password
+      )
+    );
+  } catch {
+    return false;
+  }
+}
+
+function authConfigured(env) {
+  return Boolean(
+    env.AUTH_SIGNING_SECRET &&
+    env.DATA_CRYPTO_PASSPHRASE
+  );
+}
+
+async function handleApi(
+  request,
+  env
+) {
+  try {
+    if (!env.DB) {
+      return json(
+        {
+          ok: false,
+          error: 'D1 binding missing'
+        },
+        503
+      );
+    }
+
+    await ensureTable(env.DB);
     await ensureAuditTable(env.DB);
+    await ensureAccessTable(env.DB);
+
     await migrateLegacyAuditOnce(
       env.DB,
       env
     );
+
+    await migrateLegacyAccessOnce(
+      env.DB,
+      env
+    );
+
+    const url =
+      new URL(request.url);
+
+    const path =
+      url.pathname;
+
+    if (
+      path === '/api/auth/login' &&
+      request.method === 'POST'
+    ) {
+      let body;
+
+      try {
+        body =
+          await request.json();
+      } catch {
+        return json(
+          {
+            ok: false,
+            error: 'Invalid JSON body'
+          },
+          400
+        );
+      }
+
+      const username =
+        String(
+          body?.username || ''
+        ).trim();
+
+      const password =
+        String(
+          body?.password || ''
+        );
+
+      if (!username || !password) {
+        return json(
+          {
+            ok: false,
+            error: 'missing_credentials'
+          },
+          400
+        );
+      }
+
+      let role = null;
+
+      const masterOk =
+        await verifyMasterAgainstD1(
+          env,
+          username,
+          password
+        );
+
+      if (masterOk) {
+        role = 'MASTER';
+      } else if (
+        env.MASTER_USER &&
+        env.MASTER_PASS &&
+        safeEq(
+          username,
+          env.MASTER_USER
+        ) &&
+        safeEq(
+          password,
+          env.MASTER_PASS
+        )
+      ) {
+        role = 'MASTER';
+      }
+
+      if (!role) {
+        return json(
+          {
+            ok: false,
+            error: 'invalid_credentials'
+          },
+          401
+        );
+      }
+
+      const token =
+        await mintToken(
+          env.AUTH_SIGNING_SECRET,
+          {
+            user: username,
+            role,
+            iat: Date.now(),
+            exp:
+              Date.now() +
+              SESSION_TTL_MS
+          }
+        );
+
+      return json(
+        {
+          ok: true,
+          token,
+          role,
+          expires_at:
+            new Date(
+              Date.now() +
+              SESSION_TTL_MS
+            ).toISOString()
+        },
+        200,
+        {
+          'Set-Cookie':
+            `gg_session=${encodeURIComponent(token)}; Max-Age=${Math.floor(SESSION_TTL_MS / 1000)}; Path=/; HttpOnly; SameSite=Strict`
+        }
+      );
+    }
+
+    if (
+      path === '/api/auth/check' &&
+      request.method === 'GET'
+    ) {
+      const gate =
+        await requireSession(
+          request,
+          env,
+          ['MASTER', 'ADMIN', 'BOOTSTRAP']
+        );
+
+      if (!gate.ok) {
+        return json(
+          {
+            ok: false,
+            error: gate.error
+          },
+          gate.status
+        );
+      }
+
+      return json({
+        ok: true,
+        session: gate.session
+      });
+    }
+
+    if (
+      path === '/api/auth/logout' &&
+      request.method === 'POST'
+    ) {
+      return json(
+        {
+          ok: true
+        },
+        200,
+        {
+          'Set-Cookie':
+            'gg_session=; Max-Age=0; Path=/; HttpOnly; SameSite=Strict'
+        }
+      );
+    }
 
     if (
       path === '/api/audit' &&
@@ -907,8 +965,9 @@ async function handleApi(request, env) {
 
       const limitRaw =
         Number(
-          url.searchParams.get('limit') ||
-          1000
+          url.searchParams.get(
+            'limit'
+          ) || 1000
         );
 
       const limit =
@@ -927,9 +986,15 @@ async function handleApi(request, env) {
           'before'
         );
 
-      let query =
-        'SELECT id, occurred_at, payload, payload_sha256 ' +
-        'FROM audit_events WHERE id != ?';
+      let query = `
+        SELECT
+          id,
+          occurred_at,
+          payload,
+          payload_sha256
+        FROM audit_events
+        WHERE id != ?
+      `;
 
       const binds = [
         'GG_LEGACY_MIGRATION_MARKER'
@@ -963,8 +1028,9 @@ async function handleApi(request, env) {
             results &&
             results.length === limit
           )
-            ? results[results.length - 1]
-                .occurred_at
+            ? results[
+                results.length - 1
+              ].occurred_at
             : null
       });
     }
@@ -1107,6 +1173,236 @@ async function handleApi(request, env) {
     }
 
     if (
+      path === '/api/access' &&
+      request.method === 'GET'
+    ) {
+      const gate =
+        await requireSession(
+          request,
+          env,
+          ['MASTER', 'ADMIN']
+        );
+
+      if (!gate.ok) {
+        return json(
+          {
+            ok: false,
+            error: gate.error
+          },
+          gate.status
+        );
+      }
+
+      const limitRaw =
+        Number(
+          url.searchParams.get(
+            'limit'
+          ) || 1000
+        );
+
+      const limit =
+        Math.min(
+          Math.max(
+            Number.isFinite(limitRaw)
+              ? Math.floor(limitRaw)
+              : 1000,
+            1
+          ),
+          5000
+        );
+
+      const before =
+        url.searchParams.get(
+          'before'
+        );
+
+      let query = `
+        SELECT
+          id,
+          occurred_at,
+          payload,
+          payload_sha256
+        FROM access_events
+        WHERE id != ?
+      `;
+
+      const binds = [
+        'GG_LEGACY_ACCESS_MIGRATION_MARKER'
+      ];
+
+      if (before) {
+        query +=
+          ' AND occurred_at < ?';
+
+        binds.push(before);
+      }
+
+      query +=
+        ' ORDER BY occurred_at DESC LIMIT ?';
+
+      binds.push(limit);
+
+      const { results } =
+        await env.DB
+          .prepare(query)
+          .bind(...binds)
+          .all();
+
+      return json({
+        ok: true,
+        entries: results || [],
+        immutable: true,
+        has_delete_endpoint: false,
+        next_before:
+          (
+            results &&
+            results.length === limit
+          )
+            ? results[
+                results.length - 1
+              ].occurred_at
+            : null
+      });
+    }
+
+    if (
+      path === '/api/access' &&
+      request.method === 'POST'
+    ) {
+      const gate =
+        await requireSession(
+          request,
+          env,
+          [
+            'MASTER',
+            'ADMIN',
+            'BOOTSTRAP'
+          ]
+        );
+
+      if (!gate.ok) {
+        return json(
+          {
+            ok: false,
+            error: gate.error
+          },
+          gate.status
+        );
+      }
+
+      let body;
+
+      try {
+        body =
+          await request.json();
+      } catch {
+        return json(
+          {
+            ok: false,
+            error: 'Invalid JSON body'
+          },
+          400
+        );
+      }
+
+      const id =
+        String(
+          body?.id || ''
+        ).trim();
+
+      const occurred =
+        String(
+          body?.occurred_at || ''
+        ).trim();
+
+      const payload =
+        String(
+          body?.payload || ''
+        ).trim();
+
+      if (
+        !id ||
+        !payload ||
+        !occurred ||
+        !Number.isFinite(
+          Date.parse(occurred)
+        )
+      ) {
+        return json(
+          {
+            ok: false,
+            error: 'invalid_access_event'
+          },
+          400
+        );
+      }
+
+      const hash =
+        await sha256Hex(
+          payload
+        );
+
+      const exists =
+        await env.DB
+          .prepare(
+            'SELECT id FROM access_events WHERE id = ?'
+          )
+          .bind(id)
+          .first();
+
+      if (exists) {
+        return json({
+          ok: true,
+          appended: true,
+          duplicate: true,
+          id
+        });
+      }
+
+      await env.DB
+        .prepare(`
+          INSERT INTO access_events
+          (id, occurred_at, payload, payload_sha256)
+          VALUES (?, ?, ?, ?)
+        `)
+        .bind(
+          id,
+          new Date(
+            occurred
+          ).toISOString(),
+          payload,
+          hash
+        )
+        .run();
+
+      return json({
+        ok: true,
+        appended: true,
+        id,
+        immutable: true
+      });
+    }
+
+    if (
+      path === '/api/access' &&
+      (
+        request.method === 'PUT' ||
+        request.method === 'DELETE' ||
+        request.method === 'PATCH'
+      )
+    ) {
+      return json(
+        {
+          ok: false,
+          error: 'access_immutable',
+          message:
+            'Zutrittsprotokolle sind append-only und können nicht geändert oder gelöscht werden.'
+        },
+        405
+      );
+    }
+
+    if (
       path === '/api/health' &&
       request.method === 'GET'
     ) {
@@ -1158,14 +1454,21 @@ async function handleApi(request, env) {
       if (includeValues) {
         const { results } =
           await env.DB
-            .prepare(
-              'SELECT key, value, updated_at FROM app_state ORDER BY key'
-            )
+            .prepare(`
+              SELECT
+                key,
+                value,
+                updated_at
+              FROM app_state
+              ORDER BY key
+            `)
             .all();
 
         const map = {};
 
-        for (const r of results || []) {
+        for (
+          const r of results || []
+        ) {
           if (
             r.key ===
             'gg_master_account'
@@ -1193,16 +1496,22 @@ async function handleApi(request, env) {
 
       const { results } =
         await env.DB
-          .prepare(
-            'SELECT key, updated_at FROM app_state ORDER BY key'
-          )
+          .prepare(`
+            SELECT
+              key,
+              updated_at
+            FROM app_state
+            ORDER BY key
+          `)
           .all();
 
       return json({
         ok: true,
         keys:
-          (results || []).map(
-            (r) => ({
+          (
+            results || []
+          ).map(
+            r => ({
               key: r.key,
               updated_at:
                 r.updated_at
@@ -1225,9 +1534,7 @@ async function handleApi(request, env) {
           getMatch[1]
         );
 
-      if (
-        !PUBLIC_GET_KEYS.has(key)
-      ) {
+      if (!PUBLIC_GET_KEYS.has(key)) {
         const gate =
           await requireSession(
             request,
@@ -1251,11 +1558,9 @@ async function handleApi(request, env) {
 
         if (
           key ===
-            'gg_master_account' &&
-          gate.session.role !==
-            'MASTER' &&
-          gate.session.role !==
-            'BOOTSTRAP'
+          'gg_master_account' &&
+          gate.session.role !== 'MASTER' &&
+          gate.session.role !== 'BOOTSTRAP'
         ) {
           return json(
             {
@@ -1269,9 +1574,14 @@ async function handleApi(request, env) {
 
       const row =
         await env.DB
-          .prepare(
-            'SELECT key, value, updated_at FROM app_state WHERE key = ?'
-          )
+          .prepare(`
+            SELECT
+              key,
+              value,
+              updated_at
+            FROM app_state
+            WHERE key = ?
+          `)
           .bind(key)
           .first();
 
@@ -1348,9 +1658,11 @@ async function handleApi(request, env) {
       ) {
         const existingMaster =
           await env.DB
-            .prepare(
-              'SELECT key FROM app_state WHERE key = ?'
-            )
+            .prepare(`
+              SELECT key
+              FROM app_state
+              WHERE key = ?
+            `)
             .bind(
               'gg_master_account'
             )
@@ -1380,8 +1692,7 @@ async function handleApi(request, env) {
           );
         }
       } else if (
-        key ===
-          'vereinAdmins' ||
+        key === 'vereinAdmins' ||
         key ===
           'adminSystemInitialisiert'
       ) {
@@ -1419,8 +1730,7 @@ async function handleApi(request, env) {
         return json(
           {
             ok: false,
-            error:
-              'Invalid JSON body'
+            error: 'Invalid JSON body'
           },
           400
         );
@@ -1457,9 +1767,13 @@ async function handleApi(request, env) {
 
       const existing =
         await env.DB
-          .prepare(
-            'SELECT value, updated_at FROM app_state WHERE key = ?'
-          )
+          .prepare(`
+            SELECT
+              value,
+              updated_at
+            FROM app_state
+            WHERE key = ?
+          `)
           .bind(key)
           .first();
 
@@ -1479,7 +1793,9 @@ async function handleApi(request, env) {
 
       if (!existing) {
         const ts =
-          Number.isFinite(clientMs)
+          Number.isFinite(
+            clientMs
+          )
             ? new Date(
                 clientMs
               ).toISOString()
@@ -1528,8 +1844,12 @@ async function handleApi(request, env) {
           : NaN;
 
       if (
-        !Number.isFinite(clientMs) ||
-        !Number.isFinite(existingMs)
+        !Number.isFinite(
+          clientMs
+        ) ||
+        !Number.isFinite(
+          existingMs
+        )
       ) {
         return json({
           ok: true,
@@ -1543,7 +1863,8 @@ async function handleApi(request, env) {
       }
 
       if (
-        clientMs < existingMs
+        clientMs <
+        existingMs
       ) {
         return json({
           ok: true,
@@ -1564,13 +1885,14 @@ async function handleApi(request, env) {
       await env.DB
         .prepare(`
           UPDATE app_state
-          SET value = ?, updated_at = ?
+          SET value = ?,
+              updated_at = ?
           WHERE key = ?
         `)
         .bind(
+          key,
           body.value,
-          ts,
-          key
+          ts
         )
         .run();
 
@@ -1615,8 +1937,7 @@ async function handleApi(request, env) {
         return json(
           {
             ok: false,
-            error:
-              'Invalid JSON body'
+            error: 'Invalid JSON body'
           },
           400
         );
@@ -1649,16 +1970,20 @@ async function handleApi(request, env) {
       const keys =
         Object.keys(items);
 
-      for (const key of keys) {
+      for (
+        const key of keys
+      ) {
         if (
           key ===
           'gg_master_account'
         ) {
           const existsMaster =
             await env.DB
-              .prepare(
-                'SELECT key FROM app_state WHERE key = ?'
-              )
+              .prepare(`
+                SELECT key
+                FROM app_state
+                WHERE key = ?
+              `)
               .bind(key)
               .first();
 
@@ -1701,9 +2026,11 @@ async function handleApi(request, env) {
 
         const existing =
           await env.DB
-            .prepare(
-              'SELECT key FROM app_state WHERE key = ?'
-            )
+            .prepare(`
+              SELECT key
+              FROM app_state
+              WHERE key = ?
+            `)
             .bind(key)
             .first();
 
@@ -1714,11 +2041,15 @@ async function handleApi(request, env) {
 
         const clientMs =
           clientTs
-            ? Date.parse(clientTs)
+            ? Date.parse(
+                clientTs
+              )
             : NaN;
 
         const ts =
-          Number.isFinite(clientMs)
+          Number.isFinite(
+            clientMs
+          )
             ? new Date(
                 clientMs
               ).toISOString()
@@ -1776,7 +2107,10 @@ async function handleApi(request, env) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(
+    request,
+    env
+  ) {
     if (
       request.method ===
       'OPTIONS'
@@ -1792,7 +2126,9 @@ export default {
     }
 
     const url =
-      new URL(request.url);
+      new URL(
+        request.url
+      );
 
     if (
       url.pathname.startsWith(
