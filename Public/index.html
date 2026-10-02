@@ -4727,7 +4727,13 @@ body.gg-print-preview-open{overflow:hidden!important}
             if (gate) gate.style.display = 'none';
             await ggProtokolliereStartbestaetigung();
             await ggStarteLoginUebergang('Zugang wird vorbereitet …', 760);
-            document.body.classList.add('gate-open');
+            // WICHTIG: Bis zur erfolgreichen Authentifizierung bleibt der eigentliche
+            // App-Inhalt vollständig verborgen. Das Zugang-Gate ist nur die geschützte
+            // Auswahl vor dem Login – es darf niemals den bereits gerenderten
+            // Mitglieder-/Adminbereich durchscheinen lassen.
+            document.body.classList.remove('gate-open');
+            document.body.classList.add('pre-gate');
+            document.getElementById('security-gate')?.classList.remove('hidden');
             ggAppToast('Willkommen. Du kannst jetzt deinen Zugang wählen.', 'success', 'Bestätigt');
         }
         function ggZeigeStartGateImmer() {
