@@ -690,7 +690,7 @@ body.gg-print-preview-open{overflow:hidden!important}
             <div class="gg-app-dialog-body">
                 <label class="gg-app-check">
                     <input id="gg-age-confirm" type="checkbox">
-                    <span><b>Ich bestätige, dass ich mindestens 21 Jahre alt bin.</b><br>Der Zugang zum Club ist ab 21 Jahren vorgesehen.</span>
+                    <span><b>Ich bestätige, dass ich mindestens 21 Jahre alt bin.</b><br>Die App-Startbestätigung ist ab 21 Jahren vorgesehen; die gesetzliche Mitgliedschaftsvoraussetzung bleibt 18 Jahre gemäß §16 KCanG.</span>
                 </label>
                 <label class="gg-app-check">
                     <input id="gg-privacy-confirm" type="checkbox">
@@ -1216,6 +1216,10 @@ body.gg-print-preview-open{overflow:hidden!important}
                             </div>
                         </div>
                         <div id="pos-abgabe-cart-liste" class="hidden text-[10px] text-white bg-[#22ffaa]/10 border border-[#22ffaa]/20 rounded-xl px-2.5 py-2"></div>
+                        <label class="flex items-start gap-2 bg-amber-500/10 border border-amber-400/20 rounded-xl px-2.5 py-2 text-[9px] text-white/75">
+                            <input id="pos-id-check" type="checkbox" class="mt-0.5 accent-[#22ffaa]">
+                            <span><b class="text-amber-300">Amtlichen Lichtbildausweis tatsächlich vorgelegt und geprüft.</b><br>Diese Bestätigung ist vor jeder Cannabis-Abgabe erforderlich.</span>
+                        </label>
                         <button id="pos-abgabe-button" onclick="buxeAbgabeEin()" class="w-full bg-[#22ffaa] text-black font-black py-3 rounded-xl text-xs hover:bg-[#1ae89a] active:scale-95 transition-all shadow-lg shadow-[#22ffaa]/20 mt-1">
                             <i class="fa-solid fa-barcode mr-1"></i> Abgabe buchen &amp; Abgabe-QR generieren
                         </button>
@@ -1578,8 +1582,31 @@ body.gg-print-preview-open{overflow:hidden!important}
                     <div class="space-y-2 text-[11px]">
                         <input id="admin-praeventions-name" class="w-full bg-zinc-900 border border-white/10 px-2.5 py-2 rounded-lg text-white" placeholder="Name Präventionsbeauftragte/r">
                         <input id="admin-praeventions-contact" class="w-full bg-zinc-900 border border-white/10 px-2.5 py-2 rounded-lg text-white" placeholder="Kontakt / Beratungsstelle">
+                        <input id="admin-praeventions-training" type="date" class="w-full bg-zinc-900 border border-white/10 px-2.5 py-2 rounded-lg text-white" title="Datum des Schulungsnachweises">
+                        <input id="admin-praeventions-training-ref" class="w-full bg-zinc-900 border border-white/10 px-2.5 py-2 rounded-lg text-white" placeholder="Schulungsnachweis / Fachstelle">
+                        <select id="admin-praeventions-concept" class="w-full bg-zinc-900 border border-white/10 px-2.5 py-2 rounded-lg text-white"><option value="">Gesundheits-/Jugendschutzkonzept: Status</option><option value="vorhanden">vorhanden</option><option value="in_arbeit">in Arbeit</option></select>
                         <button onclick="speicherePraevention()" class="w-full bg-[#22ffaa] text-black font-bold py-2 rounded-lg text-[10px]">Präventionsdaten speichern</button>
                     </div>
+                </div>
+                <div class="glass-card rounded-2xl p-4 border border-white/10">
+                    <h4 class="font-bold text-xs mb-2 text-white">§26 KCanG – laufende Rückverfolgbarkeit</h4>
+                    <p class="text-[10px] text-white/45 mb-2">Erfasst Quelle von Vermehrungsmaterial, Bestand, Anbau, Vernichtung, Vermehrungsmaterial-Abgaben und §22-Transporte. Einträge werden nicht gelöscht.</p>
+                    <div class="grid grid-cols-2 gap-2 text-[10px]">
+                        <select id="kc26-type" class="bg-zinc-900 border border-white/10 px-2 py-2 rounded-lg text-white"><option value="bestand">Bestand</option><option value="anbau">Anbau</option><option value="vernichtung">Vernichtung</option><option value="vermehrungsquelle">Quelle Vermehrungsmaterial</option><option value="vermehrungsabgabe">Vermehrungsmaterial-Abgabe</option><option value="transport">§22-Transport</option></select>
+                        <input id="kc26-date" type="date" class="bg-zinc-900 border border-white/10 px-2 py-2 rounded-lg text-white">
+                        <input id="kc26-member" placeholder="Mitglied / Transportmitglied" class="bg-zinc-900 border border-white/10 px-2 py-2 rounded-lg text-white">
+                        <input id="kc26-member-birthyear" type="number" placeholder="Geburtsjahr" class="bg-zinc-900 border border-white/10 px-2 py-2 rounded-lg text-white">
+                        <input id="kc26-grams" type="number" step="0.01" placeholder="Cannabis Gramm" class="bg-zinc-900 border border-white/10 px-2 py-2 rounded-lg text-white">
+                        <input id="kc26-pieces" type="number" step="1" placeholder="Vermehrungsmaterial Stück" class="bg-zinc-900 border border-white/10 px-2 py-2 rounded-lg text-white">
+                        <input id="kc26-strain" placeholder="Sorte" class="bg-zinc-900 border border-white/10 px-2 py-2 rounded-lg text-white">
+                        <input id="kc26-thc" type="number" step="0.01" placeholder="THC Ø %" class="bg-zinc-900 border border-white/10 px-2 py-2 rounded-lg text-white">
+                        <input id="kc26-cbd" type="number" step="0.01" placeholder="CBD Ø %" class="bg-zinc-900 border border-white/10 px-2 py-2 rounded-lg text-white">
+                        <input id="kc26-source" placeholder="Quelle: Name / Sitz / Anschrift" class="bg-zinc-900 border border-white/10 px-2 py-2 rounded-lg text-white col-span-2">
+                        <input id="kc26-start" placeholder="Transport Startadresse" class="bg-zinc-900 border border-white/10 px-2 py-2 rounded-lg text-white">
+                        <input id="kc26-dest" placeholder="Transport Zieladresse" class="bg-zinc-900 border border-white/10 px-2 py-2 rounded-lg text-white">
+                    </div>
+                    <button onclick="speichereKcang26Eintrag()" class="w-full mt-2 bg-[#22ffaa] text-black font-bold py-2 rounded-lg text-[10px]">§26-Eintrag dauerhaft dokumentieren</button>
+                    <div id="kc26-list" class="mt-3 space-y-1.5"></div>
                 </div>
             </div>
 
@@ -1641,6 +1668,20 @@ body.gg-print-preview-open{overflow:hidden!important}
                                 <label class="text-white/60 block mb-0.5 font-medium">PLZ / Ort</label>
                                 <input id="admin-member-city" type="text" placeholder="18055 Rostock" class="w-full bg-zinc-900 border border-white/10 px-2.5 py-1.5 rounded-lg text-white">
                             </div>
+                        </div>
+                        <div class="glass-card rounded-xl p-2 border border-[#22ffaa]/20 bg-black/10">
+                            <label class="flex items-start gap-2 text-[10px] text-white/75">
+                                <input id="admin-member-no-other-club" type="checkbox" class="mt-0.5 accent-[#22ffaa]">
+                                <span>Ich habe vom Mitglied die gesetzlich erforderliche elektronische/schriftliche Versicherung dokumentiert, dass keine Mitgliedschaft in einer anderen Anbauvereinigung besteht. <b class="text-[#22ffaa]">Aufbewahrung: 3 Jahre.</b></span>
+                            </label>
+                            <div class="grid grid-cols-2 gap-2 mt-2">
+                                <select id="admin-member-residence-proof" class="w-full bg-zinc-900 border border-white/10 px-2 py-1.5 rounded-lg text-white text-[10px]">
+                                    <option value="">Nachweisart wählen</option>
+                                    <option>Personalausweis</option><option>Reisepass + geeigneter Aufenthaltsnachweis</option><option>Sonstiges amtliches Dokument</option>
+                                </select>
+                                <input id="admin-member-residence-checked" type="date" class="w-full bg-zinc-900 border border-white/10 px-2 py-1.5 rounded-lg text-white text-[10px]" title="Datum der Prüfung von Alter und Wohnsitz/gewöhnlichem Aufenthalt">
+                            </div>
+                            <p class="text-[9px] text-white/40 mt-1">Die App dokumentiert die Prüfung; sie ersetzt nicht die tatsächliche Vorlage und Prüfung des amtlichen Dokuments.</p>
                         </div>
                         <div class="grid grid-cols-2 gap-2">
                             <div>
@@ -1988,7 +2029,7 @@ body.gg-print-preview-open{overflow:hidden!important}
                 <div class="glass-card rounded-2xl p-3 border border-white/10">
                     <h4 class="font-black text-sm text-[#22ffaa] mb-0.5">📑 §26-Dokumentation</h4>
                     <p class="text-[10px] text-white/45 mb-2">Eigener Export der für die Dokumentation vorgesehenen Vereinsdaten – nicht mit anderen Berichten vermischt.</p>
-                    <button type="button" onclick="exportiereKcang26CSV()" class="w-full bg-[#22ffaa] text-black font-black py-2.5 rounded-xl text-[10px]"><i class="fa-solid fa-file-csv mr-1"></i> §26-Export (CSV)</button>
+                    <div class="grid grid-cols-2 gap-2"><button type="button" onclick="exportiereKcang26CSV()" class="bg-[#22ffaa] text-black font-black py-2.5 rounded-xl text-[10px]"><i class="fa-solid fa-file-csv mr-1"></i> §26-Export</button><button type="button" onclick="exportiereKcang26JahresberichtCSV()" class="bg-white/10 text-white font-bold py-2.5 rounded-xl text-[10px]">Jahresbericht</button></div>
                 </div>
 
                 <div class="glass-card rounded-2xl p-3 border border-white/10">
@@ -2169,7 +2210,7 @@ body.gg-print-preview-open{overflow:hidden!important}
                 <div class="bg-zinc-900/90 rounded-2xl p-4 border border-white/5"><span class="text-white/45 block text-[11px] mb-1">Geburtsdatum</span><b id="member-details-birthdate" class="text-base">—</b></div>
                 <div class="bg-zinc-900/90 rounded-2xl p-4 border border-white/5"><span class="text-white/45 block text-[11px] mb-1">Mitglied seit</span><b id="member-details-created" class="text-base">—</b></div>
                 <div class="bg-zinc-900/90 rounded-2xl p-4 border border-white/5 col-span-2"><span class="text-white/45 block text-[11px] mb-1">Anschrift</span><b id="member-details-address" class="text-base">—</b></div>
-                <div class="bg-zinc-900/90 rounded-2xl p-4 border border-white/5"><span class="text-white/45 block text-[11px] mb-1">Status</span><b id="member-details-status" class="text-base">—</b></div>
+                <div class="bg-zinc-900/90 rounded-2xl p-4 border border-white/5"><span class="text-white/45 block text-[11px] mb-1">Status</span><b id="member-details-status" class="text-base">—</b><p id="member-details-compliance" class="text-[9px] text-[#22ffaa]/70 mt-1"></p></div>
                 <div class="bg-zinc-900/90 rounded-2xl p-4 border border-white/5"><span class="text-white/45 block text-[11px] mb-1">Beitrag</span><b id="member-details-fee" class="text-base">—</b></div>
                 <div class="bg-zinc-900/90 rounded-2xl p-4 border border-white/5"><span class="text-white/45 block text-[11px] mb-1">Guthaben</span><b id="member-details-balance" class="text-[#22ffaa] text-lg">—</b></div>
                 <div class="bg-zinc-900/90 rounded-2xl p-4 border border-white/5"><span class="text-white/45 block text-[11px] mb-1">Kontingent</span><b id="member-details-quota" class="text-base">—</b></div>
@@ -2489,7 +2530,7 @@ body.gg-print-preview-open{overflow:hidden!important}
             'vereinKassenbons', 'vereinWissen', 'vereinInfoArtikel',
             'vereinQualitaetspruefungen', 'vereinRueckrufe', 'vereinAudit',
             'vereinGuthabenHistorie', 'vereinReservierungen', 'vereinUmsatz',
-            'vereinAbholzeitfenster', 'vereinSepaSichtbar', 'vereinPraevention', 'vereinZutritte',
+            'vereinAbholzeitfenster', 'vereinSepaSichtbar', 'vereinPraevention', 'vereinZutritte', 'vereinKcang26',
             'vereinUiEinstellungen',
             'standortKoordinaten', 'mitglieder', 'sorten'
         ]);
@@ -2694,7 +2735,7 @@ body.gg-print-preview-open{overflow:hidden!important}
                 vereinKassenbons: [], vereinReservierungen: [], vereinUmsatz: 0,
                 vereinWissen: [], vereinInfoArtikel: [], vereinQualitaetspruefungen: [],
                 vereinRueckrufe: [], vereinAudit: [], vereinZutritte: [], vereinGuthabenHistorie: [],
-                vereinPraevention: {name:'', contact:''}, vereinAbholzeitfenster: []
+                vereinPraevention: {name:'', contact:''}, vereinKcang26: [], vereinAbholzeitfenster: []
             };
             const pairs = await Promise.all(keys.map(async key => [key, await ggLadeD1StandDirekt(key, fallbacks[key] ?? null)]));
             let serverOk = true;
@@ -2719,6 +2760,7 @@ body.gg-print-preview-open{overflow:hidden!important}
                     case 'vereinZutritte': vereinZutritte = Array.isArray(result.value) ? result.value : vereinZutritte; ggZutrittQuelle = 'd1'; break;
                     case 'vereinGuthabenHistorie': vereinGuthabenHistorie = Array.isArray(result.value) ? result.value : vereinGuthabenHistorie; break;
                     case 'vereinPraevention': vereinPraevention = result.value && typeof result.value === 'object' ? result.value : vereinPraevention; break;
+                    case 'vereinKcang26': vereinKcang26 = Array.isArray(result.value) ? result.value : vereinKcang26; break;
                     case 'vereinAbholzeitfenster': {
                         const slots = ggAlsAbholzeitArray(result.value);
                         if (Array.isArray(slots)) vereinAbholzeitfenster = ggNormiereAbholzeitfenster(slots);
@@ -2736,12 +2778,12 @@ body.gg-print-preview-open{overflow:hidden!important}
                 mitteilungen: ['vereinNews','vereinAudit'],
                 wissen: ['vereinWissen','vereinAudit'],
                 mitgliederwissen: ['vereinInfoArtikel','vereinAudit'],
-                compliance: ['vereinPraevention','vereinQualitaetspruefungen','vereinRueckrufe','vereinAudit'],
+                compliance: ['vereinPraevention','vereinQualitaetspruefungen','vereinRueckrufe','vereinKcang26','vereinAudit'],
                 qualitaet: ['vereinQualitaetspruefungen','vereinSorten','vereinAudit'],
                 rueckruf: ['vereinRueckrufe','vereinSorten','vereinAudit'],
                 sortiment: ['vereinSorten','vereinAudit'],
                 protokolle: ['vereinProtokolle','vereinKassenbons','vereinReservierungen','vereinAudit','vereinMitglieder'],
-                export: ['vereinMitglieder','vereinSorten','vereinProtokolle','vereinKassenbons','vereinReservierungen','vereinUmsatz','vereinGuthabenHistorie','vereinAudit','vereinZutritte','vereinPraevention','vereinQualitaetspruefungen','vereinRueckrufe'],
+                export: ['vereinMitglieder','vereinSorten','vereinProtokolle','vereinKassenbons','vereinReservierungen','vereinUmsatz','vereinGuthabenHistorie','vereinAudit','vereinZutritte','vereinPraevention','vereinQualitaetspruefungen','vereinRueckrufe','vereinKcang26'],
                 zutritt: ['vereinZutritte'],
                 buchhaltung: ['vereinMitglieder','vereinReservierungen','vereinUmsatz','vereinGuthabenHistorie','vereinAudit'],
                 reservierungen: ['vereinReservierungen','vereinMitglieder','vereinSorten','vereinAbholzeitfenster','vereinAudit'],
@@ -2754,99 +2796,62 @@ body.gg-print-preview-open{overflow:hidden!important}
             return await ggAktualisiereDatenVonServer(keys);
         }
 
-        async function ggLadeZutritteAutoritaet(standardWert) {
+        async function ggLadeZutritteAutoritaet(standardWert, vollstaendig = true) {
             const fallback = Array.isArray(standardWert) ? standardWert : [];
             if (ggD1Available === null) await ggD1Health();
-            if (ggD1Available) {
-                const remote = await ggD1GetRaw('vereinZutritte');
-                if (remote && remote.value) {
-                    const data = await entschlüsseleDaten(remote.value, null);
-                    if (!Array.isArray(data)) {
-                        ggZutrittQuelle = 'd1';
-                        return Array.isArray(vereinZutritte) ? vereinZutritte.slice() : fallback;
-                    }
-                    try {
-                        localStorage.setItem('vereinZutritte', remote.value);
-                        if (remote.updated_at) ggSetLocalTs('vereinZutritte', remote.updated_at);
-                    } catch (_) {}
-                    ggZutrittQuelle = 'd1';
-                    return data;
-                }
-                ggZutrittQuelle = 'd1';
-                return [];
-            }
-            ggZutrittQuelle = 'cache';
+            if (!ggD1Available) return fallback;
             try {
-                const localRaw = localStorage.getItem('vereinZutritte');
-                if (!localRaw) return fallback;
-                const data = await entschlüsseleDaten(localRaw, fallback);
-                return Array.isArray(data) ? data : fallback;
-            } catch (_) {
+                const out = [];
+                let before = null;
+                do {
+                    const query = new URLSearchParams({ limit: '2000' });
+                    if (before) query.set('before', before);
+                    const r = await fetch('/api/access?' + query.toString(), { method: 'GET', headers: ggAuthHeaders(), cache: 'no-store' });
+                    if (!r.ok) throw new Error('access_get_failed');
+                    const j = await r.json();
+                    if (!j?.ok || !Array.isArray(j.entries)) throw new Error('access_payload_invalid');
+                    for (const row of j.entries) {
+                        const event = await entschlüsseleDaten(row.payload, null);
+                        if (event && typeof event === 'object') out.push(event);
+                    }
+                    before = vollstaendig ? (j.next_before || null) : null;
+                } while (vollstaendig && before);
+                ggZutrittQuelle = 'd1-append-only';
+                vereinZutritte = out;
+                return out;
+            } catch (e) {
+                console.warn('[GG-Zutritt] Serverjournal nicht lesbar:', e);
                 return fallback;
             }
         }
-        function ggMergeZutrittListen(remoteList, incomingList) {
-            const byId = new Map();
-            (Array.isArray(remoteList) ? remoteList : []).forEach(e => {
-                if (e && e.id) byId.set(String(e.id), e);
-            });
-            (Array.isArray(incomingList) ? incomingList : []).forEach(e => {
-                if (e && e.id) byId.set(String(e.id), e);
-            });
-            const merged = Array.from(byId.values());
-            merged.sort((a, b) => String(b.ts || '').localeCompare(String(a.ts || '')));
-            if (merged.length > 5000) merged.length = 5000;
-            return merged;
-        }
-        async function ggSchreibeZutritteAutoritaet(liste) {
+
+        async function ggAppendZutrittAutoritaet(eintrag) {
+            if (!eintrag || !eintrag.id) throw new Error('Zutrittseintrag fehlt.');
             if (ggD1Available === null) await ggD1Health();
-            if (!ggD1Available) {
-                throw new Error('Zutritt nicht bestätigt: Server/D1 nicht erreichbar.');
-            }
-            const remote = await ggD1GetRaw('vereinZutritte');
-            let remoteList = [];
-            if (remote && remote.value) {
-                const decoded = await entschlüsseleDaten(remote.value, null);
-                if (!Array.isArray(decoded)) {
-                    throw new Error('Zutritt nicht bestätigt: bestehende Serverdaten nicht lesbar.');
-                }
-                remoteList = decoded;
-            }
-            const merged = ggMergeZutrittListen(remoteList, liste);
-            const verschlüsselt = await verschlüsseleDaten(merged);
-            let clientUpdatedAt = new Date().toISOString();
-            if (remote && remote.updated_at) {
-                const rMs = Date.parse(remote.updated_at);
-                const nMs = Date.parse(clientUpdatedAt);
-                if (Number.isFinite(rMs) && rMs >= nMs) {
-                    clientUpdatedAt = new Date(rMs + 1000).toISOString();
-                }
-            }
-            const r = await fetch('/api/state/' + encodeURIComponent('vereinZutritte'), {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ value: verschlüsselt, clientUpdatedAt: clientUpdatedAt })
+            if (!ggD1Available) throw new Error('Zutritt nicht bestätigt: Server/D1 nicht erreichbar.');
+            const encrypted = await verschlüsseleDaten(eintrag);
+            const r = await fetch('/api/access', {
+                method: 'POST',
+                headers: ggAuthHeaders({ 'Content-Type': 'application/json' }),
+                cache: 'no-store',
+                body: JSON.stringify({ id: String(eintrag.id), occurred_at: eintrag.ts || new Date().toISOString(), payload: encrypted })
             });
             if (!r.ok) throw new Error('Zutritt nicht bestätigt: Server-Antwort ungültig.');
-            let j = null;
-            try { j = await r.json(); } catch (_) { throw new Error('Zutritt nicht bestätigt: Server-Antwort ungültig.'); }
-            if (j && (j.skipped === true || j.status === 'skipped')) {
-                throw new Error('Zutritt nicht bestätigt: Server hat den Stand nicht übernommen.');
+            const j = await r.json();
+            if (!j?.ok || j.appended !== true) throw new Error('Zutritt nicht bestätigt: Server hat den Eintrag nicht bestätigt.');
+            return true;
+        }
+
+        // Legacy-Schreibfunktion bleibt für Bestandscode vorhanden, schreibt aber ausschließlich append-only.
+        async function ggSchreibeZutritteAutoritaet(liste) {
+            const incoming = Array.isArray(liste) ? liste : [];
+            const remote = await ggLadeZutritteAutoritaet([], true);
+            const known = new Set(remote.map(e => String(e?.id || '')));
+            for (const entry of incoming) {
+                if (entry?.id && !known.has(String(entry.id))) await ggAppendZutrittAutoritaet(entry);
             }
-            if (!(j && j.ok)) throw new Error('Zutritt nicht bestätigt: Server hat abgelehnt.');
-            const verify = await ggD1GetRaw('vereinZutritte');
-            if (!verify || !verify.value) throw new Error('Zutritt nicht bestätigt: Serverstand nicht prüfbar.');
-            const verified = await entschlüsseleDaten(verify.value, null);
-            if (!Array.isArray(verified)) throw new Error('Zutritt nicht bestätigt: Serverstand nicht lesbar.');
-            const ids = new Set(verified.map(e => e && e.id ? String(e.id) : ''));
-            const missing = merged.filter(e => e && e.id && !ids.has(String(e.id)));
-            if (missing.length) throw new Error('Zutritt nicht bestätigt: Serverstand unvollständig.');
-            try {
-                localStorage.setItem('vereinZutritte', verify.value);
-                ggSetLocalTs('vereinZutritte', verify.updated_at || j.updated_at || clientUpdatedAt);
-            } catch (_) {}
-            ggZutrittQuelle = 'd1';
-            vereinZutritte = verified;
+            vereinZutritte = await ggLadeZutritteAutoritaet([], true);
+            return vereinZutritte;
         }
 
         async function ladeVerschlüsseltenState(schlüssel, standardWert) {
@@ -3094,6 +3099,7 @@ body.gg-print-preview-open{overflow:hidden!important}
         let vereinUiEinstellungen = { theme: 'dark' };
         let ggAbgabeLogFilterId = '';
         let vereinPraevention = { name: '', contact: '' };
+        let vereinKcang26 = [];
         let mitgliedSession = null;
         let standortKoordinaten = { lat: 54.08985, lng: 12.14362 };
 
@@ -3935,6 +3941,7 @@ body.gg-print-preview-open{overflow:hidden!important}
             ]);
             vereinQualitaetspruefungen = await ladeVerschlüsseltenState('vereinQualitaetspruefungen', []);
             vereinRueckrufe = await ladeVerschlüsseltenState('vereinRueckrufe', []);
+            vereinKcang26 = await ladeVerschlüsseltenState('vereinKcang26', []);
             // Legacy-Migration: ältere Builds verwendeten teils andere State-Namen.
             // Nur migrieren, wenn der aktuelle Bereich wirklich leer ist.
             if (!Array.isArray(vereinSorten) || vereinSorten.length===0) {
@@ -5095,8 +5102,7 @@ body.gg-print-preview-open{overflow:hidden!important}
                 if (ggD1Available) {
                     const bestand = await ggLadeZutritteAutoritaet([]);
                     const neu = [eintrag].concat(Array.isArray(bestand) ? bestand : []);
-                    if (neu.length > 5000) neu.length = 5000;
-                    await ggSchreibeZutritteAutoritaet(neu);
+                            await ggSchreibeZutritteAutoritaet(neu);
                     vereinZutritte = neu;
                 } else {
                     throw new Error('Server/D1 nicht erreichbar');
@@ -6655,6 +6661,8 @@ body.gg-print-preview-open{overflow:hidden!important}
             document.getElementById('member-details-created').textContent = m.createdAt || '—';
             document.getElementById('member-details-address').textContent = [m.address?.street,m.address?.city].filter(Boolean).join(', ') || 'Nicht hinterlegt';
             document.getElementById('member-details-status').textContent = m.status || '—';
+            const complianceNote = document.getElementById('member-details-compliance');
+            if (complianceNote) complianceNote.textContent = (m.otherAssociationDeclaration?.confirmed ? 'Selbstauskunft: dokumentiert' : 'Selbstauskunft: fehlt') + ' · ' + (m.residenceVerification?.ageAndResidenceVerified ? ('Wohnsitz/Alter geprüft: ' + (m.residenceVerification.proofType || 'Nachweis')) : 'Wohnsitz/Alter: nicht dokumentiert');
             document.getElementById('member-details-fee').textContent = `${Number(m.feeAmount||0).toFixed(2).replace('.',',')} € • ${m.feePaid ? 'Bezahlt' : 'Ausstehend'}`;
             document.getElementById('member-details-balance').textContent = `${Number(m.balance||0).toFixed(2).replace('.',',')} €`;
             document.getElementById('member-details-quota').textContent = `${Number(m.quota||0)} g / ${Number(m.monthlyQuotaLimit||m.quota||0)} g`;
@@ -6717,12 +6725,18 @@ body.gg-print-preview-open{overflow:hidden!important}
             const city = document.getElementById('admin-member-city')?.value.trim() || '';
             const accessCode = document.getElementById('admin-member-accesscode')?.value.trim();
             const email = document.getElementById('admin-member-email')?.value.trim().toLowerCase() || '';
+            const noOtherClub = !!document.getElementById('admin-member-no-other-club')?.checked;
+            const residenceProof = document.getElementById('admin-member-residence-proof')?.value || '';
+            const residenceChecked = document.getElementById('admin-member-residence-checked')?.value || '';
             const startBalance = parseFloat(document.getElementById('admin-member-balance')?.value) || 0.00;
 
             if (!name || !id || !birthDate || !street || !city || !accessCode || !email) {
                 alert('Bitte Name, Mitglieds-ID, vollständiges Geburtsdatum, Anschrift, E-Mail und Zugangscode vollständig ausfüllen.');
                 return;
             }
+            if (!noOtherClub) { alert('Die Mitgliedschaft darf erst angelegt werden, wenn die Versicherung über keine andere Anbauvereinigung dokumentiert wurde.'); return; }
+            if (!residenceProof || !residenceChecked) { alert('Bitte den amtlichen Nachweis für Wohnsitz/gewöhnlichen Aufenthalt in Deutschland und das Prüfdatum dokumentieren.'); return; }
+            if (Array.isArray(vereinMitglieder) && vereinMitglieder.length >= 500) { alert('Die gesetzliche Höchstzahl von 500 Mitgliedern ist erreicht. Eine weitere Aufnahme wird blockiert.'); return; }
             const currentYear = new Date().getFullYear();
             const geb = new Date(`${birthDate}T00:00:00`);
             const heute = new Date();
@@ -6763,6 +6777,8 @@ body.gg-print-preview-open{overflow:hidden!important}
                 feePaid: false,
                 feeAmount: 120.00,
                 balance: Number(startBalance.toFixed(2)),
+                otherAssociationDeclaration: { confirmed: true, date: new Date().toISOString(), retentionUntil: (() => { const d=new Date(); d.setFullYear(d.getFullYear()+3); return d.toISOString(); })() },
+                residenceVerification: { proofType: residenceProof, checkedAt: residenceChecked, ageAndResidenceVerified: true },
                 createdAt: new Date().toLocaleString('de-DE')
             };
 
@@ -6794,6 +6810,9 @@ body.gg-print-preview-open{overflow:hidden!important}
                 const el = document.getElementById(id); if (el) el.value = '';
             });
             const bal = document.getElementById('admin-member-balance'); if (bal) bal.value = '0.00';
+            const noClub = document.getElementById('admin-member-no-other-club'); if (noClub) noClub.checked = false;
+            const proof = document.getElementById('admin-member-residence-proof'); if (proof) proof.value = '';
+            const checked = document.getElementById('admin-member-residence-checked'); if (checked) checked.value = '';
 
             // Neue Karte sichtbar machen und QR direkt öffnen.
             const newIndex = vereinMitglieder.findIndex(m => String(m.id).toLowerCase() === id.toLowerCase());
@@ -7517,6 +7536,8 @@ body.gg-print-preview-open{overflow:hidden!important}
             const memberId = document.getElementById('pos-member-select').value;
             const strainName = document.getElementById('pos-strain-select').value;
             const menge = parseInt(document.getElementById('pos-amount-input').value) || 10;
+            const idChecked = !!document.getElementById('pos-id-check')?.checked;
+            if (!idChecked) { alert('Vor der Abgabe muss der amtliche Lichtbildausweis tatsächlich vorgelegt und geprüft werden.'); return; }
 
             const mitglied = vereinMitglieder.find(m => m.id === memberId);
             const sorte = vereinSorten.find(s => s.name === strainName);
@@ -7558,12 +7579,15 @@ body.gg-print-preview-open{overflow:hidden!important}
             rendereKassenbons();
             rendereProtokolle();
             rendereMitgliederIdentität();
+            const idCheck=document.getElementById('pos-id-check'); if(idCheck) idCheck.checked=false;
             alert(`Abgabe verbucht! Kassenbon #${bonId} generiert.`);
         }
 
         async function ggBucheAbgabeCart() {
             const cart = ggAktivePosAbgabeCart;
             if (!cart || !Array.isArray(cart.items) || !cart.items.length) return;
+            const idChecked = !!document.getElementById('pos-id-check')?.checked;
+            if (!idChecked) { alert('Vor der Abgabe muss der amtliche Lichtbildausweis tatsächlich vorgelegt und geprüft werden.'); return; }
             const mitglied = vereinMitglieder.find(m => String(m.id) === String(cart.memberId));
             if (!mitglied) { alert('Mitglied zum Warenkorb nicht gefunden.'); return; }
             const klasse = abgabeklasse(mitglied);
@@ -7610,10 +7634,13 @@ body.gg-print-preview-open{overflow:hidden!important}
             rendereKassenbons();
             rendereProtokolle();
             rendereMitgliederIdentität();
+            const idCheck=document.getElementById('pos-id-check'); if(idCheck) idCheck.checked=false;
             alert('Warenkorb-Abgabe verbucht! Kassenbon #' + bonId + ' generiert.');
         }
 
         async function ggSchliesseReservierungAbgabe(resId) {
+            const idChecked = !!document.getElementById('pos-id-check')?.checked;
+            if (!idChecked) { alert('Vor der Abgabe muss der amtliche Lichtbildausweis tatsächlich vorgelegt und geprüft werden.'); return; }
             const res = (vereinReservierungen || []).find(r => String(r.id) === String(resId));
             if (!res) { alert('Reservierung nicht gefunden.'); ggAktivePosReservierungId = null; return; }
             if (!ggReservierungIstAktiv(res)) { alert('Diese Reservierung ist bereits erledigt und wird nicht erneut gebucht.'); return; }
@@ -7649,6 +7676,7 @@ body.gg-print-preview-open{overflow:hidden!important}
             rendereProtokolle();
             rendereReservierungen();
             rendereMitgliederIdentität();
+            const idCheck=document.getElementById('pos-id-check'); if(idCheck) idCheck.checked=false;
             alert('Reservierung ' + res.id + ' als abgeholt verbucht. Kontingent wurde bereits bei der Reservierung berücksichtigt.');
         }
 
@@ -8445,7 +8473,7 @@ body.gg-print-preview-open{overflow:hidden!important}
             if (!ggD1Available) {
                 throw new Error('Zutritt nicht bestätigt: Server/D1 nicht erreichbar.');
             }
-            const remoteList = await ggLadeZutritteAutoritaet([]);
+            const remoteList = await ggLadeZutritteAutoritaet([], true);
             const now = new Date();
             const windowMs = 45000;
             const bestand = Array.isArray(remoteList) ? remoteList : [];
@@ -8469,7 +8497,6 @@ body.gg-print-preview-open{overflow:hidden!important}
                 club: 'Green Generation Rostock'
             };
             const neu = [eintrag].concat(bestand);
-            if (neu.length > 5000) neu.length = 5000;
             await ggSchreibeZutritteAutoritaet(neu);
             try { await protokolliereAudit('zutritt_erfasst', 'Mitglied: ' + eintrag.memberId); } catch (_) {}
             return eintrag;
@@ -8712,13 +8739,18 @@ body.gg-print-preview-open{overflow:hidden!important}
         });
 
         function rendereComplianceCenter() {
+            setTimeout(rendereKcang26Liste, 0);
             const el = document.getElementById('compliance-dashboard');
             if (!el) return;
             const checks = [
                 ['Mitgliederbestand', Array.isArray(vereinMitglieder)],
                 ['Abgabekontingente', Array.isArray(vereinMitglieder) && vereinMitglieder.every(m => abgabeklasse(m).monthly === 30 || abgabeklasse(m).monthly === 50)],
                 ['Chargenprüfung', Array.isArray(vereinQualitaetspruefungen)],
-                ['Prävention', !!(vereinPraevention && (vereinPraevention.name || vereinPraevention.contact))],
+                ['Prävention', !!(vereinPraevention && vereinPraevention.name && vereinPraevention.trainingDate && vereinPraevention.trainingProof && vereinPraevention.healthYouthConcept==='vorhanden')],
+                ['Mitgliedschaftsgrenze', Array.isArray(vereinMitglieder) && vereinMitglieder.length <= 500],
+                ['§16 Selbstauskunft', Array.isArray(vereinMitglieder) && vereinMitglieder.every(m => m.otherAssociationDeclaration?.confirmed === true)],
+                ['§16 Wohnsitz-/Altersnachweis', Array.isArray(vereinMitglieder) && vereinMitglieder.every(m => m.residenceVerification?.ageAndResidenceVerified === true)],
+                ['§26 Rückverfolgbarkeit', Array.isArray(vereinKcang26)],
                 ['Rückrufverwaltung', Array.isArray(vereinRueckrufe)],
                 ['Audit-Protokoll', Array.isArray(vereinAudit)]
             ];
@@ -8776,8 +8808,8 @@ body.gg-print-preview-open{overflow:hidden!important}
         }
         async function exportiereComplianceBericht() {
             if (!istVorstandEingeloggt) return;
-            await ggAktualisiereDatenVonServer(['vereinPraevention','vereinQualitaetspruefungen','vereinRueckrufe','vereinAudit']);
-            const data={erstelltAm:new Date().toISOString(), hinweis:'Technischer Bericht zur internen Unterstützung; keine behördliche Abnahme.', praevention:vereinPraevention, qualitaet:vereinQualitaetspruefungen, rueckrufe:vereinRueckrufe, audit:vereinAudit};
+            await ggAktualisiereDatenVonServer(['vereinPraevention','vereinQualitaetspruefungen','vereinRueckrufe','vereinKcang26','vereinAudit']);
+            const data={erstelltAm:new Date().toISOString(), hinweis:'Technischer Bericht zur internen Unterstützung; keine behördliche Abnahme.', praevention:vereinPraevention, kcang26:vereinKcang26, qualitaet:vereinQualitaetspruefungen, rueckrufe:vereinRueckrufe, audit:vereinAudit};
             const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json;charset=utf-8'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='GreenGeneration-Compliance-Bericht.json'; a.click(); URL.revokeObjectURL(url);
         }
 
@@ -8820,11 +8852,11 @@ body.gg-print-preview-open{overflow:hidden!important}
                         <div><span>Menge</span><strong>${esc(menge)} g</strong></div>
                         <div><span>Erntedatum</span><strong>${esc(s.harvestDate || 'nicht hinterlegt')}</strong></div>
                         <div><span>MHD</span><strong>${esc(s.bestBefore || 'nicht hinterlegt')}</strong></div>
-                        <div><span>THC</span><strong>${esc(s.thc || 'nicht hinterlegt')}</strong></div>
-                        <div><span>CBD</span><strong>${esc(s.cbd || 'nicht hinterlegt')}</strong></div>
+                        <div><span>THC Ø</span><strong>${esc(s.thc || 'nicht hinterlegt')}</strong></div>
+                        <div><span>CBD Ø</span><strong>${esc(s.cbd || 'nicht hinterlegt')}</strong></div>
                         <div><span>Qualitätsstatus</span><strong>${esc(s.qaStatus || 'offen')}</strong></div>
                     </div>
-                    <div class="gg-info-note"><strong>Hinweis:</strong> Dieser Informationszettel gibt die im System hinterlegten Angaben zur ausgewählten Abgabe wieder.</div>
+                    <div class="gg-info-note"><strong>Gesundheits- und Präventionshinweise gemäß §21 Abs. 3 KCanG:</strong><br>• Unter 25 Jahren können mögliche neurologische und gesundheitliche Schäden bestehen.<br>• Kinder- und Jugendschutz beachten; kein Konsum in Schwangerschaft und Stillzeit.<br>• Wechselwirkungen mit Arzneimitteln sowie Risiken bei Mischkonsum mit anderen psychoaktiv wirksamen Substanzen beachten.<br>• Cannabis kann die Straßenverkehrstauglichkeit und das Bedienen von Maschinen beeinträchtigen.<br>• Evidenzbasierte Informationen zu Dosierung, Anwendung und Risiken sowie Hinweise auf Beratungs- und Behandlungsstellen sind bereitzustellen.</div>
                     <div class="gg-info-footer">Green Generation Rostock · Interner Informationszettel · Charge ${esc(s.batch || '—')}</div>
                 </div>`;
             document.body.appendChild(overlay);
@@ -9033,14 +9065,70 @@ body.gg-print-preview-open{overflow:hidden!important}
             ggExportFilterListe((vereinMitglieder||[]).filter(m=>m&&m.financeEntryActive!==false),'finance').forEach(m=>rows.push([m.name||'',m.id||'',m.feePaid?'Bezahlt':'Ausstehend',Number(m.feeAmount||0).toFixed(2),Number(m.balance||0).toFixed(2)]));
             ggDownloadDatei('Green-Generation-Finanzbericht.csv','\ufeff'+rows.map(r=>r.map(ggCsvEsc).join(';')).join('\n'),'text/csv;charset=utf-8');
         }
+        async function speichereKcang26Eintrag() {
+            if (!istVorstandEingeloggt) return;
+            const type=document.getElementById('kc26-type')?.value||'';
+            const date=document.getElementById('kc26-date')?.value||new Date().toISOString().slice(0,10);
+            const member=document.getElementById('kc26-member')?.value.trim()||'';
+            const birthYear=document.getElementById('kc26-member-birthyear')?.value||'';
+            const grams=document.getElementById('kc26-grams')?.value||'';
+            const pieces=document.getElementById('kc26-pieces')?.value||'';
+            const strain=document.getElementById('kc26-strain')?.value.trim()||'';
+            const thc=document.getElementById('kc26-thc')?.value||'';
+            const cbd=document.getElementById('kc26-cbd')?.value||'';
+            const source=document.getElementById('kc26-source')?.value.trim()||'';
+            const start=document.getElementById('kc26-start')?.value.trim()||'';
+            const dest=document.getElementById('kc26-dest')?.value.trim()||'';
+            const required = type==='vermehrungsquelle' ? !!source : type==='vermehrungsabgabe' ? (!!member && !!pieces) : type==='transport' ? (!!grams && !!strain && !!member && !!start && !!dest) : !!date;
+            if(!required){ alert('Für diesen §26-Eintrag fehlen Pflichtangaben.'); return; }
+            const entry={id:'K26-'+Date.now()+'-'+Math.floor(Math.random()*1e6),type,date,member,birthYear,grams,pieces,strain,thc,cbd,source,start,dest,createdAt:new Date().toISOString()};
+            if(!Array.isArray(vereinKcang26)) vereinKcang26=[];
+            vereinKcang26.unshift(entry);
+            await speichereVerschlüsseltenState('vereinKcang26',vereinKcang26);
+            await protokolliereAudit('kcang26_entry',type);
+            rendereKcang26Liste();
+            alert('§26-Eintrag dauerhaft dokumentiert.');
+        }
+        function rendereKcang26Liste(){
+            const el=document.getElementById('kc26-list'); if(!el)return;
+            const list=Array.isArray(vereinKcang26)?vereinKcang26.slice(0,20):[];
+            el.innerHTML=list.length?list.map(x=>`<div class="bg-zinc-900/80 rounded-lg p-2 text-[9px] border border-white/5"><b class="text-[#22ffaa]">${escapeHtml(x.type||'')}</b> · ${escapeHtml(x.date||'')} · ${escapeHtml(x.strain||'')}${x.grams?' · '+escapeHtml(x.grams)+' g':''}${x.pieces?' · '+escapeHtml(x.pieces)+' Stück':''}</div>`).join(''):'<p class="text-white/35 text-[9px]">Noch keine §26-Einträge.</p>';
+        }
+
         async function exportiereKcang26CSV() {
             if (!istVorstandEingeloggt) return;
-            await ggAktualisiereDatenVonServer(['vereinMitglieder','vereinSorten','vereinProtokolle','vereinKassenbons','vereinReservierungen','vereinGuthabenHistorie','vereinAudit']);
-            const rows=[['Bereich','Datum','Mitglied','Mitglieds-ID','Sorte','Charge','Menge','Betrag','Status','Referenz']];
-            ggExportFilterListe(vereinProtokolle,'kcang').forEach(p=>rows.push(['Abgabeprotokoll',p.date||'',p.member||'',p.memberId||'',p.strain||'',p.batch||'',p.amount??p.grams??'',p.price??'',p.status||'Abgabe',p.bonId||p.id||'']));
-            ggExportFilterListe(vereinKassenbons,'kcang').forEach(p=>rows.push(['Kassenbon',p.date||'',p.member||'',p.memberId||'',p.strain||'',p.batch||'',p.amount??p.grams??'',p.total??p.price??'',p.status||'',p.id||p.bonId||'']));
+            await ggAktualisiereDatenVonServer(['vereinMitglieder','vereinSorten','vereinProtokolle','vereinKassenbons','vereinReservierungen','vereinGuthabenHistorie','vereinAudit','vereinKcang26']);
+            const rows=[['Bereich','Datum','Mitglied','Geburtsjahr','Mitglieds-ID','Sorte','Charge','Menge g','Stück','THC Ø %','CBD Ø %','Betrag','Quelle','Transport Start','Transport Ziel','Status','Referenz']];
+            ggExportFilterListe(vereinProtokolle,'kcang').forEach(p=>rows.push(['Cannabis-Weitergabe',p.date||'',p.member||'',p.birthYear||'',p.memberId||'',p.strain||'',p.batch||'',p.amount??p.grams??'', '',p.thc??'',p.cbd??'',p.price??'', '', '', '',p.status||'Abgabe',p.bonId||p.id||'']));
+            ggExportFilterListe(vereinKassenbons,'kcang').forEach(p=>rows.push(['Kassenbon',p.date||'',p.member||'',p.birthYear||'',p.memberId||'',p.strain||'',p.batch||'',p.amount??p.grams??'', '',p.thc??'',p.cbd??'',p.total??p.price??'', '', '', '',p.status||'',p.id||p.bonId||'']));
+            ggExportFilterListe(vereinKcang26,'kcang').forEach(x=>rows.push([x.type||'',x.date||'',x.member||'',x.birthYear||'','',x.strain||'',x.batch||'',x.grams||'',x.pieces||'',x.thc||'',x.cbd||'','',x.source||'',x.start||'',x.dest||'','',''+(x.id||'')]));
             ggDownloadDatei('Green-Generation-KCanG-§26-Dokumentation.csv','\ufeff'+rows.map(r=>r.map(ggCsvEsc).join(';')).join('\n'),'text/csv;charset=utf-8');
         }
+        async function exportiereKcang26JahresberichtCSV() {
+            if(!istVorstandEingeloggt)return;
+            await ggAktualisiereDatenVonServer(['vereinMitglieder','vereinSorten','vereinProtokolle','vereinKassenbons','vereinKcang26']);
+            const year=prompt('Für welches Kalenderjahr soll die §26-Jahresmeldung erstellt werden?', String(new Date().getFullYear()-1));
+            if(!year || !/^\d{4}$/.test(String(year))) return;
+            const y=String(year);
+            const events=(vereinKcang26||[]).filter(x=>String(x.date||'').slice(0,4)===y);
+            const deliveries=(vereinProtokolle||[]).filter(x=>String(x.date||'').slice(0,4)===y);
+            const rows=[['Jahr','Dokumentationsart','Sorte','Menge g','Stück','THC Ø %','CBD Ø %','Quelle','Transport Start','Transport Ziel','Transportmitglied']];
+            events.forEach(x=>rows.push([y,x.type||'',x.strain||'',x.grams||'',x.pieces||'',x.thc||'',x.cbd||'',x.source||'',x.start||'',x.dest||'',x.type==='transport'?(x.member||''): '']));
+            deliveries.forEach(x=>{
+                const m=vereinMitglieder.find(m=>String(m.id||'')===String(x.memberId||'') || String(x.member||'').includes(String(m.name||'')));
+                const st=vereinSorten.find(s=>String(s.name||'')===String(x.strain||''));
+                rows.push([y,'Cannabis-Weitergabe',x.strain||'',String(x.amount??x.grams??'').replace(/g/gi,''),'',x.thc??st?.thc??'',x.cbd??st?.cbd??'','','','', '']);
+            });
+            ggDownloadDatei('Green-Generation-KCanG-§26-Jahresmeldung-anonymisiert-'+y+'.csv','\ufeff'+rows.map(r=>r.map(ggCsvEsc).join(';')).join('\n'),'text/csv;charset=utf-8');
+            const summary={};
+            const add=(strain)=>summary[strain||'Nicht angegeben']||(summary[strain||'Nicht angegeben']={anbau:0,abgabe:0,vernichtung:0,bestand:'',thc:'',cbd:''});
+            events.forEach(x=>{const b=add(x.strain); if(x.type==='anbau')b.anbau+=Number(x.grams||0); if(x.type==='vernichtung')b.vernichtung+=Number(x.grams||0); if(x.type==='bestand')b.bestand=x.grams||b.bestand; if(x.thc)b.thc=x.thc; if(x.cbd)b.cbd=x.cbd;});
+            deliveries.forEach(x=>{const b=add(x.strain); b.abgabe+=Number(String(x.amount??x.grams??0).replace(',','.').replace(/[^0-9.\-]/g,'')); const st=vereinSorten.find(s=>String(s.name||'')===String(x.strain||'')); if(x.thc)b.thc=x.thc; else if(st?.thc)b.thc=st.thc; if(x.cbd)b.cbd=x.cbd; else if(st?.cbd)b.cbd=st.cbd;});
+            const sumRows=[['Jahr','Sorte','angebaut g','weitergegeben g','vernichtet g','Bestand g Jahresende','THC Ø %','CBD Ø %']];
+            Object.entries(summary).forEach(([strain,b])=>sumRows.push([y,strain,b.anbau.toFixed(2),b.abgabe.toFixed(2),b.vernichtung.toFixed(2),b.bestand,b.thc,b.cbd]));
+            ggDownloadDatei('Green-Generation-KCanG-§26-Mengenmeldung-'+y+'.csv','\ufeff'+sumRows.map(r=>r.map(ggCsvEsc).join(';')).join('\n'),'text/csv;charset=utf-8');
+        }
+
         async function exportiereMitgliederCSV() {
             if (!istVorstandEingeloggt) return;
             await ggAktualisiereDatenVonServer(['vereinMitglieder']);
@@ -9076,7 +9164,7 @@ body.gg-print-preview-open{overflow:hidden!important}
 
         async function druckeComplianceBericht() {
             if (!istVorstandEingeloggt) return;
-            await ggAktualisiereDatenVonServer(['vereinPraevention','vereinQualitaetspruefungen','vereinRueckrufe','vereinAudit']);
+            await ggAktualisiereDatenVonServer(['vereinPraevention','vereinQualitaetspruefungen','vereinRueckrufe','vereinKcang26','vereinAudit']);
             const esc=v=>escapeHtml(v??'');
             const praev=vereinPraevention||{};
             const q=ggExportFilterListe(vereinQualitaetspruefungen,'compliance').map(x=>'<tr><td>'+esc(x.date||x.datum||'')+'</td><td>'+esc(x.batch||'')+'</td><td>'+esc(x.status||x.ergebnis||'')+'</td><td>'+esc(x.details||x.notiz||'')+'</td></tr>').join('');
@@ -9097,7 +9185,7 @@ body.gg-print-preview-open{overflow:hidden!important}
         async function exportiereDokumentation() {
             if (!istVorstandEingeloggt) return;
             await ggAktualisiereDatenVonServer(['vereinMitglieder','vereinSorten','vereinProtokolle','vereinKassenbons','vereinReservierungen','vereinUmsatz','vereinAudit','vereinGuthabenHistorie','vereinZutritte','vereinPraevention','vereinQualitaetspruefungen','vereinRueckrufe','vereinInfoArtikel']);
-            const data={exportiertAm:new Date().toISOString(),hinweis:'Aktueller Serverstand zum Zeitpunkt des Exports.',mitglieder:vereinMitglieder,sorten:vereinSorten,abgabeprotokoll:vereinProtokolle,kassenbons:vereinKassenbons,reservierungen:vereinReservierungen,umsatz:vereinUmsatz,aenderungsprotokoll:vereinAudit,guthabenHistorie:vereinGuthabenHistorie,zutrittsprotokoll:vereinZutritte,compliance:{praevention:vereinPraevention,qualitaetspruefungen:vereinQualitaetspruefungen,rueckrufe:vereinRueckrufe},informationsartikel:vereinInfoArtikel};
+            const data={exportiertAm:new Date().toISOString(),hinweis:'Aktueller Serverstand zum Zeitpunkt des Exports.',mitglieder:vereinMitglieder,sorten:vereinSorten,abgabeprotokoll:vereinProtokolle,kassenbons:vereinKassenbons,reservierungen:vereinReservierungen,umsatz:vereinUmsatz,aenderungsprotokoll:vereinAudit,guthabenHistorie:vereinGuthabenHistorie,zutrittsprotokoll:vereinZutritte,compliance:{praevention:vereinPraevention,kcang26:vereinKcang26,qualitaetspruefungen:vereinQualitaetspruefungen,rueckrufe:vereinRueckrufe},informationsartikel:vereinInfoArtikel};
             ggDownloadDatei('GreenGeneration-Gesamtdokumentation.json',JSON.stringify(data,null,2),'application/json;charset=utf-8');
         }
 </script>
