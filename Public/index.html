@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Green Generation Rostock</title>
-<meta name="gg-build" content="V31-UI-SMOKE-DYNAMIC-HARBOR-NONDESTRUCTIVE">
-<meta name="gg-build-date" content="2026-09-28">
+<meta name="gg-build" content="V32-UI-SMOKE-DYNAMIC-HARBOR-NONDESTRUCTIVE-APP-DIALOGS">
+<meta name="gg-build-date" content="2026-10-02">
     
     <!-- PWA & Mobile Web App Meta Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -271,6 +271,7 @@
         body.pre-gate > #member-login-modal,
         body.pre-gate > #login-modal-overlay { visibility: visible !important; }
         body.gate-open > *:not(#security-gate) { visibility: visible !important; }
+        body.pre-gate > #gg-app-age-overlay, body.pre-gate > #gg-app-confirm-overlay, body.pre-gate > #gg-app-toast-stack { visibility: visible !important; }
 
         #admin-drawer-overlay {
             display: none;
@@ -597,6 +598,18 @@ select,input,textarea,button{touch-action:manipulation}
 .gg-info-grid{display:grid;grid-template-columns:1fr 1fr;border:1px solid #bbb;border-radius:8px;overflow:hidden}.gg-info-grid>div{padding:12px;border-bottom:1px solid #ddd}.gg-info-grid>div:nth-child(odd){border-right:1px solid #ddd}.gg-info-grid span{display:block;font-size:9px;color:#666;text-transform:uppercase;font-weight:700}.gg-info-grid strong{display:block;font-size:15px;margin-top:4px}.gg-info-note{margin-top:20px;border:1px solid #ccc;border-radius:8px;padding:12px;font-size:11px;line-height:1.5}.gg-info-footer{margin-top:20px;font-size:9px;color:#666}
 body.gg-print-preview-open{overflow:hidden!important}
 @media print{html body.gg-print-preview-open>*:not(#gg-infozettel-preview){display:none!important}body.gg-print-preview-open{background:#fff!important;overflow:visible!important}.gg-infozettel-overlay{position:static!important;inset:auto!important;background:#fff!important;padding:0!important;overflow:visible!important}.gg-infozettel-toolbar{display:none!important}.gg-info-page{width:auto!important;min-height:0!important;margin:0!important;padding:0!important;box-shadow:none!important}.gg-info-grid{break-inside:avoid}.gg-info-note{break-inside:avoid}}
+
+/* V32 APP-STYLE SECURITY / CONFIRM / TOAST UI */
+#gg-app-confirm-overlay,#gg-app-age-overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(2,7,6,.82);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+#gg-app-confirm-overlay{z-index:2147483001}
+#gg-app-age-overlay{z-index:2147483002}
+.gg-app-dialog{width:min(100%,410px);border:1px solid rgba(34,255,170,.28);border-radius:28px;background:linear-gradient(145deg,rgba(13,28,25,.97),rgba(8,13,14,.98));box-shadow:0 30px 90px rgba(0,0,0,.6),0 0 40px rgba(34,255,170,.08);overflow:hidden}
+.gg-app-dialog-head{padding:22px 22px 10px}.gg-app-dialog-icon{width:48px;height:48px;border-radius:16px;display:flex;align-items:center;justify-content:center;margin-bottom:13px;background:rgba(34,255,170,.12);border:1px solid rgba(34,255,170,.25);color:#22ffaa;font-size:20px}
+.gg-app-dialog h3{margin:0;font-size:17px;font-weight:900}.gg-app-dialog p{margin:7px 0 0;color:rgba(255,255,255,.62);font-size:11px;line-height:1.55}
+.gg-app-dialog-body{padding:10px 22px 18px}.gg-app-dialog-actions{display:flex;gap:10px;padding:0 22px 22px}.gg-app-btn{flex:1;border:0;border-radius:15px;padding:13px 14px;font-weight:900;font-size:12px;cursor:pointer}.gg-app-btn-green{background:linear-gradient(135deg,#22ffaa,#00b96b);color:#04110b;box-shadow:0 8px 24px rgba(34,255,170,.16)}.gg-app-btn-dark{background:rgba(255,255,255,.07);color:#fff;border:1px solid rgba(255,255,255,.12)}
+.gg-app-check{display:flex;gap:10px;align-items:flex-start;margin-top:12px;padding:12px;border-radius:16px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);cursor:pointer}.gg-app-check input{margin-top:2px;accent-color:#22ffaa}.gg-app-check span{font-size:10px;color:rgba(255,255,255,.72);line-height:1.5}.gg-app-check b{color:#fff}.gg-app-privacy{margin-top:12px;padding:12px 13px;border-radius:16px;background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.07);font-size:9px;line-height:1.55;color:rgba(255,255,255,.5)}
+#gg-app-toast-stack{position:fixed;left:12px;right:12px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:2147483003;display:flex;flex-direction:column;gap:9px;pointer-events:none;align-items:center}.gg-app-toast{width:min(100%,430px);display:flex;align-items:flex-start;gap:12px;padding:13px 14px;border-radius:18px;background:linear-gradient(135deg,rgba(12,30,26,.96),rgba(10,15,17,.97));border:1px solid rgba(34,255,170,.25);box-shadow:0 18px 55px rgba(0,0,0,.45);animation:ggToastIn .22s ease-out both}.gg-app-toast-icon{width:34px;height:34px;border-radius:12px;display:grid;place-items:center;background:rgba(34,255,170,.13);color:#22ffaa;flex:0 0 auto}.gg-app-toast-title{font-size:11px;font-weight:900;color:#fff}.gg-app-toast-msg{font-size:10px;line-height:1.45;color:rgba(255,255,255,.62);margin-top:2px}.gg-app-toast-close{margin-left:auto;color:rgba(255,255,255,.55);font-size:18px;cursor:pointer;padding:0 2px}.gg-app-toast.warn{border-color:rgba(255,190,50,.3)}.gg-app-toast.warn .gg-app-toast-icon{color:#ffd15a;background:rgba(255,190,50,.12)}.gg-app-toast.error{border-color:rgba(255,90,90,.3)}.gg-app-toast.error .gg-app-toast-icon{color:#ff7070;background:rgba(255,90,90,.12)}
+@keyframes ggToastIn{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
 </style></style>
 </head>
 <body class="text-white min-h-screen flex flex-col justify-between selection:bg-[#22ffaa] selection:text-black pre-gate">
@@ -619,6 +632,48 @@ body.gg-print-preview-open{overflow:hidden!important}
         <div class="gg-transition-mark"><i class="fa-solid fa-leaf"></i><span class="gg-transition-check"><i class="fa-solid fa-check"></i></span></div>
     </div>
 
+
+    <!-- V32: App-Stil Sicherheits-/Datenschutz-Hinweis beim Start -->
+    <div id="gg-app-age-overlay" aria-modal="true" role="dialog">
+        <div class="gg-app-dialog">
+            <div class="gg-app-dialog-head">
+                <div class="gg-app-dialog-icon"><i class="fa-solid fa-shield-heart"></i></div>
+                <h3>Willkommen bei Green Generation Rostock</h3>
+                <p>Bitte bestätige vor dem Zugang zur App, dass du die Zugangsvoraussetzungen kennst.</p>
+            </div>
+            <div class="gg-app-dialog-body">
+                <label class="gg-app-check">
+                    <input id="gg-age-confirm" type="checkbox">
+                    <span><b>Ich bestätige, dass ich mindestens 21 Jahre alt bin.</b><br>Der Zugang zum Club ist ab 21 Jahren vorgesehen.</span>
+                </label>
+                <label class="gg-app-check">
+                    <input id="gg-privacy-confirm" type="checkbox">
+                    <span><b>Datenschutzhinweis gelesen.</b><br>Ich habe den folgenden Datenschutzhinweis zur Kenntnis genommen.</span>
+                </label>
+                <div class="gg-app-privacy">
+                    <b style="color:#fff">Datenschutzhinweis:</b> Für die Nutzung der Vereins-App können je nach Funktion insbesondere Mitglieds-, Zugangs-, Reservierungs-, Abgabe-, Guthaben- und Protokolldaten verarbeitet werden. Die Verarbeitung erfolgt zur Verwaltung des Vereins und der von dir genutzten Funktionen sowie zur Erfüllung gesetzlicher Pflichten. Daten werden nur im erforderlichen Umfang verarbeitet und nach den jeweils geltenden gesetzlichen Aufbewahrungs- und Löschfristen behandelt. Deine gesetzlichen Datenschutzrechte bleiben unberührt. Eine vollständige Datenschutzerklärung mit Verantwortlichem, Kontakt, Rechtsgrundlagen, Speicherdauern und Betroffenenrechten sollte im Verein separat bereitgestellt werden.
+                </div>
+            </div>
+            <div class="gg-app-dialog-actions">
+                <button type="button" class="gg-app-btn gg-app-btn-green" onclick="ggBestaetigeStartGate()"><i class="fa-solid fa-check mr-1"></i> Bestätigen &amp; fortfahren</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="gg-app-confirm-overlay" class="hidden" aria-modal="true" role="dialog">
+        <div class="gg-app-dialog">
+            <div class="gg-app-dialog-head">
+                <div class="gg-app-dialog-icon" style="color:#ff7272;background:rgba(255,80,80,.12);border-color:rgba(255,100,100,.25)"><i class="fa-solid fa-trash-can"></i></div>
+                <h3 id="gg-app-confirm-title">Sind Sie sich sicher?</h3>
+                <p id="gg-app-confirm-message">Diese Aktion kann nicht rückgängig gemacht werden.</p>
+            </div>
+            <div class="gg-app-dialog-actions">
+                <button type="button" class="gg-app-btn gg-app-btn-dark" onclick="ggAppConfirmCancel()">Abbrechen</button>
+                <button type="button" class="gg-app-btn" style="background:linear-gradient(135deg,#ff6670,#e51f3a);color:#fff;box-shadow:0 8px 24px rgba(255,70,80,.16)" onclick="ggAppConfirmOk()"><i class="fa-solid fa-trash-can mr-1"></i> Löschen</button>
+            </div>
+        </div>
+    </div>
+    <div id="gg-app-toast-stack" aria-live="polite"></div>
 
     <!-- START-GATE -->
     <div id="security-gate">
@@ -1819,6 +1874,31 @@ body.gg-print-preview-open{overflow:hidden!important}
         </div>
 
     </main>
+    <!-- ZUSATZ: Stornierungshinweis für das betroffene Mitglied -->
+    <div id="gg-member-cancellation-notice" class="hidden fixed inset-0 z-[17000] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+        <div class="w-full max-w-sm glass-card border border-red-400/30 rounded-3xl p-5 relative shadow-2xl" onclick="event.stopPropagation()">
+            <button type="button" onclick="ggSchliesseMitgliederStornierungshinweis()" aria-label="Hinweis schließen"
+                class="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div class="pr-10">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="w-9 h-9 rounded-xl bg-red-500/15 border border-red-400/25 text-red-300 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-circle-exclamation"></i>
+                    </span>
+                    <h3 class="font-black text-sm text-white">DEINE RESERVIERUNG WURDE STORNIERT</h3>
+                </div>
+                <p class="text-[11px] text-white/65 leading-relaxed">
+                    Deine Reservierung wurde am <strong id="gg-member-cancellation-date" class="text-white"></strong> storniert.
+                </p>
+                <div class="mt-4 rounded-2xl bg-black/20 border border-white/10 p-3.5">
+                    <p class="text-[9px] uppercase tracking-widest text-white/40 font-bold mb-1.5">Grund für dich</p>
+                    <p id="gg-member-cancellation-reason" class="text-[11px] text-white/85 leading-relaxed break-words"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
 <!-- MITGLIEDER LOGIN -->
     <div id="member-login-modal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-xl z-[650] flex items-center justify-center p-4">
         <div class="glass-card border border-[#22ffaa]/40 rounded-3xl p-6 w-full max-w-xs text-center green-glow relative">
@@ -3456,6 +3536,7 @@ body.gg-print-preview-open{overflow:hidden!important}
         }
 
         window.addEventListener('DOMContentLoaded', () => {
+            ggZeigeStartGateImmer();
             document.body.classList.add('pre-gate');
             ggSetzeSplashFortschritt(18, 'Grundsystem wird geladen …');
             ladeBarrierefreiheitsGroesse();
@@ -4462,6 +4543,7 @@ body.gg-print-preview-open{overflow:hidden!important}
             } catch (_) {}
             wechsleAnsicht('home');
             ggChatZeichneVerlauf();
+            ggZeigeMitgliederStornierungshinweis();
             ggStarteLoginUebergang();
             await protokolliereAudit('member_login', m.id);
 
@@ -4470,7 +4552,122 @@ body.gg-print-preview-open{overflow:hidden!important}
             }
         }
 
-        function beendeMitgliederbereich() {
+        function ggZeigeMitgliederStornierungshinweis() {
+            if (!mitgliedSession || !Array.isArray(vereinMitglieder)) return;
+            const mitglied = vereinMitglieder.find(m => String(m?.id || '') === String(mitgliedSession.id || ''));
+            if (!mitglied || !Array.isArray(mitglied.stornierungsHinweise)) return;
+
+            const hinweis = mitglied.stornierungsHinweise.find(h =>
+                h && String(h.memberId || '') === String(mitglied.id || '') && h.read !== true
+            );
+            if (!hinweis) return;
+
+            const modal = document.getElementById('gg-member-cancellation-notice');
+            const dateEl = document.getElementById('gg-member-cancellation-date');
+            const reasonEl = document.getElementById('gg-member-cancellation-reason');
+            if (!modal || !dateEl || !reasonEl) return;
+
+            const datum = hinweis.cancelledAt ? new Date(hinweis.cancelledAt) : null;
+            dateEl.textContent = datum && !Number.isNaN(datum.getTime())
+                ? datum.toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })
+                : String(hinweis.createdAt || '—');
+            reasonEl.textContent = String(hinweis.memberReason || 'Kein individueller Grund angegeben.');
+            modal.classList.remove('hidden');
+        }
+
+        async function ggSchliesseMitgliederStornierungshinweis() {
+            const modal = document.getElementById('gg-member-cancellation-notice');
+            try {
+                if (mitgliedSession && Array.isArray(vereinMitglieder)) {
+                    const mitglied = vereinMitglieder.find(m => String(m?.id || '') === String(mitgliedSession.id || ''));
+                    if (mitglied && Array.isArray(mitglied.stornierungsHinweise)) {
+                        const hinweis = mitglied.stornierungsHinweise.find(h =>
+                            h && String(h.memberId || '') === String(mitglied.id || '') && h.read !== true
+                        );
+                        if (hinweis) {
+                            hinweis.read = true;
+                            hinweis.readAt = new Date().toISOString();
+                            await speichereVerschlüsseltenState('vereinMitglieder', vereinMitglieder);
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn('Stornierungshinweis konnte nicht als gelesen gespeichert werden.', e);
+            } finally {
+                if (modal) modal.classList.add('hidden');
+            }
+        }
+
+    
+        /* V32: Einheitliche App-Dialoge statt Browser-Grau-Fenster */
+        let ggAppConfirmResolver = null;
+        function ggAppConfirm(title, message) {
+            const overlay = document.getElementById('gg-app-confirm-overlay');
+            const titleEl = document.getElementById('gg-app-confirm-title');
+            const msgEl = document.getElementById('gg-app-confirm-message');
+            if (!overlay || !titleEl || !msgEl) return Promise.resolve(false);
+            titleEl.textContent = String(title || 'Sind Sie sich sicher?');
+            msgEl.textContent = String(message || 'Diese Aktion kann nicht rückgängig gemacht werden.');
+            overlay.classList.remove('hidden');
+            return new Promise(resolve => { ggAppConfirmResolver = resolve; });
+        }
+        function ggAppConfirmOk() {
+            const overlay = document.getElementById('gg-app-confirm-overlay');
+            if (overlay) overlay.classList.add('hidden');
+            const r = ggAppConfirmResolver; ggAppConfirmResolver = null;
+            if (r) r(true);
+        }
+        function ggAppConfirmCancel() {
+            const overlay = document.getElementById('gg-app-confirm-overlay');
+            if (overlay) overlay.classList.add('hidden');
+            const r = ggAppConfirmResolver; ggAppConfirmResolver = null;
+            if (r) r(false);
+        }
+        function ggAppToast(message, type='success', title='Gespeichert') {
+            const stack = document.getElementById('gg-app-toast-stack');
+            if (!stack) return;
+            const t = document.createElement('div');
+            t.className = 'gg-app-toast ' + (type === 'warning' ? 'warn' : type === 'error' ? 'error' : '');
+            const icon = type === 'error' ? 'fa-xmark' : type === 'warning' ? 'fa-triangle-exclamation' : 'fa-check';
+            t.innerHTML = `<div class="gg-app-toast-icon"><i class="fa-solid ${icon}"></i></div><div style="flex:1"><div class="gg-app-toast-title">${String(title).replace(/[<>]/g,'')}</div><div class="gg-app-toast-msg">${String(message).replace(/[<>]/g,'')}</div></div><button type="button" class="gg-app-toast-close" aria-label="Schließen">×</button>`;
+            t.querySelector('.gg-app-toast-close').onclick = () => t.remove();
+            stack.appendChild(t);
+            setTimeout(() => t.remove(), 3600);
+        }
+        function ggAppAlert(message) {
+            const msg = String(message || '');
+            let type = 'success', title = 'Gespeichert';
+            if (/fehl|fehler|nicht|ungültig|error/i.test(msg)) { type = 'error'; title = 'Hinweis'; }
+            else if (/achtung|warn|nicht zulässig|unter 21/i.test(msg)) { type = 'warning'; title = 'Hinweis'; }
+            else if (/angelegt|erstellt|hinzugefügt/i.test(msg)) title = 'Erfolgreich';
+            ggAppToast(msg, type, title);
+        }
+        window.alert = ggAppAlert;
+
+        function ggBestaetigeStartGate() {
+            const age = document.getElementById('gg-age-confirm');
+            const privacy = document.getElementById('gg-privacy-confirm');
+            if (!age?.checked || !privacy?.checked) {
+                ggAppToast('Bitte bestätige zuerst die Altersvoraussetzung und den Datenschutzhinweis.', 'warning', 'Bestätigung erforderlich');
+                return;
+            }
+            const gate = document.getElementById('gg-app-age-overlay');
+            if (gate) gate.style.display = 'none';
+            document.body.classList.add('gate-open');
+            ggAppToast('Willkommen. Du kannst jetzt deinen Zugang wählen.', 'success', 'Bestätigt');
+        }
+        function ggZeigeStartGateImmer() {
+            const gate = document.getElementById('gg-app-age-overlay');
+            if (!gate) return;
+            gate.style.display = 'flex';
+            document.body.classList.remove('gate-open');
+            const age = document.getElementById('gg-age-confirm');
+            const privacy = document.getElementById('gg-privacy-confirm');
+            if (age) age.checked = false;
+            if (privacy) privacy.checked = false;
+        }
+
+    function beendeMitgliederbereich() {
             if (ggNavLockUntil && Date.now() < ggNavLockUntil) return;
             stoppeAutoRefreshTimer();
             if (ggScannerIstOffen()) schliesseKameraScanner();
@@ -4808,6 +5005,7 @@ body.gg-print-preview-open{overflow:hidden!important}
         }
 
         async function löscheNewsEintrag(index) {
+            if (!(await ggAppConfirm('Nachricht wirklich löschen?', 'Der Eintrag wird aus den Vereins-News entfernt.'))) return;
             vereinNews.splice(index, 1);
             await speichereVerschlüsseltenState('vereinNews', vereinNews);
             rendereMitteilungen();
@@ -5084,7 +5282,8 @@ body.gg-print-preview-open{overflow:hidden!important}
             aktualisiereFloatWarenkorb();
         }
 
-        function entferneWarenkorbPosition(i) {
+        async function entferneWarenkorbPosition(i) {
+            if (!(await ggAppConfirm('Position aus dem Warenkorb entfernen?', 'Diese Position wird aus der aktuellen Reservierung entfernt.'))) return;
             ggReservierungsWarenkorb.splice(i, 1);
             rendereWarenkorb();
             aktualisiereReservierungsKontrollen();
@@ -5132,7 +5331,8 @@ body.gg-print-preview-open{overflow:hidden!important}
             else ggAbgabeWarenkorb.push(pos);
             rendereAbgabeWarenkorb();
         }
-        function entferneAbgabeWarenkorbPosition(i) {
+        async function entferneAbgabeWarenkorbPosition(i) {
+            if (!(await ggAppConfirm('Position entfernen?', 'Diese Position wird aus dem Abgabe-Warenkorb entfernt.'))) return;
             ggAbgabeWarenkorb.splice(i, 1);
             rendereAbgabeWarenkorb();
         }
@@ -5293,6 +5493,7 @@ body.gg-print-preview-open{overflow:hidden!important}
         }
 
         async function löscheSortenEintrag(index) {
+            if (!(await ggAppConfirm('Sorte wirklich löschen?', 'Der Eintrag wird aus der Sortenverwaltung entfernt.'))) return;
             vereinSorten.splice(index, 1);
             await speichereVerschlüsseltenState('vereinSorten', vereinSorten);
             rendereSortiment();
@@ -5386,7 +5587,7 @@ body.gg-print-preview-open{overflow:hidden!important}
                 return;
             }
 
-            if (!confirm(`${totalGrams} g für ${totalPrice.toFixed(2).replace('.', ',')} € am ${resDate} (${resTime}) verbindlich reservieren?`)) return;
+            if (!(await ggAppConfirm(`${totalGrams} g für ${totalPrice.toFixed(2).replace('.', ',')} € am ${resDate} (${resTime}) verbindlich reservieren?`))) return;
 
             const guthabenVorher = Number(mitglied.balance || 0);
             mitglied.balance -= totalPrice;
@@ -5472,7 +5673,7 @@ body.gg-print-preview-open{overflow:hidden!important}
         }
 
         async function loescheAbholzeitfenster(id) {
-            if (!confirm('Dieses Abhol-Zeitfenster wirklich löschen?')) return;
+            if (!(await ggAppConfirm('Dieses Abhol-Zeitfenster wirklich löschen?'))) return;
             vereinAbholzeitfenster = (vereinAbholzeitfenster || []).filter(s => String(s.id) !== String(id));
             await speichereVerschlüsseltenState('vereinAbholzeitfenster', vereinAbholzeitfenster);
             rendereAbholzeitfenster();
@@ -5595,7 +5796,9 @@ body.gg-print-preview-open{overflow:hidden!important}
             if (!res) return;
             const grund = prompt('Grund für die Stornierung dokumentieren:', '');
             if (grund === null) return;
-            if (!confirm("Reservierung stornieren & löschen? Guthaben und Kontingent werden automatisch zurückgebucht.")) return;
+            const grundFuerMitglied = prompt('Grund für Mitglied:', '');
+            if (grundFuerMitglied === null) return;
+            if (!(await ggAppConfirm("Reservierung stornieren & löschen? Guthaben und Kontingent werden automatisch zurückgebucht."))) return;
 
             const preis = Number(res.price || 0);
             const menge = parseReservierungsGramm(res);
@@ -5613,6 +5816,20 @@ body.gg-print-preview-open{overflow:hidden!important}
                 mitglied.balance = vorherGuthaben + Math.max(0, preis);
                 mitglied.quota = Math.min(quotaLimit, vorherQuota + Math.max(0, menge));
 
+                if (!Array.isArray(mitglied.stornierungsHinweise)) mitglied.stornierungsHinweise = [];
+                mitglied.stornierungsHinweise.unshift({
+                    id: 'STO-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+                    memberId: String(mitglied.id || memberId || ''),
+                    reservationId: String(res.id || ''),
+                    reservationDate: String(res.date || res.timestamp || ''),
+                    cancelledAt: new Date().toISOString(),
+                    internalReason: String(grund || 'nicht angegeben'),
+                    memberReason: String(grundFuerMitglied || 'Kein individueller Grund angegeben.'),
+                    createdAt: new Date().toISOString(),
+                    read: false
+                });
+                if (mitglied.stornierungsHinweise.length > 20) mitglied.stornierungsHinweise.length = 20;
+
                 await speichereVerschlüsseltenState('vereinMitglieder', vereinMitglieder);
                 if (preis > 0) {
                     await protokolliereGuthabenAenderung(
@@ -5629,7 +5846,7 @@ body.gg-print-preview-open{overflow:hidden!important}
             await speichereVerschlüsseltenState('vereinUmsatz', vereinUmsatz);
             await protokolliereAudit(
                 'reservierung_geloescht',
-                `Mitglied: ${res.member || 'unbekannt'}; Menge: ${menge} g; Betrag: ${preis.toFixed(2)} €; Kontingent zurück: ${menge} g; Grund: ${grund || 'nicht angegeben'}`
+                `Mitglied: ${res.member || 'unbekannt'}; Menge: ${menge} g; Betrag: ${preis.toFixed(2)} €; Kontingent zurück: ${menge} g; Grund: ${grund || 'nicht angegeben'}; Grund für Mitglied: ${grundFuerMitglied || 'nicht angegeben'}`
             );
 
             ggBalanceAnzeigeWert = null;
@@ -5725,7 +5942,7 @@ body.gg-print-preview-open{overflow:hidden!important}
             const grund = prompt(`Warum soll der Finanz-Eintrag von ${m.name || m.id} gelöscht werden?`, 'Demo-/Fehleintrag');
             if (grund === null) return;
             const saubererGrund = grund.trim() || 'Kein Grund angegeben';
-            if (!confirm(`Finanz-Eintrag von ${m.name || m.id} wirklich löschen?\n\nGrund: ${saubererGrund}`)) return;
+            if (!(await ggAppConfirm(`Finanz-Eintrag von ${m.name || m.id} wirklich löschen?\n\nGrund: ${saubererGrund}`))) return;
             await protokolliereAudit('finanz_eintrag_geloescht', `Mitglied: ${m.name || '—'} (${m.id || '—'}); Betrag: ${betrag.toFixed(2)} €; Grund: ${saubererGrund}`);
             // Nur den Finanz-Eintrag entfernen: das Mitglied selbst bleibt erhalten.
             // Der Finanzdatensatz wird aus der Finanzansicht entfernt, die Mitgliederakte bleibt bestehen.
@@ -6117,7 +6334,7 @@ body.gg-print-preview-open{overflow:hidden!important}
             if (!m) return;
             const grund = prompt('Grund für die Löschung dokumentieren (z. B. Austritt, Demo-/Fehleintrag):', '');
             if (grund === null) return;
-            if (!confirm('Mitglied wirklich löschen? Die Löschung wird dauerhaft im Änderungsverlauf protokolliert.')) return;
+            if (!(await ggAppConfirm('Mitglied wirklich löschen? Die Löschung wird dauerhaft im Änderungsverlauf protokolliert.'))) return;
             const geloeschteId = m.id;
             vereinMitglieder.splice(index, 1);
             if (mitgliedSession && mitgliedSession.id === geloeschteId) {
@@ -6273,7 +6490,7 @@ body.gg-print-preview-open{overflow:hidden!important}
         async function löscheMitgliederWissensartikel(index) {
             const a = vereinInfoArtikel[index];
             if (!a) return;
-            if (!confirm(`Wissensartikel „${a.title || 'ohne Titel'}“ wirklich löschen?`)) return;
+            if (!(await ggAppConfirm(`Wissensartikel „${a.title || 'ohne Titel'}“ wirklich löschen?`))) return;
             vereinInfoArtikel.splice(index, 1);
             await speichereVerschlüsseltenState('vereinInfoArtikel', vereinInfoArtikel);
             await protokolliereAudit('wissen_artikel_geloescht', a.title || '');
@@ -6318,6 +6535,7 @@ body.gg-print-preview-open{overflow:hidden!important}
         }
 
         async function löscheWissensEintrag(index) {
+            if (!(await ggAppConfirm('Wissenseintrag wirklich löschen?', 'Der Eintrag wird aus der Wissensbasis entfernt.'))) return;
             vereinWissen.splice(index, 1);
             await speichereVerschlüsseltenState('vereinWissen', vereinWissen);
             rendereWissensbasis();
@@ -6670,6 +6888,7 @@ body.gg-print-preview-open{overflow:hidden!important}
             }
             if (vereinAdmins.length <= 1) { alert('Mindestens ein Admin muss erhalten bleiben.'); return; }
             const geloeschterAdmin = vereinAdmins[index]?.user || 'unbekannt';
+            if (!(await ggAppConfirm('Administrator wirklich löschen?', `Der Zugang „${geloeschterAdmin}“ wird dauerhaft entfernt.`))) return;
             vereinAdmins.splice(index, 1);
             await speichereVerschlüsseltenState('vereinAdmins', vereinAdmins);
             await protokolliereAudit('admin_geloescht', `Benutzer: ${geloeschterAdmin}`);
@@ -6990,7 +7209,7 @@ body.gg-print-preview-open{overflow:hidden!important}
         }
 
         async function alleKassenbonsLöschen() {
-            if (confirm("Alle Kassenbons löschen?")) {
+            if (await ggAppConfirm("Alle Kassenbons löschen?")) {
                 vereinKassenbons = [];
                 await speichereVerschlüsseltenState('vereinKassenbons', vereinKassenbons);
                 rendereKassenbons();
@@ -7185,7 +7404,7 @@ body.gg-print-preview-open{overflow:hidden!important}
             const eintrag = Array.isArray(vereinReservierungen) ? vereinReservierungen[index] : null;
             if (!eintrag) return;
             const preis = Number(eintrag.price || 0);
-            if (!confirm(`Umsatz-Eintrag über ${preis.toFixed(2).replace('.', ',')} € wirklich löschen? Der Betrag wird vom Gesamtumsatz abgezogen.`)) return;
+            if (!(await ggAppConfirm(`Umsatz-Eintrag über ${preis.toFixed(2).replace('.', ',')} € wirklich löschen? Der Betrag wird vom Gesamtumsatz abgezogen.`))) return;
             const referenz = eintrag.member || eintrag.memberId || 'unbekannt';
             vereinReservierungen.splice(index, 1);
             vereinUmsatz = Math.max(0, Number(vereinUmsatz || 0) - preis);
@@ -7201,7 +7420,7 @@ body.gg-print-preview-open{overflow:hidden!important}
 
         async function löscheUmsatz() {
             const vorher = Number(vereinUmsatz || 0);
-            if (confirm(`Gesamtumsatz von ${vorher.toFixed(2).replace('.', ',')} € auf 0,00 € setzen? Diese Aktion wird protokolliert.`)) {
+            if (await ggAppConfirm(`Gesamtumsatz von ${vorher.toFixed(2).replace('.', ',')} € auf 0,00 € setzen? Diese Aktion wird protokolliert.`)) {
                 vereinUmsatz = 0.0;
                 await speichereVerschlüsseltenState('vereinUmsatz', vereinUmsatz);
                 await protokolliereAudit('umsatz_gesamt_zurueckgesetzt', `Vorheriger Gesamtumsatz: ${vorher.toFixed(2)} €`);
