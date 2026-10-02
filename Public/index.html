@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Green Generation Rostock</title>
-<meta name="gg-build" content="V34-UI-SMOKE-DYNAMIC-HARBOR-NONDESTRUCTIVE-ADMIN-SCROLL-FIX">
+<meta name="gg-build" content="V35-UI-SMOKE-DYNAMIC-HARBOR-NONDESTRUCTIVE-EXPORT-TOP-FIX">
 <meta name="gg-build-date" content="2026-10-02">
     
     <!-- PWA & Mobile Web App Meta Tags -->
@@ -586,6 +586,8 @@ select,input,textarea,button{touch-action:manipulation}
             user-select: none;
             scroll-behavior: auto;
             scrollbar-gutter: stable;
+            overflow-anchor: none;
+            padding-top: 0 !important;
             padding-bottom: calc(8rem + env(safe-area-inset-bottom));
             box-sizing: border-box;
         }
@@ -4500,8 +4502,25 @@ body.gg-print-preview-open{overflow:hidden!important}
 
             try {
                 const pane = document.getElementById('gg-vorstand-scroll');
-                if (pane) pane.scrollTop = 0;
+                if (pane) {
+                    pane.scrollTop = 0;
+                    pane.scrollTo(0, 0);
+                }
             } catch (_) {}
+
+            // V35 EXPORT-TAB TOP ALIGNMENT: Der Exportinhalt muss unmittelbar
+            // unter der Admin-Navigation beginnen. Android kann nach einem
+            // asynchronen D1-Render durch Scroll-Anchoring wieder eine alte
+            // vertikale Position herstellen. Deshalb wird die Scrollposition
+            // nach dem Render nochmals explizit auf den Anfang gesetzt.
+            const ggSetzeVorstandsScrollAnfang = () => {
+                try {
+                    const pane = document.getElementById('gg-vorstand-scroll');
+                    if (!pane) return;
+                    pane.scrollTop = 0;
+                    pane.scrollTo(0, 0);
+                } catch (_) {}
+            };
 
             // V29 PAINT-FIRST NAVIGATION: Erst den neuen Tab sichtbar machen und
             // dem Browser mindestens einen Frame fuer Layout/Paint geben. Erst
@@ -4518,6 +4537,13 @@ body.gg-print-preview-open{overflow:hidden!important}
                     // Cache aufgebaut. Der bestehende Paint-first Ablauf bleibt erhalten.
                     await ggAktualisiereAdminTabDaten(kapitelId);
                     if (kapitelId === 'export') { try { ggExportFilterOptionenAktualisieren(); } catch (_) {} }
+                    // Nach allen DOM-/D1-Änderungen nochmals ganz nach oben.
+                    // Dadurch sitzt die erste Exportkarte direkt unter der
+                    // Admin-Navigation und wird nicht mehrere hundert Pixel
+                    // nach unten verschoben.
+                    ggSetzeVorstandsScrollAnfang();
+                    requestAnimationFrame(ggSetzeVorstandsScrollAnfang);
+                    setTimeout(ggSetzeVorstandsScrollAnfang, 80);
                     if (navToken !== ggNavRenderToken || ggAktivesAdminKapitel !== kapitelId) return;
                     if (kapitelId === 'buchhaltung') {
                         ggUiBusyUntil = Math.max(ggUiBusyUntil || 0, Date.now() + 2500);
