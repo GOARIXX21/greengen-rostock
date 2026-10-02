@@ -2,11 +2,20 @@
  * GreenGenRostock V38-COMPLIANCE-HARDENED-APPEND-ONLY – Worker
  *
  * Cloudflare Secrets:
- *   AUTH_SIGNING_SECRET       NEU, starkes Zufallssecret (HMAC)
+ *   AUTH_SIGNING_SECRET       optional – HMAC für Sitzungstokens
  *   MASTER_USER               bestehender Master-Benutzername
  *   MASTER_PASS               bestehendes Master-Passwort
  *   DATA_CRYPTO_PASSPHRASE    bestehende Daten-Hülle (nicht das Login)
+ *
+ * WICHTIG:
+ * - MASTER_USER / MASTER_PASS werden nicht geändert.
+ * - AUTH_SIGNING_SECRET ist optional.
+ * - Falls AUTH_SIGNING_SECRET nicht vorhanden ist, wird für die
+ *   Session-Signatur deterministisch aus bestehenden Secrets abgeleitet.
+ * - Bestehende D1-Daten werden nicht gelöscht.
+ * - Audit- und Zutrittsprotokolle sind append-only.
  */
+
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, PUT, POST, OPTIONS',
@@ -51,7 +60,7 @@ function json(data, status = 200, extraHeaders = {}) {
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
       ...CORS_HEADERS,
-      ...extraHeaders,
+      ...extraHeaders
     },
   });
 }
@@ -59,9 +68,11 @@ function json(data, status = 200, extraHeaders = {}) {
 function b64urlEncode(bytes) {
   let bin = '';
   const arr = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+
   for (let i = 0; i < arr.length; i++) {
     bin += String.fromCharCode(arr[i]);
   }
+
   return btoa(bin)
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
@@ -69,8 +80,15 @@ function b64urlEncode(bytes) {
 }
 
 function b64urlDecode(str) {
-  const pad = str.length % 4 === 0 ? '' : '='.repeat(4 - (str.length % 4));
-  const b64 = str.replace(/-/g, '+').replace(/_/g, '/') + pad;
+  const pad = str.length % 4 === 0
+    ? ''
+    : '='.repeat(4 - (str.length % 4));
+
+  const b64 = str
+    .replace(/-/g, '+')
+    .replace(/_/g, '/')
+    + pad;
+
   const bin = atob(b64);
   const out = new Uint8Array(bin.length);
 
@@ -84,6 +102,7 @@ function b64urlDecode(str) {
 function safeEq(a, b) {
   const s1 = String(a || '');
   const s2 = String(b || '');
+
   const n = Math.max(s1.length, s2.length, 1);
 
   let diff = s1.length ^ s2.length;
@@ -186,35 +205,80 @@ async function readToken(secret, token) {
 }
 
 function bearerToken(request) {
-  const h =
-    request.headers.get('Authorization') || '';
+  const h = request.headers.get('Authorization') || '';
 
-  const m =
-    h.match(/^Bearer\s+(.+)$/i);
+  const m = h.match(/^Bearer\s+(.+)$/i);
 
   if (m) {
     return m[1].trim();
   }
 
-  const cookie =
-    request.headers.get('Cookie') || '';
+  const cookie = request.headers.get('Cookie') || '';
 
-  const cm =
-    cookie.match(
-      /(?:^|;\s*)gg_session=([^;]+)/
-    );
+  const cm = cookie.match(
+    /(?:^|;\s*)gg_session=([^;]+)/
+  );
 
   return cm
     ? decodeURIComponent(cm[1])
     : '';
 }
 
-async function requireSession(
-  request,
-  env,
-  roles
-) {
-  if (!env.AUTH_SIGNING_SECRET) {
+function getAuthSigningSecret(env) {
+  /*
+   * Bestehende Installation beibehalten:
+   *
+   * 1. Wenn AUTH_SIGNING_SECRET vorhanden ist:
+   *    Dieses wird verwendet.
+   *
+   * 2. Wenn AUTH_SIGNING_SECRET NICHT vorhanden ist:
+   *    Kein neuer Secret-Eintrag ist notwendig.
+   *
+   *    Stattdessen wird der Signierschlüssel aus bereits vorhandenen
+   *    serverseitigen Secrets abgeleitet.
+   *
+   *    MASTER_USER / MASTER_PASS / DATA_CRYPTO_PASSPHRASE
+   *    werden dabei NICHT verändert.
+   */
+
+  if (env.AUTH_SIGNING_SECRET) {
+    return String(env.AUTH_SIGNING_SECRET);
+  }
+
+  const seed =
+    env.MASTER_PASS ||
+    env.DATA_CRYPTO_PASSPHRASE ||
+    '';
+
+  if (!seed) {
+    return '';
+  }
+
+  return (
+    'GG-AUTH-SIGNING-V1|' +
+    String(env.MASTER_USER || '') +
+    '|' +
+    String(seed)
+  );
+}
+
+function authConfigured(env) {
+  const signingSecret = getAuthSigningSecret(env);
+
+  return !!(
+    signingSecret &&
+    (
+      env.MASTER_USER ||
+      env.MASTER_PASS ||
+      env.DATA_CRYPTO_PASSPHRASE
+    )
+  );
+}
+
+async function requireSession(request, env, roles) {
+  const signingSecret = getAuthSigningSecret(env);
+
+  if (!signingSecret) {
     return {
       ok: false,
       status: 503,
@@ -222,11 +286,10 @@ async function requireSession(
     };
   }
 
-  const payload =
-    await readToken(
-      env.AUTH_SIGNING_SECRET,
-      bearerToken(request)
-    );
+  const payload = await readToken(
+    signingSecret,
+    bearerToken(request)
+  );
 
   if (!payload) {
     return {
@@ -254,10 +317,7 @@ async function requireSession(
   };
 }
 
-async function decryptClientBlob(
-  b64,
-  passphrase
-) {
+async function decryptClientBlob(b64, passphrase) {
   if (!b64 || !passphrase) {
     return null;
   }
@@ -265,14 +325,9 @@ async function decryptClientBlob(
   try {
     const binStr = atob(String(b64));
 
-    const bytes =
-      new Uint8Array(binStr.length);
+    const bytes = new Uint8Array(binStr.length);
 
-    for (
-      let i = 0;
-      i < binStr.length;
-      i++
-    ) {
+    for (let i = 0; i < binStr.length; i++) {
       bytes[i] = binStr.charCodeAt(i);
     }
 
@@ -353,62 +408,49 @@ async function loadStateValue(db, key) {
 }
 
 async function ensureTable(db) {
-  await db
-    .prepare(`
-      CREATE TABLE IF NOT EXISTS app_state (
-        key TEXT PRIMARY KEY NOT NULL,
-        value TEXT NOT NULL,
-        updated_at TEXT NOT NULL
-          DEFAULT (datetime('now'))
-      )
-    `)
-    .run();
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS app_state (
+      key TEXT PRIMARY KEY NOT NULL,
+      value TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `).run();
 }
 
 async function ensureAccessTable(db) {
-  await db
-    .prepare(`
-      CREATE TABLE IF NOT EXISTS access_events (
-        id TEXT PRIMARY KEY NOT NULL,
-        occurred_at TEXT NOT NULL,
-        payload TEXT NOT NULL,
-        payload_sha256 TEXT NOT NULL,
-        created_at TEXT NOT NULL
-          DEFAULT (datetime('now'))
-      )
-    `)
-    .run();
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS access_events (
+      id TEXT PRIMARY KEY NOT NULL,
+      occurred_at TEXT NOT NULL,
+      payload TEXT NOT NULL,
+      payload_sha256 TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `).run();
 
-  await db
-    .prepare(`
-      CREATE INDEX IF NOT EXISTS
-      idx_access_events_occurred
-      ON access_events(occurred_at)
-    `)
-    .run();
+  await db.prepare(`
+    CREATE INDEX IF NOT EXISTS
+    idx_access_events_occurred
+    ON access_events(occurred_at)
+  `).run();
 }
 
 async function ensureAuditTable(db) {
-  await db
-    .prepare(`
-      CREATE TABLE IF NOT EXISTS audit_events (
-        id TEXT PRIMARY KEY NOT NULL,
-        occurred_at TEXT NOT NULL,
-        payload TEXT NOT NULL,
-        payload_sha256 TEXT NOT NULL,
-        created_at TEXT NOT NULL
-          DEFAULT (datetime('now'))
-      )
-    `)
-    .run();
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS audit_events (
+      id TEXT PRIMARY KEY NOT NULL,
+      occurred_at TEXT NOT NULL,
+      payload TEXT NOT NULL,
+      payload_sha256 TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `).run();
 
-  await db
-    .prepare(`
-      CREATE INDEX IF NOT EXISTS
-      idx_audit_events_occurred
-      ON audit_events(occurred_at)
-    `)
-    .run();
+  await db.prepare(`
+    CREATE INDEX IF NOT EXISTS
+    idx_audit_events_occurred
+    ON audit_events(occurred_at)
+  `).run();
 }
 
 async function sha256Hex(text) {
@@ -423,17 +465,12 @@ async function sha256Hex(text) {
   return Array
     .from(new Uint8Array(bytes))
     .map(
-      b => b
-        .toString(16)
-        .padStart(2, '0')
+      b => b.toString(16).padStart(2, '0')
     )
     .join('');
 }
 
-async function encryptClientBlob(
-  value,
-  passphrase
-) {
+async function encryptClientBlob(value, passphrase) {
   if (!passphrase) {
     return null;
   }
@@ -492,6 +529,7 @@ async function encryptClientBlob(
     );
 
   out.set(iv, 0);
+
   out.set(
     new Uint8Array(cipher),
     iv.length
@@ -506,10 +544,7 @@ async function encryptClientBlob(
   return btoa(bin);
 }
 
-async function migrateLegacyAuditOnce(
-  db,
-  env
-) {
+async function migrateLegacyAuditOnce(db, env) {
   const marker =
     await db
       .prepare(
@@ -549,17 +584,15 @@ async function migrateLegacyAuditOnce(
             )
           );
 
-        const parsedDate =
-          event?.date &&
-          !Number.isNaN(
-            Date.parse(event.date)
-          )
-            ? event.date
-            : Date.now();
-
         const occurred =
-          new Date(parsedDate)
-            .toISOString();
+          new Date(
+            event?.date &&
+            !Number.isNaN(
+              Date.parse(event.date)
+            )
+              ? event.date
+              : Date.now()
+          ).toISOString();
 
         const payload =
           await encryptClientBlob(
@@ -577,7 +610,12 @@ async function migrateLegacyAuditOnce(
         await db
           .prepare(`
             INSERT OR IGNORE INTO audit_events
-            (id, occurred_at, payload, payload_sha256)
+            (
+              id,
+              occurred_at,
+              payload,
+              payload_sha256
+            )
             VALUES (?, ?, ?, ?)
           `)
           .bind(
@@ -594,8 +632,14 @@ async function migrateLegacyAuditOnce(
   await db
     .prepare(`
       INSERT OR IGNORE INTO audit_events
-      (id, occurred_at, payload, payload_sha256)
-      VALUES (
+      (
+        id,
+        occurred_at,
+        payload,
+        payload_sha256
+      )
+      VALUES
+      (
         'GG_LEGACY_MIGRATION_MARKER',
         ?,
         '',
@@ -608,10 +652,7 @@ async function migrateLegacyAuditOnce(
     .run();
 }
 
-async function migrateLegacyAccessOnce(
-  db,
-  env
-) {
+async function migrateLegacyAccessOnce(db, env) {
   const marker =
     await db
       .prepare(
@@ -653,7 +694,8 @@ async function migrateLegacyAccessOnce(
 
         const occurred =
           new Date(
-            event?.ts || Date.now()
+            event?.ts ||
+            Date.now()
           ).toISOString();
 
         const payload =
@@ -672,7 +714,12 @@ async function migrateLegacyAccessOnce(
         await db
           .prepare(`
             INSERT OR IGNORE INTO access_events
-            (id, occurred_at, payload, payload_sha256)
+            (
+              id,
+              occurred_at,
+              payload,
+              payload_sha256
+            )
             VALUES (?, ?, ?, ?)
           `)
           .bind(
@@ -689,8 +736,14 @@ async function migrateLegacyAccessOnce(
   await db
     .prepare(`
       INSERT OR IGNORE INTO access_events
-      (id, occurred_at, payload, payload_sha256)
-      VALUES (
+      (
+        id,
+        occurred_at,
+        payload,
+        payload_sha256
+      )
+      VALUES
+      (
         'GG_LEGACY_ACCESS_MIGRATION_MARKER',
         ?,
         '',
@@ -705,77 +758,459 @@ async function migrateLegacyAccessOnce(
 
 async function verifyMasterAgainstD1(
   env,
-  username,
-  password
+  user,
+  pass
 ) {
+  const phrase =
+    env.DATA_CRYPTO_PASSPHRASE;
+
+  if (!phrase || !env.DB) {
+    return false;
+  }
+
+  const raw =
+    await loadStateValue(
+      env.DB,
+      'gg_master_account'
+    );
+
+  if (!raw) {
+    return false;
+  }
+
+  const master =
+    await decryptClientBlob(
+      raw,
+      phrase
+    );
+
+  if (
+    !master ||
+    typeof master !== 'object'
+  ) {
+    return false;
+  }
+
+  const mu =
+    master.user ||
+    master.username ||
+    '';
+
+  const mp =
+    master.pass ||
+    master.password ||
+    '';
+
+  const role =
+    String(
+      master.role ||
+      'MASTER'
+    ).toUpperCase();
+
+  if (
+    role &&
+    role !== 'MASTER'
+  ) {
+    return false;
+  }
+
+  return (
+    safeEq(mu, user) &&
+    safeEq(mp, pass)
+  );
+}
+
+async function verifyAdminAgainstD1(
+  env,
+  user,
+  pass
+) {
+  const phrase =
+    env.DATA_CRYPTO_PASSPHRASE;
+
+  if (!phrase || !env.DB) {
+    return false;
+  }
+
+  const raw =
+    await loadStateValue(
+      env.DB,
+      'vereinAdmins'
+    );
+
+  if (!raw) {
+    return false;
+  }
+
+  const admins =
+    await decryptClientBlob(
+      raw,
+      phrase
+    );
+
+  if (!Array.isArray(admins)) {
+    return false;
+  }
+
+  return admins.some(
+    a =>
+      a &&
+      safeEq(a.user, user) &&
+      safeEq(a.pass, pass) &&
+      String(
+        a.role || 'ADMIN'
+      ).toUpperCase() !== 'MASTER'
+  );
+}
+
+async function isSystemInitialized(env) {
   if (!env.DB) {
     return false;
   }
 
-  try {
-    await ensureTable(env.DB);
-
-    const raw =
-      await loadStateValue(
-        env.DB,
-        'gg_master_account'
-      );
-
-    if (!raw) {
-      return false;
-    }
-
-    const parsed =
-      await decryptClientBlob(
-        raw,
-        env.DATA_CRYPTO_PASSPHRASE
-      );
-
-    if (!parsed) {
-      return false;
-    }
-
-    return (
-      safeEq(
-        parsed.username,
-        username
-      ) &&
-      safeEq(
-        parsed.password,
-        password
+  if (
+    await env.DB
+      .prepare(
+        'SELECT key FROM app_state WHERE key = ?'
       )
-    );
-  } catch {
-    return false;
+      .bind('gg_master_account')
+      .first()
+  ) {
+    return true;
   }
+
+  if (
+    await env.DB
+      .prepare(
+        'SELECT key FROM app_state WHERE key = ?'
+      )
+      .bind('adminSystemInitialisiert')
+      .first()
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
-function authConfigured(env) {
-  return Boolean(
-    env.AUTH_SIGNING_SECRET &&
-    env.DATA_CRYPTO_PASSPHRASE
-  );
+async function handleAuth(
+  request,
+  env
+) {
+  const url =
+    new URL(request.url);
+
+  const path =
+    url.pathname.replace(
+      /\/+$/,
+      ''
+    ) || '/';
+
+  if (
+    path === '/api/auth/login' &&
+    request.method === 'POST'
+  ) {
+    if (!authConfigured(env)) {
+      return json(
+        {
+          ok: false,
+          error: 'auth_not_configured'
+        },
+        503
+      );
+    }
+
+    let body;
+
+    try {
+      body =
+        await request.json();
+    } catch {
+      return json(
+        {
+          ok: false,
+          error: 'Invalid JSON body'
+        },
+        400
+      );
+    }
+
+    const user =
+      String(
+        body?.user || ''
+      ).trim();
+
+    const pass =
+      String(
+        body?.pass || ''
+      );
+
+    if (!user || !pass) {
+      return json(
+        {
+          ok: false,
+          error: 'invalid'
+        },
+        401
+      );
+    }
+
+    let role = null;
+
+    const initialized =
+      await isSystemInitialized(env);
+
+    /*
+     * Der alte einmalige Bootstrap-Zugang bleibt erhalten,
+     * wird aber nach der Initialisierung deaktiviert.
+     */
+
+    if (
+      !initialized &&
+      safeEq(
+        user,
+        'admin'
+      ) &&
+      safeEq(
+        pass,
+        'vorstand2026'
+      )
+    ) {
+      role = 'BOOTSTRAP';
+
+    } else if (
+      initialized &&
+      safeEq(
+        user,
+        'admin'
+      ) &&
+      safeEq(
+        pass,
+        'vorstand2026'
+      )
+    ) {
+      return json(
+        {
+          ok: false,
+          error: 'bootstrap_disabled'
+        },
+        401
+      );
+    }
+
+    /*
+     * 1. Bestehender Cloudflare-Master
+     */
+    if (
+      !role &&
+      env.MASTER_USER &&
+      env.MASTER_PASS &&
+      safeEq(
+        user,
+        env.MASTER_USER
+      ) &&
+      safeEq(
+        pass,
+        env.MASTER_PASS
+      )
+    ) {
+      role = 'MASTER';
+    }
+
+    /*
+     * 2. Bestehender Master aus D1
+     */
+    if (!role) {
+      if (
+        await verifyMasterAgainstD1(
+          env,
+          user,
+          pass
+        )
+      ) {
+        role = 'MASTER';
+      }
+    }
+
+    /*
+     * 3. Bestehender Admin aus D1
+     */
+    if (!role) {
+      if (
+        await verifyAdminAgainstD1(
+          env,
+          user,
+          pass
+        )
+      ) {
+        role = 'ADMIN';
+      }
+    }
+
+    if (!role) {
+      return json(
+        {
+          ok: false,
+          error: 'invalid'
+        },
+        401
+      );
+    }
+
+    const now =
+      Date.now();
+
+    const payload = {
+      user,
+      role,
+      iat: now,
+      exp:
+        now +
+        SESSION_TTL_MS
+    };
+
+    const token =
+      await mintToken(
+        getAuthSigningSecret(env),
+        payload
+      );
+
+    const cookie =
+      `gg_session=${encodeURIComponent(token)}; ` +
+      `Path=/; ` +
+      `Max-Age=${Math.floor(SESSION_TTL_MS / 1000)}; ` +
+      `HttpOnly; ` +
+      `SameSite=Strict`;
+
+    return json(
+      {
+        ok: true,
+        user,
+        role,
+        token,
+        exp: payload.exp,
+        immutable:
+          role === 'MASTER'
+      },
+      200,
+      {
+        'Set-Cookie': cookie
+      }
+    );
+  }
+
+  if (
+    path === '/api/auth/session' &&
+    request.method === 'GET'
+  ) {
+    const signingSecret =
+      getAuthSigningSecret(env);
+
+    if (!signingSecret) {
+      return json(
+        {
+          ok: false,
+          error: 'auth_not_configured'
+        },
+        503
+      );
+    }
+
+    const payload =
+      await readToken(
+        signingSecret,
+        bearerToken(request)
+      );
+
+    if (!payload) {
+      return json(
+        {
+          ok: false,
+          error: 'invalid_session'
+        },
+        401
+      );
+    }
+
+    return json({
+      ok: true,
+      user: payload.user,
+      role: payload.role,
+      exp: payload.exp,
+      immutable:
+        payload.role === 'MASTER'
+    });
+  }
+
+  if (
+    path === '/api/auth/logout' &&
+    request.method === 'POST'
+  ) {
+    return json(
+      {
+        ok: true
+      },
+      200,
+      {
+        'Set-Cookie':
+          'gg_session=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict'
+      }
+    );
+  }
+
+  return null;
 }
 
 async function handleApi(
   request,
   env
 ) {
-  try {
-    if (!env.DB) {
-      return json(
-        {
-          ok: false,
-          error: 'D1 binding missing'
-        },
-        503
-      );
-    }
+  const authResp =
+    await handleAuth(
+      request,
+      env
+    );
 
+  if (authResp) {
+    return authResp;
+  }
+
+  if (!env.DB) {
+    return json(
+      {
+        ok: false,
+        error:
+          'D1 binding missing (DB)'
+      },
+      503
+    );
+  }
+
+  const url =
+    new URL(request.url);
+
+  const path =
+    url.pathname.replace(
+      /\/+$/,
+      ''
+    ) || '/';
+
+  try {
+    /*
+     * Bestehende Tabelle sicherstellen.
+     * CREATE IF NOT EXISTS verändert keine vorhandenen Daten.
+     */
     await ensureTable(env.DB);
+
+    /*
+     * Append-only Protokolltabellen.
+     */
     await ensureAuditTable(env.DB);
     await ensureAccessTable(env.DB);
 
+    /*
+     * Einmalige Migration vorhandener Protokolle.
+     */
     await migrateLegacyAuditOnce(
       env.DB,
       env
@@ -786,258 +1221,15 @@ async function handleApi(
       env
     );
 
-    const url =
-      new URL(request.url);
-
-    const path =
-      url.pathname;
-
-    if (
-      path === '/api/auth/login' &&
-      request.method === 'POST'
-    ) {
-      let body;
-
-      try {
-        body =
-          await request.json();
-      } catch {
-        return json(
-          {
-            ok: false,
-            error: 'Invalid JSON body'
-          },
-          400
-        );
-      }
-
-      const username =
-        String(
-          body?.username || ''
-        ).trim();
-
-      const password =
-        String(
-          body?.password || ''
-        );
-
-      if (!username || !password) {
-        return json(
-          {
-            ok: false,
-            error: 'missing_credentials'
-          },
-          400
-        );
-      }
-
-      let role = null;
-
-      const masterOk =
-        await verifyMasterAgainstD1(
-          env,
-          username,
-          password
-        );
-
-      if (masterOk) {
-        role = 'MASTER';
-      } else if (
-        env.MASTER_USER &&
-        env.MASTER_PASS &&
-        safeEq(
-          username,
-          env.MASTER_USER
-        ) &&
-        safeEq(
-          password,
-          env.MASTER_PASS
-        )
-      ) {
-        role = 'MASTER';
-      }
-
-      if (!role) {
-        return json(
-          {
-            ok: false,
-            error: 'invalid_credentials'
-          },
-          401
-        );
-      }
-
-      const token =
-        await mintToken(
-          env.AUTH_SIGNING_SECRET,
-          {
-            user: username,
-            role,
-            iat: Date.now(),
-            exp:
-              Date.now() +
-              SESSION_TTL_MS
-          }
-        );
-
-      return json(
-        {
-          ok: true,
-          token,
-          role,
-          expires_at:
-            new Date(
-              Date.now() +
-              SESSION_TTL_MS
-            ).toISOString()
-        },
-        200,
-        {
-          'Set-Cookie':
-            `gg_session=${encodeURIComponent(token)}; Max-Age=${Math.floor(SESSION_TTL_MS / 1000)}; Path=/; HttpOnly; SameSite=Strict`
-        }
-      );
-    }
+    /*
+     * =========================================================
+     * ZUTRITTSPROTOKOLL
+     * =========================================================
+     */
 
     if (
-      path === '/api/auth/check' &&
+      path === '/api/access' &&
       request.method === 'GET'
-    ) {
-      const gate =
-        await requireSession(
-          request,
-          env,
-          ['MASTER', 'ADMIN', 'BOOTSTRAP']
-        );
-
-      if (!gate.ok) {
-        return json(
-          {
-            ok: false,
-            error: gate.error
-          },
-          gate.status
-        );
-      }
-
-      return json({
-        ok: true,
-        session: gate.session
-      });
-    }
-
-    if (
-      path === '/api/auth/logout' &&
-      request.method === 'POST'
-    ) {
-      return json(
-        {
-          ok: true
-        },
-        200,
-        {
-          'Set-Cookie':
-            'gg_session=; Max-Age=0; Path=/; HttpOnly; SameSite=Strict'
-        }
-      );
-    }
-
-    if (
-      path === '/api/audit' &&
-      request.method === 'GET'
-    ) {
-      const gate =
-        await requireSession(
-          request,
-          env,
-          ['MASTER', 'ADMIN']
-        );
-
-      if (!gate.ok) {
-        return json(
-          {
-            ok: false,
-            error: gate.error
-          },
-          gate.status
-        );
-      }
-
-      const limitRaw =
-        Number(
-          url.searchParams.get(
-            'limit'
-          ) || 1000
-        );
-
-      const limit =
-        Math.min(
-          Math.max(
-            Number.isFinite(limitRaw)
-              ? Math.floor(limitRaw)
-              : 1000,
-            1
-          ),
-          5000
-        );
-
-      const before =
-        url.searchParams.get(
-          'before'
-        );
-
-      let query = `
-        SELECT
-          id,
-          occurred_at,
-          payload,
-          payload_sha256
-        FROM audit_events
-        WHERE id != ?
-      `;
-
-      const binds = [
-        'GG_LEGACY_MIGRATION_MARKER'
-      ];
-
-      if (before) {
-        query +=
-          ' AND occurred_at < ?';
-
-        binds.push(before);
-      }
-
-      query +=
-        ' ORDER BY occurred_at DESC LIMIT ?';
-
-      binds.push(limit);
-
-      const { results } =
-        await env.DB
-          .prepare(query)
-          .bind(...binds)
-          .all();
-
-      return json({
-        ok: true,
-        entries: results || [],
-        immutable: true,
-        has_delete_endpoint: false,
-        next_before:
-          (
-            results &&
-            results.length === limit
-          )
-            ? results[
-                results.length - 1
-              ].occurred_at
-            : null
-      });
-    }
-
-    if (
-      path === '/api/audit' &&
-      request.method === 'POST'
     ) {
       const gate =
         await requireSession(
@@ -1045,8 +1237,7 @@ async function handleApi(
           env,
           [
             'MASTER',
-            'ADMIN',
-            'BOOTSTRAP'
+            'ADMIN'
           ]
         );
 
@@ -1060,139 +1251,6 @@ async function handleApi(
         );
       }
 
-      let body;
-
-      try {
-        body =
-          await request.json();
-      } catch {
-        return json(
-          {
-            ok: false,
-            error: 'Invalid JSON body'
-          },
-          400
-        );
-      }
-
-      const id =
-        String(
-          body?.id || ''
-        ).trim();
-
-      const occurred =
-        String(
-          body?.occurred_at || ''
-        ).trim();
-
-      const payload =
-        String(
-          body?.payload || ''
-        ).trim();
-
-      if (
-        !id ||
-        !payload ||
-        !occurred ||
-        !Number.isFinite(
-          Date.parse(occurred)
-        )
-      ) {
-        return json(
-          {
-            ok: false,
-            error: 'invalid_audit_event'
-          },
-          400
-        );
-      }
-
-      const hash =
-        await sha256Hex(
-          payload
-        );
-
-      const exists =
-        await env.DB
-          .prepare(
-            'SELECT id FROM audit_events WHERE id = ?'
-          )
-          .bind(id)
-          .first();
-
-      if (exists) {
-        return json({
-          ok: true,
-          appended: true,
-          duplicate: true,
-          id
-        });
-      }
-
-      await env.DB
-        .prepare(`
-          INSERT INTO audit_events
-          (id, occurred_at, payload, payload_sha256)
-          VALUES (?, ?, ?, ?)
-        `)
-        .bind(
-          id,
-          new Date(
-            occurred
-          ).toISOString(),
-          payload,
-          hash
-        )
-        .run();
-
-      return json({
-        ok: true,
-        appended: true,
-        id,
-        immutable: true
-      });
-    }
-
-    if (
-      path === '/api/audit' &&
-      (
-        request.method === 'PUT' ||
-        request.method === 'DELETE' ||
-        request.method === 'PATCH'
-      )
-    ) {
-      return json(
-        {
-          ok: false,
-          error: 'audit_immutable',
-          message:
-            'Audit-Einträge sind append-only und können nicht geändert oder gelöscht werden.'
-        },
-        405
-      );
-    }
-
-    if (
-      path === '/api/access' &&
-      request.method === 'GET'
-    ) {
-      const gate =
-        await requireSession(
-          request,
-          env,
-          ['MASTER', 'ADMIN']
-        );
-
-      if (!gate.ok) {
-        return json(
-          {
-            ok: false,
-            error: gate.error
-          },
-          gate.status
-        );
-      }
-
       const limitRaw =
         Number(
           url.searchParams.get(
@@ -1208,7 +1266,7 @@ async function handleApi(
               : 1000,
             1
           ),
-          5000
+          2000
         );
 
       const before =
@@ -1216,15 +1274,10 @@ async function handleApi(
           'before'
         );
 
-      let query = `
-        SELECT
-          id,
-          occurred_at,
-          payload,
-          payload_sha256
-        FROM access_events
-        WHERE id != ?
-      `;
+      let query =
+        'SELECT id, occurred_at, payload, payload_sha256 ' +
+        'FROM access_events ' +
+        'WHERE id != ?';
 
       const binds = [
         'GG_LEGACY_ACCESS_MIGRATION_MARKER'
@@ -1250,9 +1303,11 @@ async function handleApi(
 
       return json({
         ok: true,
-        entries: results || [],
+        entries:
+          results || [],
         immutable: true,
-        has_delete_endpoint: false,
+        has_delete_endpoint:
+          false,
         next_before:
           (
             results &&
@@ -1299,7 +1354,8 @@ async function handleApi(
         return json(
           {
             ok: false,
-            error: 'Invalid JSON body'
+            error:
+              'Invalid JSON body'
           },
           400
         );
@@ -1331,7 +1387,8 @@ async function handleApi(
         return json(
           {
             ok: false,
-            error: 'invalid_access_event'
+            error:
+              'invalid_access_event'
           },
           400
         );
@@ -1362,7 +1419,12 @@ async function handleApi(
       await env.DB
         .prepare(`
           INSERT INTO access_events
-          (id, occurred_at, payload, payload_sha256)
+          (
+            id,
+            occurred_at,
+            payload,
+            payload_sha256
+          )
           VALUES (?, ?, ?, ?)
         `)
         .bind(
@@ -1383,6 +1445,10 @@ async function handleApi(
       });
     }
 
+    /*
+     * Zutrittsprotokolle können NICHT per PUT/PATCH/DELETE
+     * verändert oder gelöscht werden.
+     */
     if (
       path === '/api/access' &&
       (
@@ -1394,13 +1460,267 @@ async function handleApi(
       return json(
         {
           ok: false,
-          error: 'access_immutable',
+          error:
+            'access_immutable',
           message:
             'Zutrittsprotokolle sind append-only und können nicht geändert oder gelöscht werden.'
         },
         405
       );
     }
+
+    /*
+     * =========================================================
+     * AUDIT-PROTOKOLL
+     * =========================================================
+     */
+
+    if (
+      path === '/api/audit' &&
+      request.method === 'GET'
+    ) {
+      const gate =
+        await requireSession(
+          request,
+          env,
+          [
+            'MASTER',
+            'ADMIN'
+          ]
+        );
+
+      if (!gate.ok) {
+        return json(
+          {
+            ok: false,
+            error: gate.error
+          },
+          gate.status
+        );
+      }
+
+      const limitRaw =
+        Number(
+          url.searchParams.get(
+            'limit'
+          ) || 1000
+        );
+
+      const limit =
+        Math.min(
+          Math.max(
+            Number.isFinite(limitRaw)
+              ? Math.floor(limitRaw)
+              : 1000,
+            1
+          ),
+          5000
+        );
+
+      const before =
+        url.searchParams.get(
+          'before'
+        );
+
+      let query =
+        'SELECT id, occurred_at, payload, payload_sha256 ' +
+        'FROM audit_events ' +
+        'WHERE id != ?';
+
+      const binds = [
+        'GG_LEGACY_MIGRATION_MARKER'
+      ];
+
+      if (before) {
+        query +=
+          ' AND occurred_at < ?';
+
+        binds.push(before);
+      }
+
+      query +=
+        ' ORDER BY occurred_at DESC LIMIT ?';
+
+      binds.push(limit);
+
+      const { results } =
+        await env.DB
+          .prepare(query)
+          .bind(...binds)
+          .all();
+
+      return json({
+        ok: true,
+        entries:
+          results || [],
+        immutable: true,
+        has_delete_endpoint:
+          false,
+        next_before:
+          (
+            results &&
+            results.length === limit
+          )
+            ? results[
+                results.length - 1
+              ].occurred_at
+            : null
+      });
+    }
+
+    if (
+      path === '/api/audit' &&
+      request.method === 'POST'
+    ) {
+      const gate =
+        await requireSession(
+          request,
+          env,
+          [
+            'MASTER',
+            'ADMIN',
+            'BOOTSTRAP'
+          ]
+        );
+
+      if (!gate.ok) {
+        return json(
+          {
+            ok: false,
+            error: gate.error
+          },
+          gate.status
+        );
+      }
+
+      let body;
+
+      try {
+        body =
+          await request.json();
+      } catch {
+        return json(
+          {
+            ok: false,
+            error:
+              'Invalid JSON body'
+          },
+          400
+        );
+      }
+
+      const id =
+        String(
+          body?.id || ''
+        ).trim();
+
+      const occurred =
+        String(
+          body?.occurred_at || ''
+        ).trim();
+
+      const payload =
+        String(
+          body?.payload || ''
+        ).trim();
+
+      if (
+        !id ||
+        !payload ||
+        !occurred ||
+        !Number.isFinite(
+          Date.parse(occurred)
+        )
+      ) {
+        return json(
+          {
+            ok: false,
+            error:
+              'invalid_audit_event'
+          },
+          400
+        );
+      }
+
+      const hash =
+        await sha256Hex(
+          payload
+        );
+
+      const exists =
+        await env.DB
+          .prepare(
+            'SELECT id FROM audit_events WHERE id = ?'
+          )
+          .bind(id)
+          .first();
+
+      if (exists) {
+        return json({
+          ok: true,
+          appended: true,
+          duplicate: true,
+          id
+        });
+      }
+
+      await env.DB
+        .prepare(`
+          INSERT INTO audit_events
+          (
+            id,
+            occurred_at,
+            payload,
+            payload_sha256
+          )
+          VALUES (?, ?, ?, ?)
+        `)
+        .bind(
+          id,
+          new Date(
+            occurred
+          ).toISOString(),
+          payload,
+          hash
+        )
+        .run();
+
+      return json({
+        ok: true,
+        appended: true,
+        id,
+        immutable: true
+      });
+    }
+
+    /*
+     * Audit-Protokolle können NICHT verändert oder gelöscht werden.
+     */
+    if (
+      path === '/api/audit' &&
+      (
+        request.method === 'PUT' ||
+        request.method === 'DELETE' ||
+        request.method === 'PATCH'
+      )
+    ) {
+      return json(
+        {
+          ok: false,
+          error:
+            'audit_immutable',
+          message:
+            'Audit-Einträge sind append-only und können nicht geändert oder gelöscht werden.'
+        },
+        405
+      );
+    }
+
+    /*
+     * =========================================================
+     * HEALTH
+     * =========================================================
+     */
 
     if (
       path === '/api/health' &&
@@ -1416,10 +1736,18 @@ async function handleApi(
       return json({
         ok: true,
         d1: true,
-        keys: row?.c ?? 0,
-        auth: authConfigured(env)
+        keys:
+          row?.c ?? 0,
+        auth:
+          authConfigured(env)
       });
     }
+
+    /*
+     * =========================================================
+     * KOMPLETTER STATE
+     * =========================================================
+     */
 
     if (
       path === '/api/state' &&
@@ -1454,21 +1782,14 @@ async function handleApi(
       if (includeValues) {
         const { results } =
           await env.DB
-            .prepare(`
-              SELECT
-                key,
-                value,
-                updated_at
-              FROM app_state
-              ORDER BY key
-            `)
+            .prepare(
+              'SELECT key, value, updated_at FROM app_state ORDER BY key'
+            )
             .all();
 
         const map = {};
 
-        for (
-          const r of results || []
-        ) {
+        for (const r of results || []) {
           if (
             r.key ===
             'gg_master_account'
@@ -1481,7 +1802,8 @@ async function handleApi(
             };
           } else {
             map[r.key] = {
-              value: r.value,
+              value:
+                r.value,
               updated_at:
                 r.updated_at
             };
@@ -1496,13 +1818,9 @@ async function handleApi(
 
       const { results } =
         await env.DB
-          .prepare(`
-            SELECT
-              key,
-              updated_at
-            FROM app_state
-            ORDER BY key
-          `)
+          .prepare(
+            'SELECT key, updated_at FROM app_state ORDER BY key'
+          )
           .all();
 
       return json({
@@ -1512,13 +1830,20 @@ async function handleApi(
             results || []
           ).map(
             r => ({
-              key: r.key,
+              key:
+                r.key,
               updated_at:
                 r.updated_at
             })
           )
       });
     }
+
+    /*
+     * =========================================================
+     * EINZELNER STATE
+     * =========================================================
+     */
 
     const getMatch =
       path.match(
@@ -1534,7 +1859,13 @@ async function handleApi(
           getMatch[1]
         );
 
-      if (!PUBLIC_GET_KEYS.has(key)) {
+      /*
+       * Öffentliche Keys dürfen ohne Session gelesen werden.
+       * Alle anderen benötigen Auth.
+       */
+      if (
+        !PUBLIC_GET_KEYS.has(key)
+      ) {
         const gate =
           await requireSession(
             request,
@@ -1556,11 +1887,16 @@ async function handleApi(
           );
         }
 
+        /*
+         * Master-Konto niemals an normale Admins ausgeben.
+         */
         if (
           key ===
-          'gg_master_account' &&
-          gate.session.role !== 'MASTER' &&
-          gate.session.role !== 'BOOTSTRAP'
+            'gg_master_account' &&
+          gate.session.role !==
+            'MASTER' &&
+          gate.session.role !==
+            'BOOTSTRAP'
         ) {
           return json(
             {
@@ -1574,14 +1910,9 @@ async function handleApi(
 
       const row =
         await env.DB
-          .prepare(`
-            SELECT
-              key,
-              value,
-              updated_at
-            FROM app_state
-            WHERE key = ?
-          `)
+          .prepare(
+            'SELECT key, value, updated_at FROM app_state WHERE key = ?'
+          )
           .bind(key)
           .first();
 
@@ -1594,6 +1925,9 @@ async function handleApi(
         });
       }
 
+      /*
+       * Master-Wert niemals ausgeben.
+       */
       if (
         key ===
         'gg_master_account'
@@ -1612,12 +1946,20 @@ async function handleApi(
       return json({
         ok: true,
         found: true,
-        key: row.key,
-        value: row.value,
+        key:
+          row.key,
+        value:
+          row.value,
         updated_at:
           row.updated_at
       });
     }
+
+    /*
+     * =========================================================
+     * STATE SPEICHERN
+     * =========================================================
+     */
 
     if (
       getMatch &&
@@ -1652,17 +1994,18 @@ async function handleApi(
       const role =
         gate.session.role;
 
+      /*
+       * Master-Konto ist unveränderlich.
+       */
       if (
         key ===
         'gg_master_account'
       ) {
         const existingMaster =
           await env.DB
-            .prepare(`
-              SELECT key
-              FROM app_state
-              WHERE key = ?
-            `)
+            .prepare(
+              'SELECT key FROM app_state WHERE key = ?'
+            )
             .bind(
               'gg_master_account'
             )
@@ -1691,7 +2034,13 @@ async function handleApi(
             403
           );
         }
-      } else if (
+      }
+
+      /*
+       * Nur Master/Bootstrap dürfen Admin-Konfiguration
+       * und Initialisierungsstatus ändern.
+       */
+      else if (
         key === 'vereinAdmins' ||
         key ===
           'adminSystemInitialisiert'
@@ -1708,7 +2057,13 @@ async function handleApi(
             403
           );
         }
-      } else if (
+      }
+
+      /*
+       * Bootstrap darf keine normalen sensitiven
+       * Datenbereiche überschreiben.
+       */
+      else if (
         SENSITIVE_KEYS.has(key) &&
         role === 'BOOTSTRAP'
       ) {
@@ -1730,7 +2085,8 @@ async function handleApi(
         return json(
           {
             ok: false,
-            error: 'Invalid JSON body'
+            error:
+              'Invalid JSON body'
           },
           400
         );
@@ -1750,6 +2106,9 @@ async function handleApi(
         );
       }
 
+      /*
+       * Master darf niemals geleert werden.
+       */
       if (
         key ===
           'gg_master_account' &&
@@ -1767,13 +2126,9 @@ async function handleApi(
 
       const existing =
         await env.DB
-          .prepare(`
-            SELECT
-              value,
-              updated_at
-            FROM app_state
-            WHERE key = ?
-          `)
+          .prepare(
+            'SELECT value, updated_at FROM app_state WHERE key = ?'
+          )
           .bind(key)
           .first();
 
@@ -1791,11 +2146,12 @@ async function handleApi(
           ? Date.parse(clientTs)
           : NaN;
 
+      /*
+       * Neuer Key.
+       */
       if (!existing) {
         const ts =
-          Number.isFinite(
-            clientMs
-          )
+          Number.isFinite(clientMs)
             ? new Date(
                 clientMs
               ).toISOString()
@@ -1804,7 +2160,11 @@ async function handleApi(
         await env.DB
           .prepare(`
             INSERT INTO app_state
-            (key, value, updated_at)
+            (
+              key,
+              value,
+              updated_at
+            )
             VALUES (?, ?, ?)
           `)
           .bind(
@@ -1822,6 +2182,9 @@ async function handleApi(
         });
       }
 
+      /*
+       * Master bleibt unveränderlich.
+       */
       if (
         key ===
         'gg_master_account'
@@ -1843,6 +2206,10 @@ async function handleApi(
             )
           : NaN;
 
+      /*
+       * Bei unklarer Zeit niemals einen
+       * möglicherweise neueren D1-Stand überschreiben.
+       */
       if (
         !Number.isFinite(
           clientMs
@@ -1862,6 +2229,10 @@ async function handleApi(
         });
       }
 
+      /*
+       * Älteren Clientstand niemals über
+       * den neueren D1-Stand schreiben.
+       */
       if (
         clientMs <
         existingMs
@@ -1885,14 +2256,15 @@ async function handleApi(
       await env.DB
         .prepare(`
           UPDATE app_state
-          SET value = ?,
-              updated_at = ?
+          SET
+            value = ?,
+            updated_at = ?
           WHERE key = ?
         `)
         .bind(
-          key,
           body.value,
-          ts
+          ts,
+          key
         )
         .run();
 
@@ -1903,6 +2275,12 @@ async function handleApi(
         updated: true
       });
     }
+
+    /*
+     * =========================================================
+     * MIGRATION
+     * =========================================================
+     */
 
     if (
       path === '/api/migrate' &&
@@ -1937,7 +2315,8 @@ async function handleApi(
         return json(
           {
             ok: false,
-            error: 'Invalid JSON body'
+            error:
+              'Invalid JSON body'
           },
           400
         );
@@ -1970,20 +2349,20 @@ async function handleApi(
       const keys =
         Object.keys(items);
 
-      for (
-        const key of keys
-      ) {
+      for (const key of keys) {
+        /*
+         * Bestehenden Master niemals
+         * durch Migration überschreiben.
+         */
         if (
           key ===
           'gg_master_account'
         ) {
           const existsMaster =
             await env.DB
-              .prepare(`
-                SELECT key
-                FROM app_state
-                WHERE key = ?
-              `)
+              .prepare(
+                'SELECT key FROM app_state WHERE key = ?'
+              )
               .bind(key)
               .first();
 
@@ -2011,7 +2390,8 @@ async function handleApi(
           typeof raw.value ===
             'string'
         ) {
-          value = raw.value;
+          value =
+            raw.value;
 
           if (
             typeof raw.clientUpdatedAt ===
@@ -2026,14 +2406,16 @@ async function handleApi(
 
         const existing =
           await env.DB
-            .prepare(`
-              SELECT key
-              FROM app_state
-              WHERE key = ?
-            `)
+            .prepare(
+              'SELECT key FROM app_state WHERE key = ?'
+            )
             .bind(key)
             .first();
 
+        /*
+         * Migration ist ausschließlich
+         * für noch nicht vorhandene Keys.
+         */
         if (existing) {
           skipped++;
           continue;
@@ -2041,15 +2423,11 @@ async function handleApi(
 
         const clientMs =
           clientTs
-            ? Date.parse(
-                clientTs
-              )
+            ? Date.parse(clientTs)
             : NaN;
 
         const ts =
-          Number.isFinite(
-            clientMs
-          )
+          Number.isFinite(clientMs)
             ? new Date(
                 clientMs
               ).toISOString()
@@ -2058,7 +2436,11 @@ async function handleApi(
         await env.DB
           .prepare(`
             INSERT INTO app_state
-            (key, value, updated_at)
+            (
+              key,
+              value,
+              updated_at
+            )
             VALUES (?, ?, ?)
           `)
           .bind(
@@ -2075,8 +2457,10 @@ async function handleApi(
         ok: true,
         written,
         skipped,
-        keys: keys.length,
-        updated_at: now
+        keys:
+          keys.length,
+        updated_at:
+          now
       });
     }
 
@@ -2087,6 +2471,7 @@ async function handleApi(
       },
       404
     );
+
   } catch (e) {
     console.error(
       '[GG-D1]',
@@ -2098,7 +2483,8 @@ async function handleApi(
         ok: false,
         error:
           String(
-            e?.message || e
+            e?.message ||
+            e
           )
       },
       500
@@ -2111,6 +2497,9 @@ export default {
     request,
     env
   ) {
+    /*
+     * CORS Preflight
+     */
     if (
       request.method ===
       'OPTIONS'
@@ -2126,10 +2515,12 @@ export default {
     }
 
     const url =
-      new URL(
-        request.url
-      );
+      new URL(request.url);
 
+    /*
+     * API-Anfragen gehen
+     * ausschließlich an diesen Worker.
+     */
     if (
       url.pathname.startsWith(
         '/api/'
@@ -2141,6 +2532,10 @@ export default {
       );
     }
 
+    /*
+     * Alle anderen Anfragen
+     * gehen an Cloudflare Assets.
+     */
     if (env.ASSETS) {
       return env.ASSETS.fetch(
         request
