@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Green Generation Rostock</title>
-<meta name="gg-build" content="V33-UI-SMOKE-DYNAMIC-HARBOR-NONDESTRUCTIVE-APP-FLOW">
+<meta name="gg-build" content="V34-UI-SMOKE-DYNAMIC-HARBOR-NONDESTRUCTIVE-ADMIN-SCROLL-FIX">
 <meta name="gg-build-date" content="2026-10-02">
     
     <!-- PWA & Mobile Web App Meta Tags -->
@@ -566,17 +566,40 @@ select,input,textarea,button{touch-action:manipulation}
         }
         body.gg-vorstand-mode #bereich-vorstand.active .gg-vorstand-scroll,
         body.gg-vorstand-mode #gg-vorstand-scroll {
+            /* V34 MOBILE SCROLL FIX: Der Vorstand bekommt eine eindeutig
+               begrenzte eigene Scrollfläche. Dadurch kann Android die
+               vertikale Touch-Geste nicht mehr an body/main verlieren. */
             flex: 1 1 0%;
-            min-height: 0;
+            flex-basis: 0%;
+            min-height: 0 !important;
+            height: 0;
+            max-height: 100%;
+            width: 100%;
+            min-width: 0;
             overflow-x: hidden;
-            overflow-y: auto;
+            overflow-y: scroll;
             -webkit-overflow-scrolling: touch;
-            overscroll-behavior-y: auto;
+            overscroll-behavior-y: contain;
             overscroll-behavior-x: none;
-            touch-action: pan-y;
+            touch-action: pan-y !important;
+            -webkit-user-select: none;
+            user-select: none;
             scroll-behavior: auto;
             scrollbar-gutter: stable;
-            padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+            padding-bottom: calc(8rem + env(safe-area-inset-bottom));
+            box-sizing: border-box;
+        }
+        body.gg-vorstand-mode #gg-vorstand-scroll > .kapitel-inhalt {
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+        body.gg-vorstand-mode #gg-vorstand-scroll::after {
+            content: '';
+            display: block;
+            height: calc(1.5rem + env(safe-area-inset-bottom));
+            width: 1px;
+            pointer-events: none;
         }
         body.gg-vorstand-mode #bereich-vorstand.active .kapitel-inhalt:not(.hidden):not([hidden]) {
             display: block !important;
