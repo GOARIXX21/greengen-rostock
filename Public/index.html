@@ -1441,6 +1441,9 @@ body.gg-print-preview-open{overflow:hidden!important}
                         <button onclick="exportiereDokumentation()" class="bg-white/10 text-white border border-white/10 hover:bg-white/15 font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-all">
                             <i class="fa-solid fa-file-export mr-1"></i> Bericht exportieren
                         </button>
+                        <button onclick="druckeFinanzbericht()" class="bg-white/10 text-white border border-white/10 hover:bg-white/15 font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-all">
+                            <i class="fa-solid fa-print mr-1"></i> Drucken
+                        </button>
                         <button onclick="starteAutomatisierteLastschrift()" class="bg-[#22ffaa] text-black font-bold py-2.5 rounded-xl text-xs hover:bg-[#1ae89a] active:scale-95 transition-all shadow-md">
                             <i class="fa-solid fa-download mr-1"></i> SEPA-XML Export
                         </button>
@@ -1676,6 +1679,10 @@ body.gg-print-preview-open{overflow:hidden!important}
                         <button type="button" onclick="setzeAbgabeLogSchnellfilter('woche')" class="text-[10px] font-bold bg-white/10 hover:bg-white/15 border border-white/10 px-2.5 py-1.5 rounded-lg">Diese Woche</button>
                         <button type="button" onclick="setzeAbgabeLogSchnellfilter('alle')" class="text-[10px] font-bold bg-white/10 hover:bg-white/15 border border-white/10 px-2.5 py-1.5 rounded-lg">Alle</button>
                     </div>
+                    <div class="flex flex-wrap gap-2 mb-3">
+                        <button type="button" onclick="exportiereAbgabeCSV()" class="text-[10px] font-bold bg-white/10 hover:bg-white/15 border border-white/10 px-2.5 py-1.5 rounded-lg">CSV-Export</button>
+                        <button type="button" onclick="druckeAbgabeProtokoll()" class="text-[10px] font-bold bg-white/10 hover:bg-white/15 border border-white/10 px-2.5 py-1.5 rounded-lg">Drucken</button>
+                    </div>
                     <div id="admin-logs-list" class="space-y-2 text-xs max-h-80 overflow-y-auto no-scrollbar"></div>
                 </div>
 
@@ -1685,6 +1692,10 @@ body.gg-print-preview-open{overflow:hidden!important}
                             <i class="fa-solid fa-shield-halved"></i> Änderungsverlauf / Sicherheitsprotokoll
                         </h3>
                         <span class="text-[9px] text-white/35">nicht löschbar</span>
+                    </div>
+                    <div class="flex flex-wrap gap-2 mb-3">
+                        <button type="button" onclick="exportiereAuditCSV()" class="text-[10px] font-bold bg-white/10 hover:bg-white/15 border border-white/10 px-2.5 py-1.5 rounded-lg">CSV-Export</button>
+                        <button type="button" onclick="druckeAuditProtokoll()" class="text-[10px] font-bold bg-white/10 hover:bg-white/15 border border-white/10 px-2.5 py-1.5 rounded-lg">Drucken</button>
                     </div>
                     <p class="text-[10px] text-white/60 mb-3">
                         Änderungen, Löschungen, Anmeldungen und sicherheitsrelevante Aktionen werden hier nachvollziehbar protokolliert.
@@ -2481,6 +2492,95 @@ body.gg-print-preview-open{overflow:hidden!important}
             } catch (e) {
                 console.warn('[GG-Storage] Migration übersprungen:', e);
             }
+        }
+
+        /* V34 AKTUELLER SERVERSTAND: explizite Aktionen/Exports lesen den maßgeblichen D1-Stand direkt.
+           Der normale Auto-Refresh darf aus Performancegründen weiterhin seine bestehende
+           Zeitstempel-Logik verwenden. Für Berichte, Druck, Exporte und Informationszettel
+           gilt dagegen: kein alter lokaler Cache, kein älterer Renderstand. */
+        async function ggLadeD1StandDirekt(schluessel, fallback) {
+            // Bei einer ausdrücklichen Benutzeraktion immer einen frischen Health-Check
+            // machen. Ein einmaliger Offline-Status darf keinen alten Cache festhalten.
+            await ggD1Health();
+            if (!ggD1Available) return { ok: false, found: false, value: fallback };
+            const remote = await ggD1GetRaw(schluessel);
+            if (!remote) return { ok: false, found: false, value: fallback };
+            if (!remote.value) return { ok: true, found: false, value: fallback };
+            const decoded = await entschlüsseleDaten(remote.value, null);
+            if (decoded === null || decoded === undefined) return { ok: false, found: false, value: fallback };
+            try {
+                localStorage.setItem(schluessel, remote.value);
+                if (remote.updated_at) ggSetLocalTs(schluessel, remote.updated_at);
+            } catch (_) {}
+            return { ok: true, found: true, value: decoded, updated_at: remote.updated_at || null };
+        }
+
+        async function ggAktualisiereDatenVonServer(schluesselListe) {
+            if (!istVorstandEingeloggt) return false;
+            const keys = Array.from(new Set((Array.isArray(schluesselListe) ? schluesselListe : []).filter(Boolean)));
+            if (!keys.length) return true;
+            const fallbacks = {
+                vereinMitglieder: [], vereinSorten: [], vereinNews: [], vereinProtokolle: [],
+                vereinKassenbons: [], vereinReservierungen: [], vereinUmsatz: 0,
+                vereinWissen: [], vereinInfoArtikel: [], vereinQualitaetspruefungen: [],
+                vereinRueckrufe: [], vereinAudit: [], vereinZutritte: [], vereinGuthabenHistorie: [],
+                vereinPraevention: {name:'', contact:''}, vereinAbholzeitfenster: []
+            };
+            const pairs = await Promise.all(keys.map(async key => [key, await ggLadeD1StandDirekt(key, fallbacks[key] ?? null)]));
+            let serverOk = true;
+            for (const [key, result] of pairs) {
+                if (!result.ok) { serverOk = false; continue; }
+                // Ein vorhandener D1-Wert ist maßgeblich – auch wenn er leer ist.
+                // Genau das verhindert, dass ein alter lokaler Stand wieder auftaucht.
+                if (!result.found) continue;
+                switch (key) {
+                    case 'vereinMitglieder': vereinMitglieder = Array.isArray(result.value) ? result.value : vereinMitglieder; break;
+                    case 'vereinSorten': vereinSorten = Array.isArray(result.value) ? result.value : vereinSorten; break;
+                    case 'vereinNews': vereinNews = Array.isArray(result.value) ? result.value : vereinNews; break;
+                    case 'vereinProtokolle': vereinProtokolle = Array.isArray(result.value) ? result.value : vereinProtokolle; break;
+                    case 'vereinKassenbons': vereinKassenbons = Array.isArray(result.value) ? result.value : vereinKassenbons; break;
+                    case 'vereinReservierungen': vereinReservierungen = Array.isArray(result.value) ? result.value : vereinReservierungen; break;
+                    case 'vereinUmsatz': vereinUmsatz = result.value; break;
+                    case 'vereinWissen': vereinWissen = Array.isArray(result.value) ? result.value : vereinWissen; break;
+                    case 'vereinInfoArtikel': vereinInfoArtikel = Array.isArray(result.value) ? result.value : vereinInfoArtikel; break;
+                    case 'vereinQualitaetspruefungen': vereinQualitaetspruefungen = Array.isArray(result.value) ? result.value : vereinQualitaetspruefungen; break;
+                    case 'vereinRueckrufe': vereinRueckrufe = Array.isArray(result.value) ? result.value : vereinRueckrufe; break;
+                    case 'vereinAudit': vereinAudit = Array.isArray(result.value) ? result.value : vereinAudit; break;
+                    case 'vereinZutritte': vereinZutritte = Array.isArray(result.value) ? result.value : vereinZutritte; ggZutrittQuelle = 'd1'; break;
+                    case 'vereinGuthabenHistorie': vereinGuthabenHistorie = Array.isArray(result.value) ? result.value : vereinGuthabenHistorie; break;
+                    case 'vereinPraevention': vereinPraevention = result.value && typeof result.value === 'object' ? result.value : vereinPraevention; break;
+                    case 'vereinAbholzeitfenster': {
+                        const slots = ggAlsAbholzeitArray(result.value);
+                        if (Array.isArray(slots)) vereinAbholzeitfenster = ggNormiereAbholzeitfenster(slots);
+                        break;
+                    }
+                }
+            }
+            return serverOk;
+        }
+
+        async function ggAktualisiereAdminTabDaten(kapitelId) {
+            const map = {
+                personen: ['vereinMitglieder','vereinAudit'],
+                beitraege: ['vereinMitglieder','vereinGuthabenHistorie','vereinAudit'],
+                mitteilungen: ['vereinNews','vereinAudit'],
+                wissen: ['vereinWissen','vereinAudit'],
+                mitgliederwissen: ['vereinInfoArtikel','vereinAudit'],
+                compliance: ['vereinPraevention','vereinQualitaetspruefungen','vereinRueckrufe','vereinAudit'],
+                qualitaet: ['vereinQualitaetspruefungen','vereinSorten','vereinAudit'],
+                rueckruf: ['vereinRueckrufe','vereinSorten','vereinAudit'],
+                sortiment: ['vereinSorten','vereinAudit'],
+                protokolle: ['vereinProtokolle','vereinKassenbons','vereinReservierungen','vereinAudit','vereinMitglieder'],
+                zutritt: ['vereinZutritte'],
+                buchhaltung: ['vereinMitglieder','vereinReservierungen','vereinUmsatz','vereinGuthabenHistorie','vereinAudit'],
+                reservierungen: ['vereinReservierungen','vereinMitglieder','vereinSorten','vereinAbholzeitfenster','vereinAudit'],
+                terminal: ['vereinMitglieder','vereinSorten','vereinReservierungen','vereinKassenbons','vereinProtokolle','vereinAudit'],
+                berechtigungen: ['vereinAdmins','adminSystemInitialisiert','gg_master_account'],
+                passphrase: ['gg_master_account']
+            };
+            const keys = map[kapitelId];
+            if (!keys) return true;
+            return await ggAktualisiereDatenVonServer(keys);
         }
 
         async function ggLadeZutritteAutoritaet(standardWert) {
@@ -4243,10 +4343,15 @@ body.gg-print-preview-open{overflow:hidden!important}
             // der Vorstand beim Tabwechsel sofort bedienbar und ein Touch/Scroll
             // ist nicht mehr noetig, um den neuen Inhalt sichtbar zu machen.
             const navToken = ++ggNavRenderToken;
-            const renderNachPaint = () => {
+            const renderNachPaint = async () => {
                 if (navToken !== ggNavRenderToken) return;
                 if (ggAktivesAdminKapitel !== kapitelId) return;
                 try {
+                    // Vor jedem relevanten Admin-Tab zuerst den aktuellen D1-Stand holen.
+                    // So werden Auswahlfelder und Berichte nicht mehr aus einem alten lokalen
+                    // Cache aufgebaut. Der bestehende Paint-first Ablauf bleibt erhalten.
+                    await ggAktualisiereAdminTabDaten(kapitelId);
+                    if (navToken !== ggNavRenderToken || ggAktivesAdminKapitel !== kapitelId) return;
                     if (kapitelId === 'buchhaltung') {
                         ggUiBusyUntil = Math.max(ggUiBusyUntil || 0, Date.now() + 2500);
                         starteFinanzTabRender(false, true);
@@ -4255,6 +4360,7 @@ body.gg-print-preview-open{overflow:hidden!important}
                     }
                 } catch (err) {
                     console.error('Tab-Renderfehler in ' + kapitelId, err);
+                    try { ggFuehreAdminTabRenderAus(kapitelId); } catch (_) {}
                 }
                 if (kapitelId === 'standort') {
                     setTimeout(initialisiereAdminKarte, 100);
@@ -7606,8 +7712,17 @@ body.gg-print-preview-open{overflow:hidden!important}
             }
         }
 
-        function starteAutomatisierteLastschrift() {
-            alert("SEPA-XML Export generiert und heruntergeladen.");
+        async function starteAutomatisierteLastschrift() {
+            if (!istVorstandEingeloggt) return;
+            await ggAktualisiereDatenVonServer(['vereinMitglieder']);
+            const zahlungen = (vereinMitglieder || []).filter(m => m && m.feePaid === false && m.iban && Number(m.feeAmount || 0) > 0);
+            if (!zahlungen.length) { alert('Keine offenen Beiträge mit hinterlegter IBAN für den SEPA-Export gefunden.'); return; }
+            const escXml = v => String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
+            const msgId='GG-'+Date.now(), sum=zahlungen.reduce((n,m)=>n+Number(m.feeAmount||0),0);
+            const txs=zahlungen.map((m,i)=>`<CdtTrfTxInf><PmtId><EndToEndId>${escXml('GG-'+(m.id||i+1))}</EndToEndId></PmtId><Amt><InstdAmt Ccy="EUR">${Number(m.feeAmount||0).toFixed(2)}</InstdAmt></Amt><Cdtr><Nm>${escXml(m.name||'Mitglied')}</Nm></Cdtr><CdtrAcct><Id><IBAN>${escXml(String(m.iban||'').replace(/\s+/g,''))}</IBAN></Id></CdtrAcct><RmtInf><Ustrd>Mitgliedsbeitrag Green Generation Rostock</Ustrd></RmtInf></CdtTrfTxInf>`).join('');
+            const xml=`<?xml version="1.0" encoding="UTF-8"?><Document xmlns="urn:iso:std:iso:20022:tech:xsd:pain.001.001.03"><CstmrCdtTrfInitn><GrpHdr><MsgId>${escXml(msgId)}</MsgId><CreDtTm>${new Date().toISOString()}</CreDtTm><NbOfTxs>${zahlungen.length}</NbOfTxs><CtrlSum>${sum.toFixed(2)}</CtrlSum><InitgPty><Nm>Green Generation Rostock</Nm></InitgPty></GrpHdr><PmtInf><PmtInfId>${escXml(msgId+'-PMT')}</PmtInfId><PmtMtd>TRF</PmtMtd><NbOfTxs>${zahlungen.length}</NbOfTxs><CtrlSum>${sum.toFixed(2)}</CtrlSum><ReqdExctnDt>${new Date().toISOString().slice(0,10)}</ReqdExctnDt><Dbtr><Nm>Green Generation Rostock</Nm></Dbtr><DbtrAcct><Id><IBAN>${escXml(vereinPraevention?.iban||'')}</IBAN></Id></DbtrAcct>${txs}</PmtInf></CstmrCdtTrfInitn></Document>`;
+            ggDownloadDatei('Green-Generation-SEPA-Export.xml',xml,'application/xml;charset=utf-8');
+            try { await protokolliereAudit('sepa_export',`SEPA-XML Export erstellt; ${zahlungen.length} Zahlung(en); Summe ${sum.toFixed(2)} €`); } catch (_) {}
         }
 
         /* Modal QR Zoom */
@@ -8076,8 +8191,10 @@ body.gg-print-preview-open{overflow:hidden!important}
                     '<p class="text-[9px] text-[#22ffaa] font-bold">' + st + '</p></div></div>';
             }).join('');
         }
-        function exportiereZutrittsCSV() {
+        async function exportiereZutrittsCSV() {
             if (!istVorstandEingeloggt) return;
+            await ggAktualisiereDatenVonServer(['vereinZutritte']);
+            rendereZutrittsprotokoll();
             const list = ggHoleGefilterteZutritte();
             const rows = [['Protokoll-ID', 'Mitglieds-ID', 'Mitglied', 'Datum', 'Uhrzeit', 'Status', 'Ereignis', 'Club', 'Zeitstempel']];
             list.forEach(e => {
@@ -8107,8 +8224,10 @@ body.gg-print-preview-open{overflow:hidden!important}
             a.remove();
             setTimeout(() => URL.revokeObjectURL(url), 1000);
         }
-        function druckeZutrittsprotokoll() {
+        async function druckeZutrittsprotokoll() {
             if (!istVorstandEingeloggt) return;
+            await ggAktualisiereDatenVonServer(['vereinZutritte']);
+            rendereZutrittsprotokoll();
             const list = ggHoleGefilterteZutritte();
             const rows = list.map(e =>
                 '<tr><td>' + escapeHtml(e.date || '') + '</td><td>' + escapeHtml(e.time || '') +
@@ -8401,12 +8520,16 @@ body.gg-print-preview-open{overflow:hidden!important}
             const name=document.getElementById('admin-praeventions-name')?.value.trim()||''; const contact=document.getElementById('admin-praeventions-contact')?.value.trim()||'';
             vereinPraevention={name,contact}; await speichereVerschlüsseltenState('vereinPraevention',vereinPraevention); await protokolliereAudit('prevention_update',name); rendereComplianceCenter(); alert('Präventionsdaten gespeichert.');
         }
-        function exportiereComplianceBericht() {
+        async function exportiereComplianceBericht() {
+            if (!istVorstandEingeloggt) return;
+            await ggAktualisiereDatenVonServer(['vereinPraevention','vereinQualitaetspruefungen','vereinRueckrufe','vereinAudit']);
             const data={erstelltAm:new Date().toISOString(), hinweis:'Technischer Bericht zur internen Unterstützung; keine behördliche Abnahme.', praevention:vereinPraevention, qualitaet:vereinQualitaetspruefungen, rueckrufe:vereinRueckrufe, audit:vereinAudit};
             const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json;charset=utf-8'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='GreenGeneration-Compliance-Bericht.json'; a.click(); URL.revokeObjectURL(url);
         }
 
-        function erzeugeInformationszettel() {
+        async function erzeugeInformationszettel() {
+            if (!istVorstandEingeloggt) return;
+            await ggAktualisiereDatenVonServer(['vereinMitglieder','vereinSorten','vereinReservierungen','vereinProtokolle','vereinAudit']);
             const memberId = document.getElementById('pos-member-select')?.value || '';
             const strainName = document.getElementById('pos-strain-select')?.value || '';
             const menge = document.getElementById('pos-amount-input')?.value || '—';
@@ -8555,9 +8678,57 @@ body.gg-print-preview-open{overflow:hidden!important}
             if (event.key === 'Escape') { schliesseBarrierefreiheit(); schliesseHauptmenue(); }
         });
 
-        function exportiereDokumentation() {
-            const data = { exportiertAm:new Date().toISOString(), mitglieder:vereinMitglieder, sorten:vereinSorten, protokolle:vereinProtokolle, kassenbons:vereinKassenbons, reservierungen:vereinReservierungen, umsatz:vereinUmsatz, audit:vereinAudit, guthabenHistorie:vereinGuthabenHistorie };
-            const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json;charset=utf-8'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='GreenGeneration-Dokumentation.json'; a.click(); URL.revokeObjectURL(url);
+        function ggDownloadDatei(dateiname, inhalt, mimeType) {
+            const blob = new Blob([inhalt], { type: mimeType || 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = dateiname;
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+        function ggCsvEsc(value) { const s = String(value ?? ''); return /[";\n,]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+        async function exportiereAuditCSV() {
+            if (!istVorstandEingeloggt) return; await ggAktualisiereDatenVonServer(['vereinAudit']);
+            const rows=[['Datum','Aktion','Details','Durchgeführt von']];
+            (Array.isArray(vereinAudit)?vereinAudit:[]).forEach(e=>rows.push([e.date||'',e.action||'',e.details||'',e.actor||'SYSTEM']));
+            ggDownloadDatei('Green-Generation-Aenderungsprotokoll.csv','\ufeff'+rows.map(r=>r.map(ggCsvEsc).join(';')).join('\n'),'text/csv;charset=utf-8');
+        }
+        async function druckeAuditProtokoll() {
+            if (!istVorstandEingeloggt) return; await ggAktualisiereDatenVonServer(['vereinAudit']);
+            const rows=(Array.isArray(vereinAudit)?vereinAudit:[]).map(e=>'<tr><td>'+escapeHtml(e.date||'')+'</td><td>'+escapeHtml(e.action||'')+'</td><td>'+escapeHtml(e.details||'')+'</td><td>'+escapeHtml(e.actor||'SYSTEM')+'</td></tr>').join('');
+            const w=window.open('','_blank'); if(!w){alert('Pop-up blockiert. Bitte Pop-ups erlauben.');return;}
+            w.document.write('<!doctype html><html><head><title>Änderungsprotokoll</title><style>body{font-family:system-ui,sans-serif;padding:20px;color:#111}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #ccc;padding:6px;text-align:left;vertical-align:top}th{background:#eee}</style></head><body><h1>Green Generation Rostock – Änderungsverlauf / Sicherheitsprotokoll</h1><table><thead><tr><th>Datum</th><th>Aktion</th><th>Details</th><th>Durchgeführt von</th></tr></thead><tbody>'+rows+'</tbody></table></body></html>'); w.document.close();w.focus();w.print();
+        }
+        async function exportiereAbgabeCSV() {
+            if (!istVorstandEingeloggt) return; await ggAktualisiereDatenVonServer(['vereinProtokolle']);
+            const q=String(document.getElementById('abgabe-log-suche')?.value||'').trim().toLowerCase(), von=document.getElementById('abgabe-log-von')?.value||'', bis=document.getElementById('abgabe-log-bis')?.value||'';
+            let list=Array.isArray(vereinProtokolle)?vereinProtokolle.slice():[];
+            if(ggAbgabeLogFilterId) list=list.filter(p=>String(p.member||'').includes(ggAbgabeLogFilterId)||String(p.memberId||'')===String(ggAbgabeLogFilterId));
+            if(q) list=list.filter(p=>String(p.member||'').toLowerCase().includes(q)||String(p.strain||'').toLowerCase().includes(q)||String(p.batch||'').toLowerCase().includes(q));
+            if(von) list=list.filter(p=>ggParseProtokollDatum(p)>=von); if(bis) list=list.filter(p=>{const d=ggParseProtokollDatum(p);return !d||d<=bis;});
+            const rows=[['Datum','Mitglied','Mitglieds-ID','Sorte','Charge','Menge','Betrag','Kassenbon-ID','Status']];
+            list.forEach(p=>rows.push([p.date||'',p.member||'',p.memberId||'',p.strain||'',p.batch||'',p.amount??p.grams??'',p.price??'',p.bonId||p.id||'',p.status||'Abgabe']));
+            ggDownloadDatei('Green-Generation-Abgabeprotokoll.csv','\ufeff'+rows.map(r=>r.map(ggCsvEsc).join(';')).join('\n'),'text/csv;charset=utf-8');
+        }
+        async function druckeAbgabeProtokoll() {
+            if (!istVorstandEingeloggt) return; await ggAktualisiereDatenVonServer(['vereinProtokolle']);
+            const list=Array.isArray(vereinProtokolle)?vereinProtokolle:[];
+            const rows=list.map(p=>'<tr><td>'+escapeHtml(p.date||'')+'</td><td>'+escapeHtml(p.member||'')+'</td><td>'+escapeHtml(p.memberId||'')+'</td><td>'+escapeHtml(p.strain||'')+'</td><td>'+escapeHtml(p.batch||'')+'</td><td>'+escapeHtml(p.amount??p.grams??'')+'</td><td>'+escapeHtml(p.price??'')+'</td><td>'+escapeHtml(p.bonId||p.id||'')+'</td></tr>').join('');
+            const w=window.open('','_blank'); if(!w){alert('Pop-up blockiert. Bitte Pop-ups erlauben.');return;}
+            w.document.write('<!doctype html><html><head><title>Abgabeprotokoll</title><style>body{font-family:system-ui,sans-serif;padding:20px;color:#111}table{width:100%;border-collapse:collapse;font-size:10px}th,td{border:1px solid #ccc;padding:5px;text-align:left}th{background:#eee}</style></head><body><h1>Green Generation Rostock – Abgabeprotokoll</h1><table><thead><tr><th>Datum</th><th>Mitglied</th><th>ID</th><th>Sorte</th><th>Charge</th><th>Menge</th><th>Betrag</th><th>Bon</th></tr></thead><tbody>'+rows+'</tbody></table></body></html>'); w.document.close();w.focus();w.print();
+        }
+        async function druckeFinanzbericht() {
+            if (!istVorstandEingeloggt) return; await ggAktualisiereDatenVonServer(['vereinMitglieder','vereinReservierungen','vereinUmsatz','vereinGuthabenHistorie','vereinAudit']);
+            const offene=(vereinMitglieder||[]).filter(m=>m&&m.feePaid===false).reduce((n,m)=>n+Number(m.feeAmount||0),0);
+            const rows=(vereinMitglieder||[]).filter(m=>m&&m.financeEntryActive!==false).map(m=>'<tr><td>'+escapeHtml(m.name||'')+'</td><td>'+escapeHtml(m.id||'')+'</td><td>'+(m.feePaid?'Bezahlt':'Ausstehend')+'</td><td>'+Number(m.feeAmount||0).toFixed(2).replace('.',',')+' €</td><td>'+Number(m.balance||0).toFixed(2).replace('.',',')+' €</td></tr>').join('');
+            const w=window.open('','_blank'); if(!w){alert('Pop-up blockiert. Bitte Pop-ups erlauben.');return;}
+            w.document.write('<!doctype html><html><head><title>Finanzbericht</title><style>body{font-family:system-ui,sans-serif;padding:20px;color:#111}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #ccc;padding:6px;text-align:left}th{background:#eee}</style></head><body><h1>Green Generation Rostock – Finanzbericht</h1><p><b>Gesamtumsatz:</b> '+Number(vereinUmsatz||0).toFixed(2).replace('.',',')+' € &nbsp; <b>Offene Beiträge:</b> '+offene.toFixed(2).replace('.',',')+' €</p><table><thead><tr><th>Mitglied</th><th>ID</th><th>Beitrag</th><th>Beitragshöhe</th><th>Guthaben</th></tr></thead><tbody>'+rows+'</tbody></table></body></html>'); w.document.close();w.focus();w.print();
+        }
+
+        async function exportiereDokumentation() {
+            if (!istVorstandEingeloggt) return;
+            await ggAktualisiereDatenVonServer(['vereinMitglieder','vereinSorten','vereinProtokolle','vereinKassenbons','vereinReservierungen','vereinUmsatz','vereinAudit','vereinGuthabenHistorie','vereinZutritte','vereinPraevention','vereinQualitaetspruefungen','vereinRueckrufe','vereinInfoArtikel']);
+            const data={exportiertAm:new Date().toISOString(),hinweis:'Aktueller Serverstand zum Zeitpunkt des Exports.',mitglieder:vereinMitglieder,sorten:vereinSorten,abgabeprotokoll:vereinProtokolle,kassenbons:vereinKassenbons,reservierungen:vereinReservierungen,umsatz:vereinUmsatz,aenderungsprotokoll:vereinAudit,guthabenHistorie:vereinGuthabenHistorie,zutrittsprotokoll:vereinZutritte,compliance:{praevention:vereinPraevention,qualitaetspruefungen:vereinQualitaetspruefungen,rueckrufe:vereinRueckrufe},informationsartikel:vereinInfoArtikel};
+            ggDownloadDatei('GreenGeneration-Gesamtdokumentation.json',JSON.stringify(data,null,2),'application/json;charset=utf-8');
         }
 </script>
 
